@@ -1,0 +1,2456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CRT EA v8 — Deriv Platform</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg:       #060911;
+    --bg2:      #0b0f1e;
+    --bg3:      #0f1525;
+    --border:   #253552;
+    --border2:  #2e4270;
+    --accent:   #2d8bff;
+    --accent2:  #00f0ff;
+    --gold:     #f5c518;
+    --green:    #00e676;
+    --red:      #ff3d5a;
+    --muted:    #7a8fae;      /* was #4a5a78 — much more readable */
+    --text:     #d8e8ff;      /* was #c8d8f0 — brighter base text */
+    --white:    #f0f6ff;
+    --panel-w:  360px;        /* slightly wider side panels */
+    --r:        10px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:500;min-height:100vh;overflow-x:hidden;}
+
+  /* ─── SCANLINES OVERLAY (subtler on desktop) ─── */
+  body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.07) 3px,rgba(0,0,0,.07) 4px);pointer-events:none;z-index:9999;}
+
+  /* ─── SCROLLBAR ─── */
+  ::-webkit-scrollbar{width:7px;height:7px}
+  ::-webkit-scrollbar-track{background:var(--bg2)}
+  ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+  ::-webkit-scrollbar-thumb:hover{background:#3a5580}
+
+  /* ─── SESSION TIMER ─── */
+  .session-timer{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 18px;background:rgba(0,240,255,.05);border:1px solid rgba(0,240,255,.18);border-radius:9px;min-width:110px;}
+  .session-timer .st-lbl{font-size:9px;letter-spacing:2px;color:#8ba4cc;text-transform:uppercase;font-weight:700;}
+  .session-timer .st-val{font-family:'Orbitron',sans-serif;font-size:17px;font-weight:700;color:var(--accent2);letter-spacing:2px;text-shadow:0 0 10px rgba(0,240,255,.4);transition:color .3s;}
+  .session-timer.disconnected .st-val{color:#ff6b85;text-shadow:0 0 10px rgba(255,61,90,.4);}
+  .session-timer .st-sub{font-size:9px;color:#8ba4cc;letter-spacing:1px;font-weight:600;}
+  #connectionBar{background:linear-gradient(135deg,var(--bg2) 0%,#0d1628 100%);border-bottom:2px solid var(--border2);padding:16px 24px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;box-shadow:0 4px 20px rgba(0,0,0,.4);}
+  #connectionBar::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 200% at 50% 50%,rgba(45,139,255,.04) 0%,transparent 70%);pointer-events:none;}
+  .conn-brand{display:flex;flex-direction:column;gap:2px;min-width:140px;}
+  .conn-brand .brand{font-family:'Orbitron',sans-serif;font-size:22px;font-weight:900;color:var(--accent2);letter-spacing:4px;text-shadow:0 0 24px rgba(0,240,255,.5);}
+  .conn-brand .sub{font-size:10px;color:#8ba4cc;letter-spacing:2px;font-weight:600;}
+  .conn-fields{display:flex;align-items:center;gap:12px;flex:1;flex-wrap:wrap;}
+  .conn-field{display:flex;flex-direction:column;gap:4px;}
+  .conn-field label{font-size:10px;letter-spacing:1.5px;color:#8ba4cc;text-transform:uppercase;font-weight:700;}
+  .conn-field input,.conn-field select{background:var(--bg3);border:1px solid var(--border2);color:var(--white);padding:9px 13px;border-radius:7px;font-family:'Share Tech Mono',monospace;font-size:13px;outline:none;transition:border .2s,box-shadow .2s;min-width:180px;}
+  .conn-field input{min-width:240px;}
+  .conn-field input:focus,.conn-field select:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(45,139,255,.2);}
+  .conn-remember{display:flex;align-items:center;gap:8px;cursor:pointer;}
+  .conn-remember input[type=checkbox]{width:15px;height:15px;accent-color:var(--accent);}
+  .conn-remember label{font-size:11px;letter-spacing:1px;color:#8ba4cc;text-transform:uppercase;font-weight:700;cursor:pointer;white-space:nowrap;}
+  .btn-login{padding:11px 26px;background:linear-gradient(135deg,var(--accent),#0055cc);color:#fff;border:none;border-radius:7px;font-family:'Orbitron',sans-serif;font-size:12px;font-weight:700;letter-spacing:2px;cursor:pointer;transition:all .2s;box-shadow:0 4px 20px rgba(45,139,255,.35);white-space:nowrap;}
+  .btn-login:hover{filter:brightness(1.15);transform:translateY(-1px);box-shadow:0 6px 24px rgba(45,139,255,.5);}
+  .btn-login:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none;}
+  .login-status{font-size:12px;color:#8ba4cc;min-height:18px;font-weight:600;white-space:nowrap;}
+  .login-status.err{color:var(--red);}
+  .login-status.ok{color:var(--green);}
+
+  /* ─── MAIN APP ─── */
+  #app{display:flex;flex-direction:column;min-height:100vh;}
+
+  /* ─── HEADER ─── */
+  header{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;background:var(--bg2);border-bottom:1px solid var(--border2);position:sticky;top:0;z-index:100;box-shadow:0 2px 16px rgba(0,0,0,.4);}
+  .hdr-left{display:flex;align-items:center;gap:16px;}
+  .logo-txt{font-family:'Orbitron',sans-serif;font-size:20px;font-weight:900;color:var(--accent2);letter-spacing:3px;text-shadow:0 0 20px rgba(0,240,255,.4);}
+  .hdr-badge{font-size:11px;letter-spacing:1.5px;background:rgba(45,139,255,.18);border:1px solid var(--accent);color:var(--accent);padding:4px 10px;border-radius:5px;font-weight:700;}
+  .hdr-right{display:flex;align-items:center;gap:14px;}
+  .acct-info{text-align:right;line-height:1.7;}
+  .acct-info .name{color:var(--white);font-weight:700;font-size:14px;}
+  .acct-info .bal{color:var(--green);font-family:'Share Tech Mono',monospace;font-size:14px;font-weight:700;}
+  .ws-dot{width:9px;height:9px;border-radius:50%;background:var(--muted);display:inline-block;}
+  .ws-dot.connected{background:var(--green);box-shadow:0 0 8px var(--green);}
+  .ws-dot.error{background:var(--red);}
+  .btn-logout{background:rgba(255,61,90,.12);border:1px solid rgba(255,61,90,.5);color:#ff6b85;padding:8px 18px;border-radius:7px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:13px;cursor:pointer;letter-spacing:1px;transition:all .2s;}
+  .btn-logout:hover{background:rgba(255,61,90,.22);border-color:var(--red);color:var(--red);}
+
+  /* ─── MAIN LAYOUT — desktop-first ─── */
+  .main-grid{display:grid;grid-template-columns:var(--panel-w) 1fr var(--panel-w);gap:18px;padding:18px 20px;flex:1;align-items:start;max-width:1800px;margin:0 auto;width:100%;}
+
+  /* ─── PANEL ─── */
+  .panel{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r);overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.25);}
+  .panel-hdr{padding:12px 18px;background:linear-gradient(90deg,rgba(45,139,255,.1),rgba(0,240,255,.04));border-bottom:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between;}
+  .panel-hdr h3{font-family:'Orbitron',sans-serif;font-size:11px;letter-spacing:2.5px;color:var(--accent2);font-weight:700;}
+  .panel-body{padding:16px 18px;}
+
+  /* ─── FORM CONTROLS ─── */
+  .ctrl-row{display:flex;flex-direction:column;gap:5px;margin-bottom:13px;}
+  .ctrl-row label{font-size:12px;letter-spacing:1px;color:#8ba4cc;text-transform:uppercase;font-weight:700;}
+  .ctrl-row input,.ctrl-row select{background:var(--bg3);border:1px solid var(--border2);color:var(--white);padding:9px 11px;border-radius:6px;font-family:'Share Tech Mono',monospace;font-size:13px;font-weight:600;outline:none;width:100%;transition:border .2s,box-shadow .2s;}
+  .ctrl-row input:focus,.ctrl-row select:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(45,139,255,.15);}
+  .ctrl-row .hint{font-size:11px;color:#7a8fae;font-weight:600;line-height:1.4;}
+  .ctrl-row.inline{flex-direction:row;align-items:center;gap:10px;}
+  .ctrl-row.inline label{flex:1;font-size:12px;margin:0;}
+  .ctrl-row.inline input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent);flex-shrink:0;}
+  .section-div{height:1px;background:var(--border2);margin:15px 0;opacity:.6;}
+  .section-lbl{font-size:11px;letter-spacing:2px;color:#8ba4cc;text-transform:uppercase;margin-bottom:10px;font-weight:700;}
+
+  /* ─── TRADE MODE BUTTONS ─── */
+  .mode-btns{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:13px;}
+  .mode-btn{padding:10px 4px;background:var(--bg3);border:1px solid var(--border2);color:#7a8fae;border-radius:6px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:13px;letter-spacing:.8px;cursor:pointer;text-align:center;transition:all .2s;}
+  .mode-btn:hover{color:var(--text);border-color:#3a5580;}
+  .mode-btn.active.buy{background:rgba(45,139,255,.18);border-color:var(--accent);color:#6ab5ff;}
+  .mode-btn.active.sell{background:rgba(255,61,90,.15);border-color:var(--red);color:#ff7090;}
+  .mode-btn.active.both{background:rgba(245,197,24,.12);border-color:var(--gold);color:#f5d060;}
+
+  /* ─── BOT / TRADE BUTTONS ─── */
+  .bot-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px;}
+  .trade-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;}
+  .btn-rise{padding:16px 4px;background:linear-gradient(135deg,#2d8bff,#0055cc);color:#fff;border:none;border-radius:7px;font-family:'Orbitron',sans-serif;font-size:12px;font-weight:700;letter-spacing:1.5px;cursor:pointer;transition:all .2s;box-shadow:0 0 14px rgba(45,139,255,.35);}
+  .btn-rise:hover:not(:disabled){filter:brightness(1.15);transform:translateY(-2px);box-shadow:0 6px 22px rgba(45,139,255,.55);}
+  .btn-rise:disabled{opacity:.35;cursor:not-allowed;transform:none;box-shadow:none;}
+  .btn-fall{padding:16px 4px;background:linear-gradient(135deg,#ff3d5a,#cc0030);color:#fff;border:none;border-radius:7px;font-family:'Orbitron',sans-serif;font-size:12px;font-weight:700;letter-spacing:1.5px;cursor:pointer;transition:all .2s;box-shadow:0 0 14px rgba(255,61,90,.35);}
+  .btn-fall:hover:not(:disabled){filter:brightness(1.15);transform:translateY(-2px);box-shadow:0 6px 22px rgba(255,61,90,.55);}
+  .btn-fall:disabled{opacity:.35;cursor:not-allowed;transform:none;box-shadow:none;}
+  .trade-btn-label{font-size:11px;letter-spacing:1.5px;color:#7a8fae;text-align:center;margin-top:10px;text-transform:uppercase;font-weight:700;}
+  .bot-status{margin-top:10px;padding:11px 13px;background:var(--bg3);border-radius:6px;border-left:3px solid var(--border2);font-size:12px;color:#8ba4cc;font-family:'Share Tech Mono',monospace;word-break:break-all;min-height:40px;font-weight:600;line-height:1.5;}
+  .bot-status.running{border-left-color:var(--green);color:var(--green);}
+  .bot-status.buy{border-left-color:var(--accent);color:#6ab5ff;}
+  .bot-status.sell{border-left-color:var(--red);color:#ff7090;}
+  .bot-status.error{border-left-color:var(--red);color:#ff7090;}
+
+  /* ─── AUTO BOT TOGGLE — HIGHLIGHTED ─── */
+  .auto-toggle{display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,rgba(0,230,118,.08),rgba(45,139,255,.06));border:2px solid var(--green);border-radius:10px;padding:14px 16px;margin-top:9px;cursor:pointer;transition:all .3s;box-shadow:0 0 18px rgba(0,230,118,.18),inset 0 1px 0 rgba(0,230,118,.1);}
+  .auto-toggle:hover{border-color:var(--green);box-shadow:0 0 28px rgba(0,230,118,.35),inset 0 1px 0 rgba(0,230,118,.2);transform:translateY(-1px);}
+  .auto-toggle .at-lbl{font-size:13px;letter-spacing:1.5px;color:var(--green);text-transform:uppercase;font-weight:700;text-shadow:0 0 8px rgba(0,230,118,.4);}
+  .auto-toggle .at-state{font-family:'Orbitron',sans-serif;font-size:14px;letter-spacing:1px;font-weight:900;}
+  .auto-toggle.on{border-color:var(--green);background:linear-gradient(135deg,rgba(0,230,118,.18),rgba(45,139,255,.1));box-shadow:0 0 32px rgba(0,230,118,.45),0 0 60px rgba(0,230,118,.15),inset 0 1px 0 rgba(0,230,118,.2);}
+  .auto-toggle.on .at-lbl{color:#00ff88;text-shadow:0 0 14px rgba(0,255,136,.7);}
+  .auto-toggle.on .at-state{color:var(--green);text-shadow:0 0 16px rgba(0,230,118,.9);}
+  .auto-toggle.off .at-state{color:#aaa;}
+
+  /* ─── CENTER PANEL ─── */
+  .center-col{display:flex;flex-direction:column;gap:18px;}
+
+  /* ─── MARKET TICKER ─── */
+  .market-ticker{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r);overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.25);}
+  .ticker-body{padding:22px 28px;display:flex;flex-direction:column;gap:16px;}
+  .ticker-sym{font-family:'Orbitron',sans-serif;font-size:14px;letter-spacing:4px;color:var(--accent2);font-weight:700;}
+  .ticker-price{font-family:'Share Tech Mono',monospace;font-size:52px;font-weight:700;color:var(--white);letter-spacing:2px;line-height:1;}
+  .ticker-price.up{color:var(--green);text-shadow:0 0 30px rgba(0,230,118,.4);}
+  .ticker-price.down{color:var(--red);text-shadow:0 0 30px rgba(255,61,90,.4);}
+  .ticker-meta{display:flex;gap:28px;font-family:'Share Tech Mono',monospace;}
+  .ticker-meta span{display:flex;flex-direction:column;gap:3px;}
+  .ticker-meta .tm-lbl{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:#7a8fae;font-weight:700;}
+  .ticker-meta .tm-val{color:var(--white);font-size:14px;font-weight:700;}
+
+  /* ─── LOG TABLE ─── */
+  .log-wrap{max-height:480px;overflow-y:auto;}
+  table{width:100%;border-collapse:collapse;}
+  thead tr{border-bottom:1px solid var(--border2);}
+  th{padding:9px 10px;text-align:left;font-size:11px;letter-spacing:1.5px;color:#8ba4cc;text-transform:uppercase;font-weight:700;}
+  td{padding:8px 10px;border-bottom:1px solid rgba(37,53,82,.6);font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--text);font-weight:600;}
+  tr:hover td{background:rgba(45,139,255,.06);}
+  .tag-buy{color:#6ab5ff;background:rgba(45,139,255,.15);padding:2px 8px;border-radius:3px;font-size:11px;letter-spacing:.5px;font-weight:700;}
+  .tag-sell{color:#ff7090;background:rgba(255,61,90,.14);padding:2px 8px;border-radius:3px;font-size:11px;letter-spacing:.5px;font-weight:700;}
+  .tag-win{color:var(--green);font-weight:700;}
+  .tag-loss{color:#ff7090;font-weight:700;}
+  .tag-open{color:var(--gold);font-weight:700;}
+
+  /* ─── STATS PANEL ─── */
+  .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:14px;}
+  .stat-box{background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:11px 14px;}
+  .stat-box .s-lbl{font-size:11px;letter-spacing:1.2px;color:#8ba4cc;text-transform:uppercase;font-weight:700;}
+  .stat-box .s-val{font-family:'Share Tech Mono',monospace;font-size:18px;color:var(--white);margin-top:4px;font-weight:700;}
+  .stat-box .s-val.green{color:var(--green);}
+  .stat-box .s-val.red{color:#ff7090;}
+  .stat-box .s-val.gold{color:var(--gold);}
+  .stat-box .s-val.blue{color:var(--accent2);}
+  .pnl-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(37,53,82,.5);font-size:14px;}
+  .pnl-row:last-child{border-bottom:none;}
+  .pnl-row .k{color:#8ba4cc;font-size:13px;font-weight:700;}
+  .pnl-row .v{font-family:'Share Tech Mono',monospace;font-weight:700;color:var(--white);}
+  .winrate-bar{height:7px;background:var(--bg3);border-radius:4px;overflow:hidden;margin-top:7px;}
+  .winrate-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--green));border-radius:4px;transition:width .4s;}
+
+  /* ─── OPEN POSITIONS ─── */
+  .pos-item{background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:11px 14px;margin-bottom:9px;display:flex;align-items:center;gap:12px;}
+  .pos-dir{font-family:'Orbitron',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;padding:4px 11px;border-radius:5px;}
+  .pos-dir.buy{color:#6ab5ff;background:rgba(45,139,255,.15);border:1px solid var(--accent);}
+  .pos-dir.sell{color:#ff7090;background:rgba(255,61,90,.12);border:1px solid var(--red);}
+  .pos-details{flex:1;font-size:12px;color:#8ba4cc;font-family:'Share Tech Mono',monospace;line-height:1.8;font-weight:600;}
+  .pos-pnl{font-family:'Share Tech Mono',monospace;font-size:15px;font-weight:700;min-width:75px;text-align:right;}
+  .no-pos{text-align:center;color:#7a8fae;font-size:13px;padding:18px;font-family:'Share Tech Mono',monospace;font-weight:600;}
+  .btn-close-pos{background:rgba(255,61,90,.12);border:1px solid rgba(255,61,90,.4);color:#ff7090;padding:5px 11px;border-radius:5px;font-size:11px;cursor:pointer;letter-spacing:.5px;font-family:'Rajdhani',sans-serif;font-weight:700;white-space:nowrap;transition:all .2s;}
+  .btn-close-pos:hover{background:rgba(255,61,90,.22);border-color:var(--red);}
+
+  /* ─── DURATION PILLS ─── */
+  .dur-pills{display:flex;gap:7px;margin-bottom:5px;}
+  .dur-pill{flex:1;padding:8px 4px;background:var(--bg3);border:1px solid var(--border2);color:#7a8fae;border-radius:6px;font-size:12px;letter-spacing:.5px;cursor:pointer;text-align:center;transition:all .2s;font-family:'Rajdhani',sans-serif;font-weight:700;}
+  .dur-pill:hover{color:var(--text);border-color:#3a5580;}
+  .dur-pill.active{background:rgba(45,139,255,.18);border-color:var(--accent);color:#6ab5ff;}
+
+  /* ─── ANALYSIS CANDLE PILLS ─── */
+  .acndl-pills{display:flex;gap:5px;margin-bottom:4px;flex-wrap:wrap;}
+  .acndl-pill{flex:1;min-width:50px;padding:8px 4px;background:var(--bg3);border:1px solid var(--border2);color:#7a8fae;border-radius:6px;font-size:11px;letter-spacing:.5px;cursor:pointer;text-align:center;transition:all .2s;font-family:'Rajdhani',sans-serif;font-weight:700;}
+  .acndl-pill:hover{color:var(--text);border-color:#3a5580;}
+  .acndl-pill.active{background:rgba(0,240,255,.12);border-color:var(--accent2);color:var(--accent2);}
+  .acndl-section{background:rgba(0,240,255,.03);border:1px solid rgba(0,240,255,.18);border-radius:7px;padding:12px 14px;margin-bottom:13px;}
+  .acndl-section .section-lbl{color:var(--accent2);font-size:11px;letter-spacing:2px;margin-bottom:9px;font-weight:700;}
+  .acndl-mode-row{display:flex;gap:7px;margin-bottom:9px;}
+  .acndl-mode-btn{flex:1;padding:9px 4px;background:var(--bg3);border:1px solid var(--border2);color:#7a8fae;border-radius:6px;font-size:12px;letter-spacing:.5px;cursor:pointer;text-align:center;transition:all .2s;font-family:'Rajdhani',sans-serif;font-weight:700;}
+  .acndl-mode-btn:hover{color:var(--text);border-color:#3a5580;}
+  .acndl-mode-btn.active{background:rgba(0,240,255,.12);border-color:var(--accent2);color:var(--accent2);}
+  .acndl-tf-row{display:none;gap:6px;flex-wrap:wrap;}
+  .acndl-tf-row.visible{display:flex;}
+  .acndl-badge{font-size:11px;color:var(--accent2);background:rgba(0,240,255,.12);border:1px solid rgba(0,240,255,.25);border-radius:4px;padding:3px 8px;letter-spacing:1px;font-family:'Share Tech Mono',monospace;font-weight:700;}
+
+  /* ─── TOAST ─── */
+  #toast{position:fixed;bottom:28px;right:28px;z-index:9998;display:flex;flex-direction:column;gap:9px;pointer-events:none;}
+  .toast-item{background:var(--bg2);border:1px solid var(--border2);color:var(--white);padding:12px 20px;border-radius:9px;font-size:13px;font-family:'Share Tech Mono',monospace;font-weight:600;max-width:340px;animation:slideIn .3s ease;pointer-events:auto;box-shadow:0 8px 24px rgba(0,0,0,.4);}
+  .toast-item.buy{border-left:3px solid var(--accent);}
+  .toast-item.sell{border-left:3px solid var(--red);}
+  .toast-item.info{border-left:3px solid var(--gold);}
+  @keyframes slideIn{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:translateX(0)}}
+
+  /* ─── ANIMATIONS ─── */
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+  .pulse{animation:pulse 1.5s infinite;}
+
+  /* ─── RESPONSIVE ─── */
+  @media(min-width:1600px){
+    :root{--panel-w:380px;}
+    .main-grid{gap:22px;padding:20px 28px;}
+  }
+  @media(max-width:1280px){
+    :root{--panel-w:320px;}
+  }
+  @media(max-width:1100px){
+    .main-grid{grid-template-columns:var(--panel-w) 1fr;grid-template-rows:auto auto;}
+    .right-col{grid-column:1/-1;}
+  }
+  @media(max-width:900px){
+    #connectionBar{flex-wrap:wrap;gap:12px;}
+    .conn-fields{flex-wrap:wrap;}
+    .conn-field input{min-width:160px;}
+  }
+  @media(max-width:720px){
+    .main-grid{grid-template-columns:1fr;}
+    :root{--panel-w:100%}
+  }
+
+  /* scrollbar in log */
+  .log-wrap::-webkit-scrollbar{width:5px}
+  .log-wrap::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+  /* ─── REVERSE MODE TOGGLE — HIGHLIGHTED ─── */
+  .reverse-toggle{display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,rgba(255,140,0,.08),rgba(255,61,90,.05));border:2px solid #ff8c00;border-radius:10px;padding:14px 16px;margin-top:9px;cursor:pointer;transition:all .3s;box-shadow:0 0 18px rgba(255,140,0,.18),inset 0 1px 0 rgba(255,140,0,.1);}
+  .reverse-toggle:hover{box-shadow:0 0 28px rgba(255,140,0,.35),inset 0 1px 0 rgba(255,140,0,.2);transform:translateY(-1px);}
+  .reverse-toggle .at-lbl{font-size:13px;letter-spacing:1.5px;color:#ffb347;text-transform:uppercase;font-weight:700;text-shadow:0 0 8px rgba(255,140,0,.4);}
+  .reverse-toggle .at-state{font-family:'Orbitron',sans-serif;font-size:14px;letter-spacing:1px;color:#777;font-weight:900;}
+  .reverse-toggle.on{border-color:#ff8c00;background:linear-gradient(135deg,rgba(255,140,0,.18),rgba(255,61,90,.1));box-shadow:0 0 32px rgba(255,140,0,.5),0 0 60px rgba(255,140,0,.15),inset 0 1px 0 rgba(255,140,0,.2);}
+  .reverse-toggle.on .at-lbl{color:#ffcc66;text-shadow:0 0 14px rgba(255,180,0,.7);}
+  .reverse-toggle.on .at-state{color:#ff8c00;text-shadow:0 0 16px rgba(255,140,0,.9);}
+  .rev-badge{display:none;font-family:'Orbitron',sans-serif;font-size:9px;letter-spacing:1.5px;background:#ff8c00;color:#000;padding:2px 7px;border-radius:3px;font-weight:700;animation:revPulse 1.5s infinite;}
+  .reverse-toggle.on .rev-badge{display:inline-block;}
+  @keyframes revPulse{0%,100%{opacity:1;box-shadow:0 0 6px rgba(255,140,0,.6)}50%{opacity:.8;box-shadow:0 0 16px rgba(255,140,0,.9)}}
+
+  /* ─── SIGNAL FILTERS ─── */
+  .filter-section{background:rgba(0,240,255,.03);border:1px solid rgba(0,240,255,.15);border-radius:9px;padding:13px 15px;margin-top:9px;}
+  .filter-section .section-lbl{color:var(--accent2);font-size:11px;letter-spacing:2px;margin-bottom:10px;font-weight:700;}
+  .filter-item{background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:10px 13px;margin-bottom:8px;transition:border-color .2s,background .2s;}
+  .filter-item:last-child{margin-bottom:0;}
+  .filter-item.enabled{border-color:rgba(0,240,255,.35);background:rgba(0,240,255,.04);}
+  .filter-toggle-row{display:flex;align-items:center;justify-content:space-between;cursor:pointer;}
+  .filter-toggle-row .f-name{font-size:12px;letter-spacing:.8px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:7px;}
+  .filter-toggle-row .f-name .f-badge{font-size:9px;letter-spacing:1.5px;padding:2px 6px;border-radius:3px;background:rgba(45,139,255,.15);border:1px solid rgba(45,139,255,.3);color:#6ab5ff;font-family:'Share Tech Mono',monospace;font-weight:700;}
+  .filter-item.enabled .filter-toggle-row .f-name .f-badge{background:rgba(0,240,255,.18);border-color:rgba(0,240,255,.4);color:var(--accent2);}
+  .filter-switch{position:relative;width:38px;height:20px;flex-shrink:0;}
+  .filter-switch input{opacity:0;width:0;height:0;}
+  .filter-slider{position:absolute;inset:0;background:#1e2a42;border:1px solid var(--border2);border-radius:20px;cursor:pointer;transition:all .25s;}
+  .filter-slider::before{content:'';position:absolute;height:14px;width:14px;left:2px;top:2px;background:#4a5a78;border-radius:50%;transition:all .25s;}
+  .filter-switch input:checked + .filter-slider{background:rgba(0,240,255,.18);border-color:var(--accent2);}
+  .filter-switch input:checked + .filter-slider::before{transform:translateX(18px);background:var(--accent2);box-shadow:0 0 6px rgba(0,240,255,.5);}
+  .filter-desc{margin-top:7px;padding-top:7px;border-top:1px solid rgba(37,53,82,.7);display:none;}
+  .filter-item.enabled .filter-desc{display:block;}
+  .filter-desc .f-rule{font-size:11px;font-family:'Share Tech Mono',monospace;color:#8ba4cc;font-weight:600;line-height:1.6;}
+  .filter-desc .f-rule .buy-txt{color:#6ab5ff;}
+  .filter-desc .f-rule .sell-txt{color:#ff7090;}
+
+
+  /* ─── TRADE TIME SCHEDULER ─── */
+  .tradetime-section{background:rgba(0,230,118,.04);border:1px solid rgba(0,230,118,.22);border-radius:9px;padding:13px 15px;margin-top:9px;}
+  .tradetime-section .section-lbl{color:var(--green);font-size:11px;letter-spacing:2px;margin-bottom:10px;font-weight:700;}
+  .tradetime-toggle{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  .tradetime-toggle .tt-lbl{font-size:13px;letter-spacing:1px;color:var(--green);font-weight:700;text-transform:uppercase;}
+  .tradetime-body{display:none;}
+  .tradetime-body.visible{display:block;}
+  .tt-time-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+  .tt-time-input{background:var(--bg3);border:1px solid var(--border2);color:var(--white);padding:9px 11px;border-radius:6px;font-family:'Share Tech Mono',monospace;font-size:16px;font-weight:700;outline:none;width:100%;transition:border .2s,box-shadow .2s;letter-spacing:2px;}
+  .tt-time-input:focus{border-color:var(--green);box-shadow:0 0 0 2px rgba(0,230,118,.15);}
+  .tt-options{display:flex;flex-direction:column;gap:7px;margin-bottom:10px;}
+  .tt-opt-row{display:flex;align-items:center;gap:9px;padding:8px 11px;background:var(--bg);border:1px solid var(--border2);border-radius:6px;cursor:pointer;transition:all .2s;}
+  .tt-opt-row:hover{border-color:#3a5580;}
+  .tt-opt-row.checked{border-color:rgba(0,230,118,.4);background:rgba(0,230,118,.06);}
+  .tt-opt-row input[type=checkbox]{width:15px;height:15px;accent-color:var(--green);flex-shrink:0;cursor:pointer;}
+  .tt-opt-row .tt-opt-lbl{font-size:12px;letter-spacing:.8px;font-weight:700;color:#8ba4cc;}
+  .tt-opt-row.checked .tt-opt-lbl{color:var(--text);}
+  .tt-countdown{display:flex;align-items:center;gap:12px;padding:9px 12px;background:var(--bg);border:1px solid rgba(0,230,118,.2);border-radius:7px;margin-top:3px;}
+  .tt-countdown .ttc-icon{font-size:18px;line-height:1;}
+  .tt-countdown .ttc-info{flex:1;}
+  .tt-countdown .ttc-lbl{font-size:10px;letter-spacing:1.5px;color:#8ba4cc;text-transform:uppercase;font-weight:700;}
+  .tt-countdown .ttc-val{font-family:'Orbitron',sans-serif;font-size:14px;font-weight:700;color:var(--green);letter-spacing:1px;text-shadow:0 0 8px rgba(0,230,118,.3);}
+  .tt-countdown.firing .ttc-val{color:#00ff88;text-shadow:0 0 14px rgba(0,255,136,.7);animation:pulse 1s infinite;}
+  .tt-status-badge{display:inline-block;font-size:10px;letter-spacing:1.5px;padding:2px 8px;border-radius:3px;font-family:'Share Tech Mono',monospace;font-weight:700;margin-top:6px;}
+  .tt-status-badge.waiting{background:rgba(245,197,24,.12);border:1px solid rgba(245,197,24,.3);color:var(--gold);}
+  .tt-status-badge.armed{background:rgba(0,230,118,.15);border:1px solid rgba(0,230,118,.35);color:var(--green);}
+
+  /* ─── COOLDOWN TIMER ─── */
+  .cooldown-section{background:rgba(245,197,24,.05);border:1px solid rgba(245,197,24,.2);border-radius:7px;padding:12px 14px;margin-top:9px;}
+  .cooldown-section .section-lbl{color:var(--gold);font-size:11px;letter-spacing:2px;margin-bottom:9px;font-weight:700;}
+  .cooldown-display{display:flex;align-items:center;gap:12px;margin-top:7px;}
+  .cooldown-ring-wrap{position:relative;width:48px;height:48px;flex-shrink:0;}
+  .cooldown-ring-wrap svg{transform:rotate(-90deg);}
+  .cooldown-ring-bg{fill:none;stroke:var(--bg3);stroke-width:4;}
+  .cooldown-ring-fg{fill:none;stroke:var(--gold);stroke-width:4;stroke-linecap:round;transition:stroke-dashoffset .9s linear;}
+  .cooldown-ring-wrap.active .cooldown-ring-fg{stroke:#ff8c00;}
+  .cooldown-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Orbitron',sans-serif;font-size:12px;font-weight:700;color:var(--gold);}
+  .cooldown-ring-wrap.active .cooldown-num{color:#ff8c00;}
+  .cooldown-info{flex:1;min-width:0;}
+  .cooldown-label{font-size:11px;color:#8ba4cc;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;font-weight:700;}
+  .cooldown-status{font-family:'Share Tech Mono',monospace;font-size:12px;color:#8ba4cc;font-weight:600;}
+  .cooldown-status.active{color:#ff8c00;}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════ APP ═══════════════════════════ -->
+<div id="app">
+
+  <!-- ─── CONNECTION BAR (replaces overlay login) ─── -->
+  <div id="connectionBar" style="position:relative;">
+    <div class="conn-brand">
+      <div class="brand">CRT·EA</div>
+      <div class="sub">CANDLE RANGE THEORY · DERIV EDITION</div>
+    </div>
+    <div class="conn-fields">
+      <div class="conn-field">
+        <label>Deriv API Token</label>
+        <input type="password" id="apiTokenInput" placeholder="Enter your API token…" autocomplete="off"/>
+      </div>
+      <div class="conn-field">
+        <label>Server</label>
+        <select id="serverSelect" style="min-width:200px;">
+          <option value="wss://ws.derivws.com/websockets/v3?app_id=116948">Deriv Live (Real)</option>
+          <option value="wss://ws.derivws.com/websockets/v3?app_id=116948" selected>Deriv Demo</option>
+        </select>
+      </div>
+      <div class="conn-remember">
+        <input type="checkbox" id="rememberMe"/>
+        <label for="rememberMe">Remember token</label>
+      </div>
+      <button class="btn-login" id="btnLogin" onclick="doLogin()">⚡ CONNECT</button>
+      <div class="login-status" id="loginStatus"></div>
+    </div>
+    <!-- After login, show account info + logout here -->
+    <div id="hdrAccountArea" style="display:none;margin-left:auto;display:none;align-items:center;gap:14px;">
+      <!-- SESSION TIMER -->
+      <div class="session-timer" id="sessionTimerBox">
+        <span class="st-lbl">Session</span>
+        <span class="st-val" id="sessionTimerVal">00:00:00</span>
+        <span class="st-sub" id="sessionTimerSub">LIVE</span>
+      </div>
+      <div class="acct-info">
+        <div class="name" id="hdrName">—</div>
+        <div class="bal" id="hdrBal">$0.00</div>
+      </div>
+      <span class="ws-dot" id="wsDot"></span>
+      <button class="btn-logout" onclick="doLogout()">⏻ LOGOUT</button>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main-grid">
+
+    <!-- ─── LEFT: CONFIG ─── -->
+    <div class="left-col">
+      <div class="panel">
+        <div class="panel-hdr"><h3>STRATEGY CONFIG</h3></div>
+        <div class="panel-body">
+
+          <div class="section-lbl">Auto Trade Mode</div>
+          <div class="mode-btns">
+            <div class="mode-btn buy active" onclick="setMode('BUY_ONLY',this)" id="mBuy">BUY ONLY</div>
+            <div class="mode-btn sell" onclick="setMode('SELL_ONLY',this)" id="mSell">SELL ONLY</div>
+            <div class="mode-btn both" onclick="setMode('BOTH',this)" id="mBoth" style="grid-column:1/-1;">BUY & SELL</div>
+          </div>
+
+          <div class="ctrl-row">
+            <label>Symbol</label>
+            <select id="cfgSymbol">
+              <option value="R_10">Volatility 10 Index</option>
+              <option value="R_25">Volatility 25 Index</option>
+              <option value="R_50" selected>Volatility 50 Index</option>
+              <option value="R_75">Volatility 75 Index</option>
+              <option value="R_100">Volatility 100 Index</option>
+              <option value="stpRNG">Step Index 100</option>
+              <option value="stpRNG2">Step Index 200</option>
+              <option value="stpRNG3">Step Index 300</option>
+              <option value="stpRNG4">Step Index 400</option>
+              <option value="stpRNG5">Step Index 500</option>
+            </select>
+          </div>
+
+          <div class="ctrl-row">
+            <label>Min Range (pts)</label>
+            <input type="number" id="cfgMinRange" value="10" min="1"/>
+          </div>
+
+          <div class="ctrl-row">
+            <label>Max Open Positions</label>
+            <input type="number" id="cfgMaxPos" value="1" min="1" max="10"/>
+          </div>
+
+          <div class="section-div"></div>
+          <div class="section-lbl">Risk Management</div>
+
+          <div class="ctrl-row">
+            <label>Stake Amount ($)</label>
+            <input type="number" id="cfgStake" value="1.00" min="0.35" step="0.01"/>
+          </div>
+
+          <div class="ctrl-row">
+            <label>Max Total Loss ($)</label>
+            <input type="number" id="cfgSL" value="5.00" min="0" step="0.01"/>
+            <span class="hint">EA stops when cumulative loss hits this · 0 = disabled</span>
+          </div>
+
+          <div class="ctrl-row">
+            <label>Max Total Profit ($)</label>
+            <input type="number" id="cfgTP" value="10.00" min="0" step="0.01"/>
+            <span class="hint">EA stops when cumulative profit hits this · 0 = disabled</span>
+          </div>
+
+          <div class="section-div"></div>
+
+          <!-- ── ANALYSIS CANDLE ── -->
+          <div class="acndl-section">
+            <div class="section-lbl">⬡ Analysis Candle</div>
+            <div class="acndl-mode-row">
+              <div class="acndl-mode-btn active" id="acTick" onclick="setAnalysisCandle('tick',this)">TICK</div>
+              <div class="acndl-mode-btn" id="acCandle" onclick="setAnalysisCandle('candle',this)">CANDLE</div>
+            </div>
+            <!-- Timeframe pills — visible only when CANDLE mode active -->
+            <div class="acndl-tf-row" id="acTfRow">
+              <div class="acndl-pill" id="actf30s" onclick="setAnalysisTF('30s',this)">30s</div>
+              <div class="acndl-pill" id="actf1m"  onclick="setAnalysisTF('1m',this)">1m</div>
+              <div class="acndl-pill active" id="actf5m"  onclick="setAnalysisTF('5m',this)">5m</div>
+              <div class="acndl-pill" id="actf15m" onclick="setAnalysisTF('15m',this)">15m</div>
+            </div>
+            <div style="margin-top:7px;font-size:11px;color:#8ba4cc;font-family:'Share Tech Mono',monospace;font-weight:600;" id="acStatus">
+              Mode: <span class="acndl-badge" id="acModeBadge">TICK</span>
+            </div>
+          </div>
+
+          <div class="section-div"></div>
+          <div class="section-lbl">Trade Duration</div>
+          <div class="dur-pills">
+            <div class="dur-pill active" onclick="setDurType('ticks',this)" id="dTick">TICKS</div>
+            <div class="dur-pill" onclick="setDurType('seconds',this)" id="dSec">SECONDS</div>
+            <div class="dur-pill" onclick="setDurType('minutes',this)" id="dMin">MINUTES</div>
+          </div>
+          <div class="ctrl-row">
+            <label>Duration Value</label>
+            <input type="number" id="cfgDuration" value="5" min="1"/>
+            <span class="hint" id="durHint">e.g. 5 ticks</span>
+          </div>
+
+          <div class="section-div"></div>
+          <div class="section-lbl">Manual Trade</div>
+          <div class="trade-btns">
+            <button class="btn-rise" id="btnBuy" onclick="manualTrade('CALL')" disabled>▲ BUY<br><span style="font-size:9px;letter-spacing:1px;opacity:.8;">RISE</span></button>
+            <button class="btn-fall" id="btnSell" onclick="manualTrade('PUT')" disabled>▼ SELL<br><span style="font-size:9px;letter-spacing:1px;opacity:.8;">FALL</span></button>
+          </div>
+          <div class="trade-btn-label">Deriv Rise &amp; Fall · Instant Execution</div>
+
+          <div class="section-div"></div>
+          <div class="section-lbl">Auto CRT Bot</div>
+          <div class="auto-toggle off" id="autoToggle" onclick="toggleAutoBot()">
+            <span class="at-lbl">⚡ CRT Auto-Trade</span>
+            <span class="at-state" id="autoState">OFF</span>
+          </div>
+
+          <!-- ── REVERSE MODE ── -->
+          <div class="reverse-toggle off" id="reverseToggle" onclick="toggleReverseMode()" title="Flip all trade directions at execution">
+            <div style="display:flex;flex-direction:column;gap:3px;">
+              <span class="at-lbl">⇄ Reverse Mode</span>
+              <span style="font-size:11px;color:#8ba4cc;letter-spacing:.5px;font-family:'Share Tech Mono',monospace;font-weight:600;">BUY↔SELL flip at execution</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span class="rev-badge">ACTIVE</span>
+              <span class="at-state" id="reverseState">OFF</span>
+            </div>
+          </div>
+
+          <!-- ── COOLDOWN TIMER ── -->
+          <div class="cooldown-section">
+            <div class="section-lbl">⏱ Cooldown Between Trades</div>
+            <div class="ctrl-row" style="margin-bottom:6px;">
+              <label>Cooldown (seconds)</label>
+              <input type="number" id="cfgCooldown" value="0" min="0" max="300" step="1"/>
+              <span class="hint">0 = disabled · counts down before next trade</span>
+            </div>
+            <div class="cooldown-display" id="cooldownDisplay" style="display:none;">
+              <div class="cooldown-ring-wrap" id="cooldownRing">
+                <svg width="44" height="44" viewBox="0 0 44 44">
+                  <circle class="cooldown-ring-bg" cx="22" cy="22" r="18"/>
+                  <circle class="cooldown-ring-fg" id="cooldownArc" cx="22" cy="22" r="18"
+                    stroke-dasharray="113.1" stroke-dashoffset="0"/>
+                </svg>
+                <div class="cooldown-num" id="cooldownNum">0</div>
+              </div>
+              <div class="cooldown-info">
+                <div class="cooldown-label">Next trade in</div>
+                <div class="cooldown-status" id="cooldownStatus">Ready</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── TRADE TIME SCHEDULER ── -->
+          <div class="tradetime-section">
+            <div class="section-lbl">⏰ Trade Time Scheduler</div>
+            <div class="tradetime-toggle">
+              <span class="tt-lbl">Schedule Auto-Start</span>
+              <label class="filter-switch" onclick="event.stopPropagation()">
+                <input type="checkbox" id="ttEnabled" onchange="onTradeTimeToggle(this.checked)"/>
+                <span class="filter-slider"></span>
+              </label>
+            </div>
+
+            <div class="tradetime-body" id="ttBody">
+              <!-- Time picker -->
+              <div class="ctrl-row" style="margin-bottom:8px;">
+                <label style="font-size:11px;letter-spacing:1px;">Start Time (HH:MM — 24h)</label>
+                <input type="time" id="cfgTradeTime" class="tt-time-input" value="08:00" onchange="onTradeTimeChange()"/>
+                <span class="hint">EA will auto-start at this time every day</span>
+              </div>
+
+              <!-- Options -->
+              <div class="section-lbl" style="color:#8ba4cc;margin-bottom:6px;margin-top:4px;">Enable at start time:</div>
+              <div class="tt-options">
+                <div class="tt-opt-row" id="ttOptAutoRow" onclick="ttOptClick('ttOptAuto')">
+                  <input type="checkbox" id="ttOptAuto" onclick="event.stopPropagation()" onchange="ttOptChange('ttOptAuto',this.checked)"/>
+                  <span class="tt-opt-lbl">⚡ Auto Trade</span>
+                </div>
+                <div class="tt-opt-row" id="ttOptRevRow" onclick="ttOptClick('ttOptRev')">
+                  <input type="checkbox" id="ttOptRev" onclick="event.stopPropagation()" onchange="ttOptChange('ttOptRev',this.checked)"/>
+                  <span class="tt-opt-lbl">⇄ Reverse Mode</span>
+                </div>
+              </div>
+
+              <!-- Countdown display -->
+              <div class="tt-countdown" id="ttCountdown">
+                <span class="ttc-icon">⏱</span>
+                <div class="ttc-info">
+                  <div class="ttc-lbl">Next trigger in</div>
+                  <div class="ttc-val" id="ttCountVal">--:--:--</div>
+                </div>
+                <span class="tt-status-badge waiting" id="ttStatusBadge">WAITING</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── SIGNAL FILTERS ── -->
+          <div class="filter-section">
+            <div class="section-lbl">⚗ Signal Filters</div>
+
+            <!-- Filter 1: EMA Wick-Cross -->
+            <div class="filter-item" id="fi1">
+              <div class="filter-toggle-row" onclick="toggleFilter(1)">
+                <span class="f-name">
+                  <span class="f-badge">F1</span>
+                  EMA Wick-Cross
+                </span>
+                <label class="filter-switch" onclick="event.stopPropagation()">
+                  <input type="checkbox" id="fEmaEnabled" onchange="onFilterChange(1,this.checked)"/>
+                  <span class="filter-slider"></span>
+                </label>
+              </div>
+              <div class="filter-desc">
+                <div class="ctrl-row" style="margin-bottom:7px;">
+                  <label style="font-size:11px;letter-spacing:1px;">EMA Period</label>
+                  <input type="number" id="cfgEmaPeriod" value="50" min="1" max="500" style="font-size:12px;padding:6px 9px;"/>
+                </div>
+                <div class="f-rule">
+                  <span class="buy-txt">▲ BUY:</span> Body fully above EMA · lower wick crosses below<br>
+                  <span class="sell-txt">▼ SELL:</span> Body fully below EMA · upper wick crosses above
+                </div>
+              </div>
+            </div>
+
+            <!-- Filter 2: Candle Close Direction -->
+            <div class="filter-item" id="fi2">
+              <div class="filter-toggle-row" onclick="toggleFilter(2)">
+                <span class="f-name">
+                  <span class="f-badge">F2</span>
+                  Candle Close
+                </span>
+                <label class="filter-switch" onclick="event.stopPropagation()">
+                  <input type="checkbox" id="fCandleCloseEnabled" onchange="onFilterChange(2,this.checked)"/>
+                  <span class="filter-slider"></span>
+                </label>
+              </div>
+              <div class="filter-desc">
+                <div class="f-rule">
+                  <span class="buy-txt">▲ BUY:</span> Signal candle closes bullish (close &gt; open)<br>
+                  <span class="sell-txt">▼ SELL:</span> Signal candle closes bearish (close &lt; open)
+                </div>
+              </div>
+            </div>
+
+            <!-- Filter 3: Range Candle Direction -->
+            <div class="filter-item" id="fi3">
+              <div class="filter-toggle-row" onclick="toggleFilter(3)">
+                <span class="f-name">
+                  <span class="f-badge">F3</span>
+                  Candle 2 (Range)
+                </span>
+                <label class="filter-switch" onclick="event.stopPropagation()">
+                  <input type="checkbox" id="fCandle2Enabled" onchange="onFilterChange(3,this.checked)"/>
+                  <span class="filter-slider"></span>
+                </label>
+              </div>
+              <div class="filter-desc">
+                <div class="f-rule">
+                  <span class="buy-txt">▲ BUY:</span> Range candle closes bullish (close &gt; open)<br>
+                  <span class="sell-txt">▼ SELL:</span> Range candle closes bearish (close &lt; open)
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bot-status" id="botStatus">Connect wallet — then BUY / SELL or enable Auto CRT.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── CENTER: TICKER + POSITIONS + LOG ─── -->
+    <div class="center-col">
+      <!-- MARKET TICKER -->
+      <div class="market-ticker panel">
+        <div class="panel-hdr">
+          <h3 id="chartTitle">LIVE MARKET</h3>
+          <span class="ws-dot connected pulse" style="width:6px;height:6px;" id="tickDot"></span>
+        </div>
+        <div class="ticker-body">
+          <div class="ticker-sym" id="tickerSym">—</div>
+          <div class="ticker-price" id="tickerPrice">—</div>
+          <div class="ticker-meta">
+            <span><span class="tm-lbl">Session High</span><span class="tm-val" id="tickerHigh">—</span></span>
+            <span><span class="tm-lbl">Session Low</span><span class="tm-val" id="tickerLow">—</span></span>
+            <span><span class="tm-lbl" id="candlesLbl">Candles</span><span class="tm-val" id="tickerCandles">0</span></span>
+            <span><span class="tm-lbl">Last Update</span><span class="tm-val" id="tickerTime">—</span></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- OPEN POSITIONS -->
+      <div class="panel">
+        <div class="panel-hdr"><h3>OPEN POSITIONS</h3><span id="posCount" style="font-size:12px;color:#8ba4cc;font-weight:700;">0 active</span></div>
+        <div class="panel-body" id="posPanel">
+          <div class="no-pos">No open positions</div>
+        </div>
+      </div>
+
+      <!-- SIGNAL LOG -->
+      <div class="panel">
+        <div class="panel-hdr"><h3>SIGNAL & TRADE LOG</h3><span style="font-size:12px;color:#8ba4cc;cursor:pointer;font-weight:700;letter-spacing:1px;text-transform:uppercase;" onclick="clearLog()">clear</span></div>
+        <div class="log-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Time</th><th>Signal</th><th>Entry</th><th>Market</th><th>Result</th><th>P&amp;L</th></tr></thead>
+            <tbody id="logBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── RIGHT: STATS ─── -->
+    <div class="right-col">
+      <div class="panel">
+        <div class="panel-hdr"><h3>STATISTICS</h3></div>
+        <div class="panel-body">
+          <div class="stat-grid">
+            <div class="stat-box"><div class="s-lbl">Signals</div><div class="s-val blue" id="sTotalSig">0</div></div>
+            <div class="stat-box"><div class="s-lbl">Trades</div><div class="s-val" id="sTotalTrades">0</div></div>
+            <div class="stat-box"><div class="s-lbl">Wins</div><div class="s-val green" id="sWins">0</div></div>
+            <div class="stat-box"><div class="s-lbl">Losses</div><div class="s-val red" id="sLosses">0</div></div>
+            <div class="stat-box"><div class="s-lbl">Buy Sigs</div><div class="s-val blue" id="sBuySig">0</div></div>
+            <div class="stat-box"><div class="s-lbl">Sell Sigs</div><div class="s-val red" id="sSellSig">0</div></div>
+          </div>
+
+          <div class="section-lbl">Win Rate</div>
+          <div style="font-family:'Share Tech Mono',monospace;font-size:20px;color:var(--white);margin-bottom:5px;font-weight:700;" id="sWinRate">0.0%</div>
+          <div class="winrate-bar"><div class="winrate-fill" id="winRateFill" style="width:0%"></div></div>
+
+          <div class="section-div"></div>
+          <div class="section-lbl">P & L</div>
+          <div class="pnl-row"><span class="k">Total Profit</span><span class="v tag-win" id="sTotalProfit">+$0.00</span></div>
+          <div class="pnl-row"><span class="k">Total Loss</span><span class="v tag-loss" id="sTotalLoss">-$0.00</span></div>
+          <div class="pnl-row" style="margin-top:4px;padding-top:8px;border-top:1px solid var(--border2);font-size:15px;font-weight:700;">
+            <span class="k" style="color:var(--white);font-size:14px;font-weight:700;">Net P/L</span>
+            <span class="v" id="sTotalPnL" style="font-size:18px;">$0.00</span>
+          </div>
+          <!-- EA HALT INDICATOR -->
+          <div id="eaHaltBanner" style="display:none;margin-top:10px;padding:11px 14px;background:rgba(255,61,90,.12);border:1px solid var(--red);border-radius:7px;font-family:'Share Tech Mono',monospace;font-size:12px;color:#ff7090;text-align:center;letter-spacing:1px;font-weight:700;"></div>
+          <button id="btnResetSession" onclick="resetSessionClick()" style="width:100%;margin-top:9px;padding:10px;background:rgba(245,197,24,.08);border:1px solid rgba(245,197,24,.4);color:var(--gold);border-radius:7px;font-family:'Orbitron',sans-serif;font-size:11px;letter-spacing:1.5px;cursor:pointer;transition:all .3s;font-weight:700;">↺ RESET SESSION</button>
+
+          <div class="section-div"></div>
+          <div class="section-lbl">Last Signal</div>
+          <div id="sLastSignal" style="font-family:'Orbitron',monospace;font-size:15px;color:#8ba4cc;padding:4px 0;font-weight:700;">—</div>
+          <div id="sLastTime" style="font-size:12px;color:#8ba4cc;font-family:'Share Tech Mono',monospace;margin-top:3px;font-weight:600;"></div>
+
+          <div class="section-div"></div>
+          <div class="section-lbl">Account</div>
+          <div class="pnl-row"><span class="k">Balance</span><span class="v" id="sBalance" style="color:var(--green);">$0.00</span></div>
+          <div class="pnl-row"><span class="k">Currency</span><span class="v" id="sCurrency">—</span></div>
+          <div class="pnl-row"><span class="k">Login ID</span><span class="v" id="sLoginId" style="color:#8ba4cc;">—</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main-grid -->
+</div><!-- /app -->
+
+<!-- TOAST CONTAINER -->
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════
+//  CRT EA v8 — Deriv WebSocket Platform
+//  Strategy: Candle Range Theory + Signal Filters + Trade Time Scheduler
+// ═══════════════════════════════════════════════════
+
+const STORAGE_KEY = 'crt_ea_state';
+let ws = null;
+
+// ─── SESSION TIMER ─────────────────────────────────
+let sessionStartTime = null;
+let sessionTimerInterval = null;
+
+function startSessionTimer(){
+  stopSessionTimer();
+  sessionStartTime = Date.now();
+  const box = document.getElementById('sessionTimerBox');
+  const sub = document.getElementById('sessionTimerSub');
+  if(box) box.classList.remove('disconnected');
+  if(sub) sub.textContent = 'LIVE';
+  sessionTimerInterval = setInterval(()=>{
+    const elapsed = Math.floor((Date.now() - sessionStartTime) / 1000);
+    const h = String(Math.floor(elapsed / 3600)).padStart(2,'0');
+    const m = String(Math.floor((elapsed % 3600) / 60)).padStart(2,'0');
+    const s = String(elapsed % 60).padStart(2,'0');
+    const el = document.getElementById('sessionTimerVal');
+    if(el) el.textContent = `${h}:${m}:${s}`;
+  }, 1000);
+}
+
+function stopSessionTimer(){
+  if(sessionTimerInterval){ clearInterval(sessionTimerInterval); sessionTimerInterval = null; }
+  sessionStartTime = null;
+  const el = document.getElementById('sessionTimerVal');
+  const box = document.getElementById('sessionTimerBox');
+  const sub = document.getElementById('sessionTimerSub');
+  if(el) el.textContent = '00:00:00';
+  if(box) box.classList.add('disconnected');
+  if(sub) sub.textContent = 'RESET';
+}
+let apiToken = '';
+let serverUrl = '';
+let botRunning = false;   // autoBot running flag
+let autoBot = false;      // CRT auto-trade toggle
+let tradeMode = 'BUY_ONLY';
+let durType = 'ticks';
+let reverseMode = false;  // Reverse mode: flip BUY↔SELL at execution
+let cooldownActive = false;   // true while cooldown is ticking
+let cooldownTimer = null;     // setInterval reference
+let cooldownTotal = 0;        // seconds set when cooldown started
+let cooldownRemaining = 0;    // seconds left
+
+// State
+let candles = [];          // array of {open,high,low,close,epoch}
+let openPositions = {};    // contract_id -> position object
+let tradeLog = [];
+let eaHalted = false;      // binary SL/TP halt flag
+
+// ─── ANALYSIS CANDLE (separate from trade duration) ───
+// analysisCandleMode: 'tick' | 'candle'
+// analysisCandleTF: '30s' | '1m' | '5m' | '15m'  (only used when mode=candle)
+let analysisCandleMode = 'tick';
+let analysisCandleTF   = '5m';
+let sessionHigh = -Infinity;
+let sessionLow  = Infinity;
+let stats = {
+  totalSignals:0, buySigs:0, sellSigs:0,
+  totalTrades:0, wins:0, losses:0,
+  totalProfit:0, totalLoss:0,
+  lastSignal:'', lastTime:''
+};
+
+// Tick accumulator for candle building
+let currentCandle = null;
+let lastCandleEpoch = 0;
+let tickCount = 0;
+let subscriptionId = null;
+
+// ─── SIGNAL FILTER STATE ──────────────────────────
+let filterEmaEnabled     = false;   // Filter 1: EMA Wick-Cross
+let filterCandleClose    = false;   // Filter 2: Signal candle direction
+let filterCandle2        = false;   // Filter 3: Range candle direction
+
+// Running EMA value — recalculated on every new closed candle
+let emaValue = null;
+
+// ─── TRADE TIME SCHEDULER STATE ──────────────────
+let tradeTimeEnabled   = false;   // master enable
+let tradeTimeValue     = '08:00'; // HH:MM string
+let ttOptAutoTrade     = false;   // tick: enable auto-trade at fire
+let ttOptReverse       = false;   // tick: enable reverse mode at fire
+let ttCountdownTimer   = null;    // setInterval ref
+let ttFiredToday       = false;   // guard — fire once per calendar day
+let ttLastFiredDate    = '';      // 'YYYY-MM-DD' of last fire
+
+// ─── EMA CALCULATION ──────────────────────────────
+// Standard exponential moving average on close prices.
+// Seeded from SMA of the first `period` candles.
+function calcEMA(candleArr, period){
+  if(!candleArr || candleArr.length < period) return null;
+  period = Math.max(1, period);
+  const closes = candleArr.map(c => c.close);
+  let sum = 0;
+  for(let i = 0; i < period; i++) sum += closes[i];
+  let ema = sum / period;
+  const k = 2 / (period + 1);
+  for(let i = period; i < closes.length; i++){
+    ema = closes[i] * k + ema * (1 - k);
+  }
+  return ema;
+}
+
+// ─── TRADE TIME SCHEDULER LOGIC ──────────────────
+
+function onTradeTimeToggle(enabled){
+  tradeTimeEnabled = enabled;
+  const body = document.getElementById('ttBody');
+  if(enabled){
+    body.classList.add('visible');
+    tradeTimeValue = document.getElementById('cfgTradeTime').value || '08:00';
+    ttFiredToday   = false; // reset so it can fire today if time hasn't passed
+    startTradeTimeCountdown();
+    toast('⏰ Trade Time armed — starts at '+tradeTimeValue, 'info');
+  } else {
+    body.classList.remove('visible');
+    stopTradeTimeCountdown();
+    toast('⏰ Trade Time disabled', 'info');
+  }
+  saveState();
+}
+
+function onTradeTimeChange(){
+  tradeTimeValue = document.getElementById('cfgTradeTime').value || '08:00';
+  ttFiredToday   = false; // time changed — allow firing again today if applicable
+  if(tradeTimeEnabled){
+    stopTradeTimeCountdown();
+    startTradeTimeCountdown();
+  }
+  saveState();
+}
+
+function ttOptClick(id){
+  const chk = document.getElementById(id);
+  chk.checked = !chk.checked;
+  ttOptChange(id, chk.checked);
+}
+
+function ttOptChange(id, checked){
+  const rowId = id + 'Row';
+  const row   = document.getElementById(rowId);
+  if(row){ if(checked) row.classList.add('checked'); else row.classList.remove('checked'); }
+  if(id === 'ttOptAuto') ttOptAutoTrade = checked;
+  if(id === 'ttOptRev')  ttOptReverse   = checked;
+  saveState();
+}
+
+// Returns seconds until the next occurrence of HH:MM (today or tomorrow)
+function secsUntilTime(hhmm){
+  const now    = new Date();
+  const [hh, mm] = hhmm.split(':').map(Number);
+  const target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hh, mm, 0, 0);
+  let diff = Math.round((target - now) / 1000);
+  // Allow a firing window of 0–4 seconds past the target.
+  // Only push to tomorrow once we are more than 4 seconds past.
+  if(diff < -4) diff += 86400;
+  return diff;
+}
+
+// Returns today's date string YYYY-MM-DD
+function todayStr(){
+  const d = new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+function startTradeTimeCountdown(){
+  stopTradeTimeCountdown();
+  if(!tradeTimeEnabled) return;
+
+  const badge    = document.getElementById('ttStatusBadge');
+  const countEl  = document.getElementById('ttCountVal');
+  const cntBox   = document.getElementById('ttCountdown');
+
+  function tick(){
+    if(!tradeTimeEnabled){ stopTradeTimeCountdown(); return; }
+
+    const secs = secsUntilTime(tradeTimeValue);
+    const today = todayStr();
+
+    // Format HH:MM:SS
+    const h = String(Math.floor(secs / 3600)).padStart(2,'0');
+    const m = String(Math.floor((secs % 3600) / 60)).padStart(2,'0');
+    const s = String(secs % 60).padStart(2,'0');
+    if(countEl) countEl.textContent = h+':'+m+':'+s;
+
+    // Firing window: within 0–2 seconds of target and not already fired today
+    if(secs <= 2 && ttLastFiredDate !== today){
+      ttLastFiredDate = today;
+      ttFiredToday    = true;
+      fireTradeTime();
+    }
+
+    // Badge state
+    if(badge){
+      if(secs <= 2){
+        badge.textContent = 'ARMED';
+        badge.className   = 'tt-status-badge armed';
+        if(cntBox) cntBox.classList.add('firing');
+      } else {
+        badge.textContent = 'WAITING';
+        badge.className   = 'tt-status-badge waiting';
+        if(cntBox) cntBox.classList.remove('firing');
+      }
+    }
+  }
+
+  tick(); // immediate first render
+  ttCountdownTimer = setInterval(tick, 1000);
+}
+
+function stopTradeTimeCountdown(){
+  if(ttCountdownTimer){ clearInterval(ttCountdownTimer); ttCountdownTimer = null; }
+  const countEl = document.getElementById('ttCountVal');
+  const badge   = document.getElementById('ttStatusBadge');
+  const cntBox  = document.getElementById('ttCountdown');
+  if(countEl) countEl.textContent = '--:--:--';
+  if(badge){ badge.textContent='OFF'; badge.className='tt-status-badge waiting'; }
+  if(cntBox) cntBox.classList.remove('firing');
+}
+
+function fireTradeTime(){
+  toast('⏰ Trade Time fired! Activating scheduled settings…', 'info');
+
+  // ── Step 1: Reverse Mode first (must be set before auto trade starts) ──
+  if(ttOptReverse && !reverseMode){
+    toggleReverseMode();   // uses the real toggle — keeps UI + state in sync
+    toast('⇄ Reverse Mode enabled by Trade Time', 'info');
+  }
+
+  // ── Step 2: Auto Trade ──
+  if(ttOptAutoTrade){
+    if(eaHalted){
+      toast('⏰ Trade Time: EA is halted — reset session first', 'info');
+    } else if(!ws || ws.readyState !== 1){
+      toast('⏰ Trade Time: Not connected — Auto Trade skipped', 'info');
+    } else if(!autoBot){
+      toggleAutoBot();     // uses the real toggle — keeps UI + state in sync
+      toast('⚡ Auto Trade enabled by Trade Time', 'info');
+    }
+    // already on → just resume, no action needed
+  }
+
+  saveState();
+}
+
+// ─── FILTER UI HELPERS ────────────────────────────
+function toggleFilter(n){
+  const ids = {1:'fEmaEnabled', 2:'fCandleCloseEnabled', 3:'fCandle2Enabled'};
+  const chk = document.getElementById(ids[n]);
+  chk.checked = !chk.checked;
+  onFilterChange(n, chk.checked);
+}
+
+function onFilterChange(n, enabled){
+  const el = document.getElementById('fi'+n);
+  if(enabled) el.classList.add('enabled');
+  else         el.classList.remove('enabled');
+  if(n===1) filterEmaEnabled  = enabled;
+  if(n===2) filterCandleClose = enabled;
+  if(n===3) filterCandle2     = enabled;
+  const names = {1:'EMA Wick-Cross', 2:'Candle Close', 3:'Candle 2 (Range)'};
+  toast('Filter '+(enabled?'ON':'OFF')+' — '+names[n], 'info');
+  saveState();
+}
+
+
+// ─── CONTRACT → LOG MAP ───────────────────────────
+// Populated immediately in handleBuyResponse.
+// Used by handleContractUpdate to find the log entry
+// without relying on poc.passthrough (which Deriv does NOT echo on POC messages).
+let contractLogMap = {}; // contractId (string) → logId (number)
+
+// ─── PERSISTENCE ──────────────────────────────────
+function saveState(){
+  try {
+    const s = {
+      tradeMode, durType, tradeLog, stats, candles: candles.slice(-100),
+      analysisCandleMode, analysisCandleTF,
+      filters: { ema: filterEmaEnabled, candleClose: filterCandleClose, candle2: filterCandle2, emaPeriod: v('cfgEmaPeriod') },
+      tradeTime: { enabled: tradeTimeEnabled, time: tradeTimeValue, optAuto: ttOptAutoTrade, optRev: ttOptReverse, lastFiredDate: ttLastFiredDate },
+      cfg: {
+        symbol: v('cfgSymbol'), minRange: v('cfgMinRange'), maxPos: v('cfgMaxPos'),
+        stake: v('cfgStake'), sl: v('cfgSL'), tp: v('cfgTP'),
+        duration: v('cfgDuration')
+      }
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
+  } catch(e){}
+}
+
+function loadState(){
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return;
+    const s = JSON.parse(raw);
+    if(s.tradeMode && s.tradeMode !== 'SIGNAL'){
+      tradeMode = s.tradeMode;
+      // Map mode to button id
+      const modeIdMap = { BUY_ONLY:'mBuy', SELL_ONLY:'mSell', BOTH:'mBoth' };
+      const btnId = modeIdMap[s.tradeMode];
+      if(btnId){ const btn=document.getElementById(btnId); if(btn) btn.click(); }
+    }
+    if(s.durType)   { durType = s.durType; document.getElementById('d'+capitalize(durType.slice(0,3))).click(); }
+    if(s.tradeLog)  {
+      tradeLog = s.tradeLog;
+      // FIX BUG 4: Any log entry that was OPEN when state was saved cannot be
+      // resolved without a live WebSocket. Mark them as UNKNOWN so they don't
+      // mislead the user. We'll re-poll them once the connection is ready.
+      tradeLog.forEach(l => {
+        if(l.result === 'OPEN') l.result = '?';
+      });
+    }
+    if(s.stats)     stats = {...stats, ...s.stats};
+    if(s.candles)   candles = s.candles;
+    if(s.cfg){
+      setVal('cfgSymbol', s.cfg.symbol);
+      setVal('cfgMinRange', s.cfg.minRange);
+      setVal('cfgMaxPos', s.cfg.maxPos);
+      setVal('cfgStake', s.cfg.stake);
+      setVal('cfgSL', s.cfg.sl);
+      setVal('cfgTP', s.cfg.tp);
+      setVal('cfgDuration', s.cfg.duration);
+    }
+    // Restore analysis candle settings
+    if(s.analysisCandleMode){
+      const modeEl = document.getElementById(s.analysisCandleMode==='tick'?'acTick':'acCandle');
+      if(modeEl) setAnalysisCandle(s.analysisCandleMode, modeEl);
+    }
+    if(s.analysisCandleTF){
+      const tfMap = {'30s':'actf30s','1m':'actf1m','5m':'actf5m','15m':'actf15m'};
+      const tfEl = document.getElementById(tfMap[s.analysisCandleTF]);
+      if(tfEl) setAnalysisTF(s.analysisCandleTF, tfEl);
+    }
+    // Restore filter states
+    if(s.filters){
+      if(s.filters.ema !== undefined){
+        filterEmaEnabled = !!s.filters.ema;
+        const chk1 = document.getElementById('fEmaEnabled');
+        if(chk1){ chk1.checked = filterEmaEnabled; onFilterChange(1, filterEmaEnabled); }
+      }
+      if(s.filters.candleClose !== undefined){
+        filterCandleClose = !!s.filters.candleClose;
+        const chk2 = document.getElementById('fCandleCloseEnabled');
+        if(chk2){ chk2.checked = filterCandleClose; onFilterChange(2, filterCandleClose); }
+      }
+      if(s.filters.candle2 !== undefined){
+        filterCandle2 = !!s.filters.candle2;
+        const chk3 = document.getElementById('fCandle2Enabled');
+        if(chk3){ chk3.checked = filterCandle2; onFilterChange(3, filterCandle2); }
+      }
+      if(s.filters.emaPeriod !== undefined) setVal('cfgEmaPeriod', s.filters.emaPeriod);
+    }
+    // Restore Trade Time settings
+    if(s.tradeTime){
+      const tt = s.tradeTime;
+      if(tt.time)         { tradeTimeValue = tt.time; setVal('cfgTradeTime', tt.time); }
+      if(tt.lastFiredDate)  ttLastFiredDate = tt.lastFiredDate;
+      if(tt.optAuto !== undefined){
+        ttOptAutoTrade = !!tt.optAuto;
+        const chkA = document.getElementById('ttOptAuto');
+        if(chkA){ chkA.checked = ttOptAutoTrade; ttOptChange('ttOptAuto', ttOptAutoTrade); }
+      }
+      if(tt.optRev !== undefined){
+        ttOptReverse = !!tt.optRev;
+        const chkR = document.getElementById('ttOptRev');
+        if(chkR){ chkR.checked = ttOptReverse; ttOptChange('ttOptRev', ttOptReverse); }
+      }
+      if(tt.enabled){
+        tradeTimeEnabled = true;
+        const chkTT = document.getElementById('ttEnabled');
+        if(chkTT){ chkTT.checked = true; onTradeTimeToggle(true); }
+      }
+    }
+    rebuildLog();
+    updateStats();
+  } catch(e){}
+}
+
+// ─── RE-POLL ANY STALE (?) ENTRIES AFTER CONNECTION ───────────
+function repollStaleEntries(){
+  const stale = tradeLog.filter(l => l.result === '?' && l.contractId);
+  stale.forEach(l => {
+    setTimeout(()=>{ pollContractIfOpen(l.contractId); }, 1000);
+  });
+}
+
+function capitalize(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
+function v(id){ return document.getElementById(id).value; }
+function setVal(id, val){ const el = document.getElementById(id); if(el && val!==undefined) el.value = val; }
+
+// ─── MARKET LABEL HELPER ──────────────────────────
+// Converts symbol like "R_10" → "R10", "R_75" → "R75", "stpRNG" → "STP100" etc.
+function getMarketLabel(symbol){
+  const sym = symbol || v('cfgSymbol');
+  if(!sym) return '—';
+  if(sym.startsWith('R_')) return 'R' + sym.slice(2);
+  if(sym === 'stpRNG')  return 'STP100';
+  if(sym === 'stpRNG2') return 'STP200';
+  if(sym === 'stpRNG3') return 'STP300';
+  if(sym === 'stpRNG4') return 'STP400';
+  if(sym === 'stpRNG5') return 'STP500';
+  return sym;
+}
+
+// ─── LOGIN / LOGOUT ───────────────────────────────
+function doLogin(){
+  const token = document.getElementById('apiTokenInput').value.trim();
+  const server = document.getElementById('serverSelect').value;
+  if(!token){ setLoginStatus('Please enter your API token.','err'); return; }
+  apiToken = token;
+  serverUrl = server;
+  setLoginStatus('Connecting…','');
+  document.getElementById('btnLogin').disabled = true;
+  connectWS(true);
+}
+
+function doLogout(){
+  autoBot = false;
+  botRunning = false;
+  if(ws){ ws.close(); ws=null; }
+  stopSessionTimer();
+  stopTradeTimeCountdown(); // pause countdown while disconnected
+  apiToken='';
+  enableTradeButtons(false);
+  const tog = document.getElementById('autoToggle');
+  if(tog){ tog.className='auto-toggle off'; document.getElementById('autoState').textContent='OFF'; }
+  // Show connect button, hide account area
+  document.getElementById('btnLogin').style.display='';
+  document.getElementById('btnLogin').disabled=false;
+  document.getElementById('apiTokenInput').value='';
+  const accArea = document.getElementById('hdrAccountArea');
+  if(accArea) accArea.style.display='none';
+  // Show connect fields
+  document.querySelectorAll('.conn-fields .conn-field,.conn-fields .conn-remember,.conn-fields #btnLogin,.conn-fields #loginStatus').forEach(el=>el.style.display='');
+  setLoginStatus('','');
+  setDot('');
+}
+
+function setLoginStatus(msg, cls){
+  const el = document.getElementById('loginStatus');
+  el.textContent = msg;
+  el.className = 'login-status ' + (cls||'');
+}
+
+// ─── WEBSOCKET ────────────────────────────────────
+let pendingLogin = false;
+
+function connectWS(isLoginFlow=false){
+  if(ws){ ws.close(); }
+  ws = new WebSocket(serverUrl);
+  setDot('');
+
+  ws.onopen = () => {
+    setDot('connected');
+    // Authorize
+    send({ authorize: apiToken });
+  };
+
+  ws.onmessage = (evt) => {
+    const msg = JSON.parse(evt.data);
+    handleMsg(msg, isLoginFlow);
+  };
+
+  ws.onerror = () => {
+    setDot('error');
+    if(isLoginFlow){ setLoginStatus('Connection error. Check token/server.','err'); document.getElementById('btnLogin').disabled=false; }
+    setBotStatus('WebSocket error.','error');
+  };
+
+  ws.onclose = () => {
+    setDot('error');
+    stopSessionTimer();
+    setBotStatus('Disconnected.','error');
+    enableTradeButtons(false);
+    if(botRunning || autoBot){ setTimeout(()=>{ connectWS(false); },3000); }
+  };
+}
+
+function send(obj){ if(ws && ws.readyState===1) ws.send(JSON.stringify(obj)); }
+
+function handleMsg(msg, isLoginFlow){
+  if(msg.msg_type === 'authorize'){
+    if(msg.error){ setLoginStatus('Auth failed: '+msg.error.message,'err'); document.getElementById('btnLogin').disabled=false; return; }
+    const acc = msg.authorize;
+    // Successful login
+    document.getElementById('hdrName').textContent = acc.fullname || acc.loginid;
+    document.getElementById('hdrBal').textContent = '$'+parseFloat(acc.balance).toFixed(2);
+    document.getElementById('sBalance').textContent = '$'+parseFloat(acc.balance).toFixed(2);
+    document.getElementById('sCurrency').textContent = acc.currency;
+    document.getElementById('sLoginId').textContent = acc.loginid;
+    if(isLoginFlow){
+      setLoginStatus('Connected! ✓','ok');
+      setTimeout(()=>{
+        // Switch connection bar to "connected" state — show account info
+        const accArea = document.getElementById('hdrAccountArea');
+        if(accArea){ accArea.style.display='flex'; }
+        startSessionTimer();
+        loadState();
+        // Start tick feed immediately using selected symbol
+        startTickFeed();
+        subscribeBalance();
+        enableTradeButtons(true);
+        // Re-poll any entries that were left OPEN/? from a previous session
+        setTimeout(repollStaleEntries, 2000);
+        // Restart Trade Time countdown if it was armed before login
+        if(tradeTimeEnabled) startTradeTimeCountdown();
+      }, 400);
+    } else {
+      // Reconnect flow — restore state
+      enableTradeButtons(true);
+      startTickFeed();
+      subscribeBalance();
+      setTimeout(repollStaleEntries, 2000);
+      // Restart Trade Time countdown if it was armed
+      if(tradeTimeEnabled) startTradeTimeCountdown();
+    }
+    return;
+  }
+
+  if(msg.msg_type === 'balance'){
+    const b = msg.balance;
+    document.getElementById('hdrBal').textContent = '$'+parseFloat(b.balance).toFixed(2);
+    document.getElementById('sBalance').textContent = '$'+parseFloat(b.balance).toFixed(2);
+    return;
+  }
+
+  if(msg.msg_type === 'tick'){
+    handleTick(msg.tick);
+    return;
+  }
+
+  if(msg.msg_type === 'buy'){
+    if(msg.error){ setBotStatus('Trade error: '+msg.error.message,'error'); toast('Trade failed: '+msg.error.message,'info'); return; }
+    handleBuyResponse(msg.buy);
+    return;
+  }
+
+  if(msg.msg_type === 'proposal_open_contract'){
+    const poc = msg.proposal_open_contract;
+    if(poc) handleContractUpdate(poc);
+    return;
+  }
+
+  if(msg.msg_type === 'sell'){
+    if(msg.error){
+      const code = msg.error.code || '';
+      const errMsg = msg.error.message || '';
+      // These errors mean the contract already expired/settled — not a real error.
+      // Swallow them silently; the result was already (or will be) set by POC stream.
+      const isExpiredErr = (
+        code === 'ContractSellValidationError' ||
+        code === 'InvalidContractProposal' ||
+        errMsg.toLowerCase().includes("couldn't process") ||
+        errMsg.toLowerCase().includes('already sold') ||
+        errMsg.toLowerCase().includes('expired') ||
+        errMsg.toLowerCase().includes('not valid')
+      );
+      if(!isExpiredErr) toast('Close error: '+errMsg,'info');
+      // Even on error, attempt to recover result via poll
+      if(msg.echo_req && msg.echo_req.sell){
+        const cid = msg.echo_req.sell;
+        setTimeout(()=>{ pollContractIfOpen(cid); }, 1000);
+      }
+      return;
+    }
+    if(msg.sell){
+      const cid     = String(msg.sell.contract_id);
+      const soldFor = parseFloat(msg.sell.sold_for || 0);
+      if(openPositions[cid]){
+        const profit = soldFor - (openPositions[cid].buyPrice || 0);
+        closePosition(cid, profit, 'sold');
+      } else {
+        const le = tradeLog.find(l => l.contractId === cid && (l.result === 'OPEN' || l.result === '?'));
+        if(le){
+          const profit = soldFor - (le._buyPrice || 0);
+          _settleLogEntry(le, profit);
+        }
+      }
+    }
+    return;
+  }
+
+  if(msg.msg_type === 'transaction'){
+    const txn = msg.transaction;
+    if(txn && (txn.action === 'sell' || txn.action === 'expire')){
+      const cid = String(txn.contract_id);
+      if(cid) setTimeout(()=>{ pollContractIfOpen(cid); }, 800);
+    }
+    return;
+  }
+
+  if(msg.msg_type === 'sell_expired'){
+    return; // swallow confirmation, no action needed
+  }
+}
+
+// ─── BALANCE SUBSCRIPTION ─────────────────────────
+function subscribeBalance(){
+  send({ balance:1, subscribe:1 });
+  // Subscribe to transaction stream — catches sell/expiry events as a
+  // last-resort fallback when POC stream delivers nothing.
+  send({ transaction:1, subscribe:1 });
+}
+
+// ─── TICK SUBSCRIPTION ────────────────────────────
+function subscribeTicks(symbol){
+  // Always forget ALL active tick subscriptions first, then resubscribe
+  send({ forget_all: 'ticks' });
+  subscriptionId = null;
+  // Small delay to ensure forget is processed before new sub
+  setTimeout(()=>{
+    send({ ticks: symbol, subscribe: 1 });
+    document.getElementById('chartTitle').textContent = 'LIVE MARKET · '+symbol;
+    document.getElementById('tickerSym').textContent = symbol;
+    // Reset session high/low on market change
+    sessionHigh = -Infinity;
+    sessionLow  = Infinity;
+    document.getElementById('tickerHigh').textContent = '—';
+    document.getElementById('tickerLow').textContent  = '—';
+    document.getElementById('tickerCandles').textContent = candles.length;
+  }, 150);
+}
+
+// ─── TICK → CANDLE BUILDING ────────────────────────
+// IMPORTANT: Analysis candle size is INDEPENDENT of trade duration.
+// analysisCandleMode='tick'   → candle closes every 5 ticks; counter shows ticks in current candle
+// analysisCandleMode='candle' → candle closes on real clock boundaries (e.g. :00, :01, :02…)
+//                               counter shows completed OHLC candles
+
+// Returns period seconds for the selected timeframe
+function getAnalysisCandleSeconds(){
+  switch(analysisCandleTF){
+    case '30s': return 30;
+    case '1m':  return 60;
+    case '5m':  return 300;
+    case '15m': return 900;
+    default:    return 60;
+  }
+}
+
+// Returns the floored boundary epoch for a given epoch and period (real clock alignment)
+function getCandleBoundary(epoch, periodSec){
+  return Math.floor(epoch / periodSec) * periodSec;
+}
+
+// Returns tick count per candle in tick mode
+function getAnalysisTickCount(){ return 5; }
+
+function getCandleSize(){
+  // Legacy — used only for trade duration
+  const dur = parseInt(v('cfgDuration'))||5;
+  return Math.max(1,dur);
+}
+
+function handleTick(tick){
+  const price = parseFloat(tick.quote);
+  const epoch = tick.epoch;   // server epoch in seconds
+  const pipSz = tick.pip_size || 2;
+
+  // ── Update session H/L ──
+  if(price > sessionHigh) sessionHigh = price;
+  if(price < sessionLow)  sessionLow  = price;
+
+  // ── Live price display ──
+  const priceEl = document.getElementById('tickerPrice');
+  const prevPrice = parseFloat(priceEl.dataset.prev || price);
+  priceEl.textContent = price.toFixed(pipSz);
+  priceEl.className = 'ticker-price' + (price > prevPrice ? ' up' : price < prevPrice ? ' down' : '');
+  priceEl.dataset.prev = price;
+
+  document.getElementById('tickerHigh').textContent = sessionHigh.toFixed(pipSz);
+  document.getElementById('tickerLow').textContent  = sessionLow.toFixed(pipSz);
+  document.getElementById('tickerTime').textContent = new Date().toLocaleTimeString();
+
+  // ── Build ANALYSIS candle ──
+  let shouldClose = false;
+
+  if(analysisCandleMode === 'tick'){
+    // ── TICK MODE: group every N ticks, show tick progress in counter ──
+    if(!currentCandle){
+      currentCandle = {open:price,high:price,low:price,close:price,epoch,ticks:1,startEpoch:epoch};
+      tickCount = 1;
+    } else {
+      currentCandle.high  = Math.max(currentCandle.high, price);
+      currentCandle.low   = Math.min(currentCandle.low, price);
+      currentCandle.close = price;
+      tickCount++;
+      currentCandle.ticks = tickCount;
+    }
+    // Show ticks accumulated in the current forming candle
+    document.getElementById('tickerCandles').textContent = tickCount + ' ticks';
+    shouldClose = (tickCount >= getAnalysisTickCount());
+
+    if(shouldClose){
+      candles.push({...currentCandle});
+      if(candles.length > 200) candles.shift();
+      currentCandle = null;
+      tickCount = 0;
+      document.getElementById('tickerCandles').textContent = '0 ticks';
+      if(autoBot && !eaHalted) onNewCandle();
+      saveState();
+    }
+
+  } else {
+    // ── CANDLE MODE: align to real clock boundaries ──
+    const periodSec = getAnalysisCandleSeconds();
+    const thisBoundary = getCandleBoundary(epoch, periodSec);
+
+    if(!currentCandle){
+      // Start first candle aligned to current boundary
+      currentCandle = {open:price,high:price,low:price,close:price,epoch,ticks:1,startEpoch:thisBoundary,boundary:thisBoundary};
+      tickCount = 1;
+    } else {
+      // If epoch has crossed into a new boundary → close current candle first
+      if(thisBoundary > currentCandle.boundary){
+        candles.push({...currentCandle});
+        if(candles.length > 200) candles.shift();
+        document.getElementById('tickerCandles').textContent = candles.length;
+        if(autoBot && !eaHalted) onNewCandle();
+        saveState();
+        // Open new candle at new boundary, opening at this tick's price
+        currentCandle = {open:price,high:price,low:price,close:price,epoch,ticks:1,startEpoch:thisBoundary,boundary:thisBoundary};
+        tickCount = 1;
+      } else {
+        // Same boundary — update current candle
+        currentCandle.high  = Math.max(currentCandle.high, price);
+        currentCandle.low   = Math.min(currentCandle.low, price);
+        currentCandle.close = price;
+        tickCount++;
+        currentCandle.ticks = tickCount;
+      }
+    }
+    // Show completed candle count
+    document.getElementById('tickerCandles').textContent = candles.length;
+  }
+}
+
+// ─── ON NEW CANDLE (= OnTick new bar in MQL5) ─────
+function onNewCandle(){
+  if(candles.length < 2) return;
+
+  // [n-2] = range candle, [n-1] = signal candle (just closed)
+  const range  = candles[candles.length - 2];
+  const signal = candles[candles.length - 1];
+
+  const minRange = parseFloat(v('cfgMinRange')) || 10;
+  const rangeSize = range.high - range.low;
+
+  // Scale minRange based on price magnitude
+  const scaledMin = minRange * (range.close < 100 ? 0.01 : range.close < 10000 ? 0.1 : 1);
+  if(rangeSize < scaledMin) return;
+
+  // ── LAYER 1: BASE CRT LOGIC ──────────────────────
+  // Bullish: signal swept below range.low AND closed back above range.low
+  const baseBullish = (signal.low < range.low && signal.close > range.low);
+  // Bearish: signal swept above range.high AND closed back below range.high
+  const baseBearish = (signal.high > range.high && signal.close < range.high);
+
+  // BUY filter: signal.high must be STRICTLY BELOW range.high
+  const buyFilter  = (signal.high < range.high);
+  // SELL filter: signal.low must be STRICTLY ABOVE range.low
+  const sellFilter = (signal.low > range.low);
+
+  let isBullish = baseBullish && buyFilter;
+  let isBearish = baseBearish && sellFilter;
+
+  // ── LAYER 2: FILTER 1 — EMA WICK-CROSS ──────────
+  // Recalculate EMA on every new candle using the closed candles array.
+  if(filterEmaEnabled){
+    const period = parseInt(v('cfgEmaPeriod')) || 50;
+    emaValue = calcEMA(candles, period);
+    if(emaValue === null){
+      // Not enough candles yet — drop signal silently
+      isBullish = false;
+      isBearish = false;
+    } else {
+      if(isBullish){
+        // Body (open AND close) must both be ABOVE EMA
+        const bodyAbove = signal.open > emaValue && signal.close > emaValue;
+        // Lower wick must pierce BELOW EMA
+        const wickBelow = signal.low < emaValue;
+        isBullish = bodyAbove && wickBelow;
+      }
+      if(isBearish){
+        // Body (open AND close) must both be BELOW EMA
+        const bodyBelow = signal.open < emaValue && signal.close < emaValue;
+        // Upper wick must pierce ABOVE EMA
+        const wickAbove = signal.high > emaValue;
+        isBearish = bodyBelow && wickAbove;
+      }
+    }
+  }
+
+  // ── LAYER 3: FILTER 2 — SIGNAL CANDLE CLOSE DIRECTION ──
+  if(filterCandleClose){
+    if(isBullish) isBullish = (signal.close > signal.open);   // must close bullish
+    if(isBearish) isBearish = (signal.close < signal.open);   // must close bearish
+  }
+
+  // ── LAYER 4: FILTER 3 — RANGE (CANDLE 2) DIRECTION ──
+  if(filterCandle2){
+    if(isBullish) isBullish = (range.close > range.open);     // range candle must be bullish
+    if(isBearish) isBearish = (range.close < range.open);     // range candle must be bearish
+  }
+
+  const symbol = v('cfgSymbol');
+
+  if(isBullish && (tradeMode==='BUY_ONLY'||tradeMode==='BOTH')){
+    processBuySignal(signal, symbol);
+  }
+  if(isBearish && (tradeMode==='SELL_ONLY'||tradeMode==='BOTH')){
+    processSellSignal(signal, symbol);
+  }
+
+  updateStats();
+}
+
+// ─── POSITION COUNTING (mirrors MQL5 logic) ───────
+function countPositions(dir){
+  return Object.values(openPositions).filter(p=>p.dir===dir).length;
+}
+function countAll(){ return Object.keys(openPositions).length; }
+
+function canOpenBuy(){
+  const maxPos = parseInt(v('cfgMaxPos'))||1;
+  if(tradeMode==='BOTH'){
+    if(maxPos===1) return countAll()===0;
+    const perSide = Math.max(1, Math.floor(maxPos/2));
+    return countPositions('call') < perSide;
+  }
+  return countPositions('call') < maxPos;
+}
+
+function canOpenSell(){
+  const maxPos = parseInt(v('cfgMaxPos'))||1;
+  if(tradeMode==='BOTH'){
+    if(maxPos===1) return countAll()===0;
+    const perSide = Math.max(1, Math.floor(maxPos/2));
+    return countPositions('put') < perSide;
+  }
+  return countPositions('put') < maxPos;
+}
+
+// ─── PROCESS BUY SIGNAL ───────────────────────────
+function processBuySignal(candle, symbol){
+  // Determine final direction after reverse mode first
+  const finalType = applyReverse('CALL');
+  const finalDir  = finalType === 'CALL' ? 'BUY' : 'SELL';
+
+  // ── Silent skip if max positions reached — do NOT log or count ──
+  const canOpen = finalType==='CALL' ? canOpenBuy() : canOpenSell();
+  if(!canOpen){
+    setBotStatus((finalDir)+' skipped – max positions reached','');
+    toast('⛔ Max positions reached — '+finalDir+' signal blocked silently','info');
+    return;
+  }
+
+  // ── Cooldown check ──
+  if(isCoolingDown()){
+    toast('⏱ Cooldown active — BUY signal skipped','info');
+    return;
+  }
+
+  // ── Count signal only when it will actually be acted on ──
+  stats.totalSignals++;
+  stats.buySigs++;
+  stats.lastSignal = 'BUY';
+  stats.lastTime = new Date().toLocaleTimeString();
+
+  const entry = candle.close;
+  const stake = parseFloat(v('cfgStake'))||1;
+  const sl    = parseFloat(v('cfgSL'))||0;
+  const tp    = parseFloat(v('cfgTP'))||0;
+  const mktLabel = getMarketLabel(symbol);
+
+  const logEntry = {
+    id: Date.now(), time: new Date().toLocaleTimeString(),
+    dir: finalDir, entry:entry.toFixed(5),
+    market: mktLabel,
+    result:'OPEN', pnl:'—', contractId:null
+  };
+  tradeLog.unshift(logEntry);
+  if(tradeLog.length > 10) tradeLog.length = 10;
+  rebuildLog();
+
+  const toastDir = finalType==='CALL' ? '🔵 CRT RISE Signal' : '🔴 CRT FALL Signal (REVERSED)';
+  toast(toastDir+' @ '+entry.toFixed(5), finalType==='CALL'?'buy':'sell');
+
+  placeTrade(finalType, symbol, stake, sl, tp, logEntry.id);
+  startCooldown();
+
+  updateStats(); saveState();
+}
+
+// ─── PROCESS SELL SIGNAL ──────────────────────────
+function processSellSignal(candle, symbol){
+  // Determine final direction after reverse mode first
+  const finalType = applyReverse('PUT');
+  const finalDir  = finalType === 'PUT' ? 'SELL' : 'BUY';
+
+  // ── Silent skip if max positions reached — do NOT log or count ──
+  const canOpen = finalType==='PUT' ? canOpenSell() : canOpenBuy();
+  if(!canOpen){
+    setBotStatus((finalDir)+' skipped – max positions reached','');
+    toast('⛔ Max positions reached — '+finalDir+' signal blocked silently','info');
+    return;
+  }
+
+  // ── Cooldown check ──
+  if(isCoolingDown()){
+    toast('⏱ Cooldown active — SELL signal skipped','info');
+    return;
+  }
+
+  // ── Count signal only when it will actually be acted on ──
+  stats.totalSignals++;
+  stats.sellSigs++;
+  stats.lastSignal = 'SELL';
+  stats.lastTime = new Date().toLocaleTimeString();
+
+  const entry = candle.close;
+  const stake = parseFloat(v('cfgStake'))||1;
+  const sl    = parseFloat(v('cfgSL'))||0;
+  const tp    = parseFloat(v('cfgTP'))||0;
+  const mktLabel = getMarketLabel(symbol);
+
+  const logEntry = {
+    id: Date.now(), time: new Date().toLocaleTimeString(),
+    dir: finalDir, entry:entry.toFixed(5),
+    market: mktLabel,
+    result:'OPEN', pnl:'—', contractId:null
+  };
+  tradeLog.unshift(logEntry);
+  if(tradeLog.length > 10) tradeLog.length = 10;
+  rebuildLog();
+
+  const toastDir = finalType==='PUT' ? '🔴 CRT FALL Signal' : '🔵 CRT RISE Signal (REVERSED)';
+  toast(toastDir+' @ '+entry.toFixed(5), finalType==='PUT'?'sell':'buy');
+
+  placeTrade(finalType, symbol, stake, sl, tp, logEntry.id);
+  startCooldown();
+
+  updateStats(); saveState();
+}
+
+// ─── PLACE TRADE ──────────────────────────────────
+// contractType: 'CALL' = Rise (BUY), 'PUT' = Fall (SELL)
+//
+// IMPORTANT — Deriv API behaviour for Volatility / Step Index tick contracts:
+//   "tick trades ... are NOT streamed via proposal_open_contract subscription"
+//   (Deriv API docs). The correct pattern is to add subscribe:1 to the BUY
+//   request itself; Deriv then pushes POC updates (including final settlement
+//   with is_sold=1) directly into the same buy response stream.
+//   That is what we do here.
+function placeTrade(contractType, symbol, stake, slAmt, tpAmt, logId){
+  stats.totalTrades++;
+
+  const dur = parseInt(v('cfgDuration'))||5;
+  let durUnit;
+  if(durType==='ticks') durUnit='t';
+  else if(durType==='seconds') durUnit='s';
+  else durUnit='m';
+
+  const proposal = {
+    buy: 1,
+    subscribe: 1,           // ← tells Deriv to stream POC updates in buy response
+    price: stake,
+    parameters: {
+      contract_type: contractType,
+      symbol: symbol,
+      currency: 'USD',
+      basis: 'stake',
+      amount: stake,
+      duration: dur,
+      duration_unit: durUnit
+    },
+    passthrough: { log_id: logId, sl_amt: slAmt, tp_amt: tpAmt }
+  };
+
+  send(proposal);
+  const label = contractType==='CALL' ? '▲ RISE (BUY)' : '▼ FALL (SELL)';
+  setBotStatus(label+' placed · Stake $'+stake.toFixed(2)+' · '+symbol, contractType==='CALL'?'buy':'sell');
+}
+
+// ─── HANDLE BUY RESPONSE ──────────────────────────
+function handleBuyResponse(buy){
+  const contractId = buy.contract_id;
+  const passthrough = buy.passthrough||{};
+  const logId = passthrough.log_id;
+  const slAmt = passthrough.sl_amt||0;
+  const tpAmt = passthrough.tp_amt||0;
+
+  // Stamp the map IMMEDIATELY so handleContractUpdate can always find
+  // the log entry by contractId — poc messages do NOT carry passthrough.
+  if(contractId && logId) contractLogMap[String(contractId)] = logId;
+
+  // Update log entry — store contractId so POC handler can find it by cid.
+  // IMPORTANT: only set result='OPEN' if not already settled
+  // (POC can arrive before this runs in the same message batch).
+  const le = tradeLog.find(l=>l.id===logId);
+  if(le){
+    le.contractId = contractId;
+    le._buyPrice  = parseFloat(buy.buy_price||0);
+    if(le.result !== 'WIN' && le.result !== 'LOSS'){
+      le.result = 'OPEN';
+    }
+  }
+
+  openPositions[String(contractId)] = {
+    contractId: String(contractId), dir: buy.contract_type==='CALL'?'call':'put',
+    stake:    parseFloat(buy.buy_price||0),
+    buyPrice: parseFloat(buy.buy_price||0),
+    currentPnl: 0,
+    slAmt, tpAmt,
+    logId,
+    symbol: v('cfgSymbol'),
+    openTime: new Date().toLocaleTimeString()
+  };
+
+  // NOTE: We used buy+subscribe:1 so Deriv is already streaming POC updates.
+  // For tick contracts on Volatility indices the POC subscription alone does
+  // NOT stream — the buy+subscribe pattern is the only reliable method.
+  // We still send a direct POC subscription as belt-and-braces for longer
+  // duration contracts (seconds/minutes) that DO stream normally.
+  if(durType !== 'ticks'){
+    send({ proposal_open_contract:1, contract_id:contractId, subscribe:1 });
+  }
+
+  // Safety fallback poll — fires after max expected contract lifetime + 5 s
+  const dur = parseInt(v('cfgDuration'))||5;
+  const maxMs = durType==='ticks' ? (dur * 1500 + 5000)   // ~1.5 s/tick + buffer
+              : durType==='seconds' ? (dur * 1000 + 5000)
+              : (dur * 60000 + 5000);
+  setTimeout(()=>{ pollContractIfOpen(contractId); }, maxMs);
+
+  renderPositions();
+  rebuildLog();
+  toast('Trade opened (ID:'+contractId+')','info');
+}
+
+// ─── CONTRACT UPDATE ──────────────────────────────
+// Called for every proposal_open_contract message from Deriv.
+//
+// KEY FIX: Deriv does NOT echo passthrough in POC stream messages.
+// We use contractLogMap (populated in handleBuyResponse) to look up
+// the log entry by contractId — this is the ONLY reliable method.
+function handleContractUpdate(poc){
+  const cid = String(poc.contract_id);
+
+  // ── Settle detection ──────────────────────────────
+  const isSold     = Number(poc.is_sold)    === 1;
+  const isExpired  = Number(poc.is_expired) === 1;
+  const statusDone = poc.status === 'won' || poc.status === 'lost' || poc.status === 'sold';
+  const isSettleable = Number(poc.is_settleable) === 1;
+  const isValidSell  = Number(poc.is_valid_to_sell);
+  const isFinished = isSold || isExpired || statusDone ||
+                     (isSettleable && isValidSell === 0);
+
+  // ── Calculate P&L ─────────────────────────────────
+  // Priority: profit_loss → sell_price-buy_price → profit field
+  let finalProfit = null;
+  if(poc.profit_loss !== undefined && poc.profit_loss !== null && poc.profit_loss !== ''){
+    finalProfit = parseFloat(poc.profit_loss);
+  } else if(poc.sell_price !== undefined && poc.buy_price !== undefined){
+    finalProfit = parseFloat(poc.sell_price) - parseFloat(poc.buy_price);
+  } else if(poc.profit !== undefined && poc.profit !== null && poc.profit !== ''){
+    finalProfit = parseFloat(poc.profit);
+  }
+  if(finalProfit === null) finalProfit = 0;
+
+  if(isFinished){
+    // ── Path A: position still in openPositions ──────
+    if(openPositions[cid]){
+      closePosition(cid, finalProfit, poc.status || (isSold ? 'sold' : 'expired'));
+      return;
+    }
+
+    // ── Path B: position already removed — use contractLogMap to find log entry ──
+    const logId = contractLogMap[cid];
+    let le = logId
+      ? tradeLog.find(l => l.id === logId && (l.result === 'OPEN' || l.result === '?'))
+      : null;
+    if(!le) le = tradeLog.find(l => l.contractId === cid && (l.result === 'OPEN' || l.result === '?'));
+    if(!le) le = tradeLog.find(l => !l.contractId && (l.result === 'OPEN' || l.result === '?'));
+    if(le){
+      if(!le.contractId) le.contractId = cid;
+      contractLogMap[cid] = le.id;
+      _settleLogEntry(le, finalProfit);
+    }
+    return;
+  }
+
+  // ── Not finished yet — update live P&L ───────────
+  const pos = openPositions[cid];
+  if(!pos) return;
+
+  pos.currentPnl = finalProfit;
+
+  if(poc.entry_tick_display_value && pos.logId){
+    const le = tradeLog.find(l => l.id === pos.logId);
+    if(le && (le.entry === '—' || !le.entry)){
+      le.entry = parseFloat(poc.entry_tick_display_value).toFixed(5);
+    }
+  }
+
+  const slAmt = pos.slAmt, tpAmt = pos.tpAmt;
+  if((slAmt > 0 && finalProfit <= -slAmt) || (tpAmt > 0 && finalProfit >= tpAmt)){
+    closePosition(cid, finalProfit, 'force');
+    return;
+  }
+
+  renderPositions();
+  rebuildLog();
+}
+
+// ─── POLL CONTRACT (fallback if stream delivers nothing) ────────
+function pollContractIfOpen(contractId){
+  contractId = String(contractId);
+  const inLog = tradeLog.find(l => l.contractId === contractId && (l.result === 'OPEN' || l.result === '?'));
+  const inPos = openPositions[contractId];
+  if(!inLog && !inPos) return; // already settled
+
+  // Use subscribe:1 so Deriv returns a fully-populated POC including profit_loss.
+  send({ proposal_open_contract: 1, contract_id: contractId, subscribe: 1 });
+
+  // Safety: if still unsettled after another 5 s, try plain one-shot as last resort
+  setTimeout(()=>{
+    const stillOpen = tradeLog.find(l => l.contractId === contractId && (l.result === 'OPEN' || l.result === '?'));
+    const stillPos  = openPositions[contractId];
+    if(stillOpen || stillPos){
+      send({ proposal_open_contract: 1, contract_id: contractId });
+    }
+  }, 5000);
+}
+
+function closePosition(cid, finalProfit, status){
+  cid = String(cid);
+  const pos = openPositions[cid];
+
+  if(!pos){
+    // Position already removed — find orphaned log entry and settle it
+    const logId = contractLogMap[cid];
+    let orphan = logId
+      ? tradeLog.find(l => l.id === logId && (l.result === 'OPEN' || l.result === '?'))
+      : null;
+    if(!orphan) orphan = tradeLog.find(l => l.contractId === cid && (l.result === 'OPEN' || l.result === '?'));
+    if(orphan){
+      _settleLogEntry(orphan, finalProfit);
+    }
+    return;
+  }
+
+  // Find log entry FIRST — only proceed if it hasn't been settled already
+  const le = tradeLog.find(l => l.id === pos.logId && (l.result === 'OPEN' || l.result === '?'));
+
+  const alreadySettled = status === 'won' || status === 'lost' ||
+                         status === 'sold' || status === 'expired' ||
+                         status === 'cancelled';
+  if(!alreadySettled && durType !== 'ticks'){
+    send({ sell: cid, price: 0 });
+  }
+
+  delete openPositions[cid];
+  delete contractLogMap[cid];
+  renderPositions();
+
+  if(le){
+    _settleLogEntry(le, finalProfit);
+  }
+}
+
+// ─── SINGLE SETTLEMENT FUNCTION ───────────────────
+// ALL stat counting goes through here — one place, one time, guarded.
+function _settleLogEntry(le, finalProfit){
+  // Double-entry guard: if already settled by another path, do nothing
+  if(le.result !== 'OPEN' && le.result !== '?') return;
+
+  // Atomically mark as settled before any async path can re-enter
+  le.result = '__settling__';
+
+  const won = finalProfit > 0;
+  le.result = won ? 'WIN' : 'LOSS';
+  le.pnl    = (finalProfit >= 0 ? '+' : '') + finalProfit.toFixed(2);
+
+  if(won){ stats.wins++; stats.totalProfit += finalProfit; }
+  else   { stats.losses++; stats.totalLoss += Math.abs(finalProfit); }
+
+  rebuildLog();
+  updateStats();
+  toast((won ? '✅ WIN' : '❌ LOSS') + ' $' + Math.abs(finalProfit).toFixed(2), 'info');
+  saveState();
+  checkSessionLimits();
+}
+
+// ─── BINARY SESSION LIMIT CHECK ───────────────────
+function checkSessionLimits(){
+  const slAmt = parseFloat(v('cfgSL'))||0;
+  const tpAmt = parseFloat(v('cfgTP'))||0;
+  const netProfit = stats.totalProfit - stats.totalLoss;
+
+  let haltReason = '';
+
+  if(slAmt > 0 && stats.totalLoss >= slAmt){
+    haltReason = '🛑 MAX LOSS $'+slAmt.toFixed(2)+' REACHED — EA HALTED';
+  }
+  if(tpAmt > 0 && netProfit >= tpAmt){
+    haltReason = '🎯 TARGET PROFIT $'+tpAmt.toFixed(2)+' REACHED — EA HALTED';
+  }
+
+  if(haltReason && !eaHalted){
+    eaHalted = true;
+    autoBot = false;
+    botRunning = false;
+    // Turn off auto toggle UI
+    const tog = document.getElementById('autoToggle');
+    if(tog){ tog.className='auto-toggle off'; document.getElementById('autoState').textContent='OFF'; }
+    // Show halt banner
+    const banner = document.getElementById('eaHaltBanner');
+    banner.textContent = haltReason;
+    banner.style.display = 'block';
+    // Disable manual trade buttons too
+    enableTradeButtons(false);
+    setBotStatus(haltReason, 'error');
+    toast(haltReason, 'info');
+  }
+}
+
+// ─── RESET SESSION (double-click confirm) ─────────
+let resetSessionPending = false;
+let resetSessionTimeout = null;
+
+function resetSessionClick(){
+  const btn = document.getElementById('btnResetSession');
+  if(!resetSessionPending){
+    // First click — show warning state
+    resetSessionPending = true;
+    btn.textContent = '⚠ CONFIRM RESET?';
+    btn.style.background = 'rgba(255,61,90,.18)';
+    btn.style.borderColor = 'var(--red)';
+    btn.style.color = '#ff7090';
+    btn.style.boxShadow = '0 0 14px rgba(255,61,90,.3)';
+    toast('⚠ Click again to confirm session reset', 'info');
+    // Auto-cancel after 3 seconds
+    resetSessionTimeout = setTimeout(()=>{
+      resetSessionPending = false;
+      btn.textContent = '↺ RESET SESSION';
+      btn.style.background = 'rgba(245,197,24,.08)';
+      btn.style.borderColor = 'rgba(245,197,24,.4)';
+      btn.style.color = 'var(--gold)';
+      btn.style.boxShadow = '';
+    }, 3000);
+  } else {
+    // Second click — confirmed, do the reset
+    clearTimeout(resetSessionTimeout);
+    resetSessionPending = false;
+    btn.textContent = '↺ RESET SESSION';
+    btn.style.background = 'rgba(245,197,24,.08)';
+    btn.style.borderColor = 'rgba(245,197,24,.4)';
+    btn.style.color = 'var(--gold)';
+    btn.style.boxShadow = '';
+    resetSession();
+  }
+}
+
+function resetSession(){
+  eaHalted = false;
+  // Clear any active cooldown
+  if(cooldownTimer){ clearInterval(cooldownTimer); cooldownTimer=null; }
+  cooldownActive = false;
+  cooldownRemaining = 0;
+  document.getElementById('cooldownDisplay').style.display='none';
+  document.getElementById('cooldownRing').classList.remove('active');
+  stats.totalProfit = 0;
+  stats.totalLoss = 0;
+  stats.wins = 0;
+  stats.losses = 0;
+  stats.totalSignals = 0;
+  stats.buySigs = 0;
+  stats.sellSigs = 0;
+  stats.totalTrades = 0;
+  tradeLog = [];
+  document.getElementById('eaHaltBanner').style.display='none';
+  enableTradeButtons(true);
+  rebuildLog();
+  updateStats();
+  toast('Session reset — EA ready','info');
+  saveState();
+}
+
+// ─── RENDER POSITIONS ─────────────────────────────
+function renderPositions(){
+  const panel = document.getElementById('posPanel');
+  const keys = Object.keys(openPositions);
+  document.getElementById('posCount').textContent = keys.length+' active';
+  if(!keys.length){ panel.innerHTML='<div class="no-pos">No open positions</div>'; return; }
+  panel.innerHTML = keys.map(cid=>{
+    const p = openPositions[cid];
+    const pnlCls = p.currentPnl>0?'tag-win':p.currentPnl<0?'tag-loss':'tag-open';
+    return `<div class="pos-item">
+      <span class="pos-dir ${p.dir}">${p.dir.toUpperCase()}</span>
+      <div class="pos-details">
+        <span style="color:var(--accent2)">${p.symbol}</span> · Stake: $${p.stake.toFixed(2)}<br>
+        @ ${p.openTime}
+      </div>
+      <span class="pos-pnl ${pnlCls}">${(p.currentPnl>=0?'+$':'-$')+Math.abs(p.currentPnl).toFixed(2)}</span>
+      <button class="btn-close-pos" onclick="manualClose('${cid}')">CLOSE</button>
+    </div>`;
+  }).join('');
+}
+
+function manualClose(cid){
+  send({ sell: cid, price:0 });
+  toast('Closing position '+cid,'info');
+}
+
+// ─── UPDATE STATS ─────────────────────────────────
+function updateStats(){
+  setText('sTotalSig', stats.totalSignals);
+  setText('sTotalTrades', stats.totalTrades);
+  setText('sWins', stats.wins);
+  setText('sLosses', stats.losses);
+  setText('sBuySig', stats.buySigs);
+  setText('sSellSig', stats.sellSigs);
+
+  const wr = stats.totalTrades>0 ? (stats.wins/stats.totalTrades*100).toFixed(1) : '0.0';
+  setText('sWinRate', wr+'%');
+  document.getElementById('winRateFill').style.width = wr+'%';
+
+  setText('sTotalProfit', '+$'+stats.totalProfit.toFixed(2));
+  setText('sTotalLoss',   '-$'+stats.totalLoss.toFixed(2));
+
+  const net = stats.totalProfit - stats.totalLoss;
+  const netEl = document.getElementById('sTotalPnL');
+  netEl.textContent = (net>=0?'+$':'-$')+Math.abs(net).toFixed(2);
+  netEl.style.color = net>0?'var(--green)':net<0?'var(--red)':'var(--text)';
+
+  const lsEl = document.getElementById('sLastSignal');
+  lsEl.textContent = stats.lastSignal||'—';
+  lsEl.style.color = stats.lastSignal==='BUY'?'var(--accent)':stats.lastSignal==='SELL'?'var(--red)':'var(--muted)';
+  setText('sLastTime', stats.lastTime);
+}
+
+function setText(id,val){ document.getElementById(id).textContent=val; }
+
+// ─── REBUILD LOG TABLE ────────────────────────────
+function rebuildLog(){
+  const tbody = document.getElementById('logBody');
+  const visible = tradeLog.slice(0,10);
+  tbody.innerHTML = visible.map((l, idx)=>{
+    const sn = idx + 1;
+    const dirTag = l.dir==='BUY'?'<span class="tag-buy">BUY</span>':'<span class="tag-sell">SELL</span>';
+    const resCls = l.result==='WIN'?'tag-win':l.result==='LOSS'?'tag-loss':l.result==='OPEN'?'tag-open':l.result==='?'?'tag-open':'';
+    const resDisplay = l.result === '?' ? '?' : l.result;
+    const pnlCls = l.pnl&&l.pnl.startsWith('+')?'tag-win':l.pnl&&l.pnl!=='—'?'tag-loss':'';
+    return `<tr>
+      <td style="color:#8ba4cc;font-size:11px;letter-spacing:.5px;">${sn}</td>
+      <td>${l.time}</td><td>${dirTag}</td><td>${l.entry}</td>
+      <td>${l.market||'—'}</td>
+      <td class="${resCls}" title="${l.result==='?'?'Result unknown – re-polling…':''}">${resDisplay}</td>
+      <td class="${pnlCls}">${l.pnl}</td>
+    </tr>`;
+  }).join('');
+}
+
+function clearLog(){
+  tradeLog=[];
+  document.getElementById('logBody').innerHTML='';
+  saveState();
+}
+
+// ─── TICK FEED (always-on after login) ────────────
+function startTickFeed(){
+  const sym = v('cfgSymbol');
+  candles=[];
+  currentCandle=null;
+  tickCount=0;
+  subscribeTicks(sym);
+  setBotStatus('Live feed: '+sym+' · BUY or SELL to trade','');
+  toast('Live feed started on '+sym,'info');
+}
+
+// ─── MANUAL TRADE (BUY / SELL buttons) ────────────
+function manualTrade(contractType){
+  if(!ws||ws.readyState!==1){ toast('Not connected','info'); return; }
+  if(eaHalted){ toast('EA halted — reset session to resume trading','info'); return; }
+  if(isCoolingDown()){ toast('⏱ Cooldown active — wait before next trade','info'); return; }
+
+  const symbol = v('cfgSymbol');
+  const stake  = parseFloat(v('cfgStake'))||1;
+  const sl     = parseFloat(v('cfgSL'))||0;
+  const tp     = parseFloat(v('cfgTP'))||0;
+  const mktLabel = getMarketLabel(symbol);
+
+  // Apply reverse mode at the final execution point
+  const originalType = contractType;
+  const finalType    = applyReverse(contractType);
+  const finalDir     = finalType === 'CALL' ? 'BUY' : 'SELL';
+
+  stats.totalSignals++;
+  if(originalType==='CALL') stats.buySigs++; else stats.sellSigs++;
+  stats.lastSignal = originalType==='CALL'?'BUY':'SELL';
+  stats.lastTime = new Date().toLocaleTimeString();
+
+  // Capture live entry price from the price display (most accurate live price)
+  const priceEl = document.getElementById('tickerPrice');
+  const livePrice = parseFloat(priceEl.textContent) || (currentCandle ? currentCandle.close : 0);
+
+  const logEntry = {
+    id: Date.now(), time: new Date().toLocaleTimeString(),
+    dir: finalDir,
+    entry: livePrice>0 ? livePrice.toFixed(5) : '—',
+    market: mktLabel,
+    result:'OPEN', pnl:'—', contractId:null
+  };
+  tradeLog.unshift(logEntry);
+  if(tradeLog.length > 10) tradeLog.length = 10;
+  rebuildLog();
+
+  const reversed = finalType !== originalType;
+  const label = finalType==='CALL' ? '▲ RISE (BUY)' : '▼ FALL (SELL)';
+  placeTrade(finalType, symbol, stake, sl, tp, logEntry.id);
+  toast(label+(reversed?' [REVERSED]':'')+' sent · '+symbol, finalType==='CALL'?'buy':'sell');
+  startCooldown();
+  updateStats(); saveState();
+}
+
+// ─── REVERSE MODE TOGGLE ──────────────────────────
+function toggleReverseMode(){
+  reverseMode = !reverseMode;
+  const tog = document.getElementById('reverseToggle');
+  const state = document.getElementById('reverseState');
+  if(reverseMode){
+    tog.className = 'reverse-toggle on';
+    state.textContent = 'ON';
+    toast('⇄ Reverse Mode ON — BUY↔SELL flipped','info');
+  } else {
+    tog.className = 'reverse-toggle off';
+    state.textContent = 'OFF';
+    toast('⇄ Reverse Mode OFF','info');
+  }
+}
+
+// ─── APPLY REVERSE MODE AT EXECUTION POINT ────────
+// Called at the final moment before placeTrade; returns the actual contractType to use.
+function applyReverse(contractType){
+  if(!reverseMode) return contractType;
+  return contractType === 'CALL' ? 'PUT' : 'CALL';
+}
+
+// ─── COOLDOWN TIMER ───────────────────────────────
+// Returns true if a trade is blocked by cooldown.
+function isCoolingDown(){
+  return cooldownActive;
+}
+
+// Starts the cooldown after a trade is placed.
+function startCooldown(){
+  const secs = parseInt(document.getElementById('cfgCooldown').value)||0;
+  if(secs <= 0) return;
+
+  // Clear any existing timer
+  if(cooldownTimer) clearInterval(cooldownTimer);
+
+  cooldownActive = true;
+  cooldownTotal = secs;
+  cooldownRemaining = secs;
+  enableTradeButtons(false);
+
+  const display = document.getElementById('cooldownDisplay');
+  const ring    = document.getElementById('cooldownRing');
+  const arc     = document.getElementById('cooldownArc');
+  const num     = document.getElementById('cooldownNum');
+  const status  = document.getElementById('cooldownStatus');
+  const circumference = 113.1; // 2π × 18
+
+  display.style.display = 'flex';
+  ring.classList.add('active');
+
+  function updateRing(){
+    const frac = cooldownRemaining / cooldownTotal;
+    arc.style.strokeDashoffset = circumference * (1 - frac);
+    num.textContent = cooldownRemaining;
+    status.textContent = cooldownRemaining + 's remaining…';
+    status.className = 'cooldown-status active';
+  }
+  updateRing();
+
+  cooldownTimer = setInterval(()=>{
+    cooldownRemaining--;
+    updateRing();
+    if(cooldownRemaining <= 0){
+      clearInterval(cooldownTimer);
+      cooldownTimer = null;
+      cooldownActive = false;
+      ring.classList.remove('active');
+      arc.style.strokeDashoffset = 0;
+      num.textContent = '✓';
+      status.textContent = 'Ready';
+      status.className = 'cooldown-status';
+      // Only re-enable buttons if EA is not halted
+      if(!eaHalted){
+        enableTradeButtons(true);
+      }
+      toast('⏱ Cooldown complete — ready to trade','info');
+      // Hide ring after brief moment
+      setTimeout(()=>{ display.style.display='none'; },1200);
+    }
+  }, 1000);
+}
+
+// ─── AUTO BOT TOGGLE ──────────────────────────────
+function toggleAutoBot(){
+  if(!ws||ws.readyState!==1){ toast('Connect first','info'); return; }
+  if(eaHalted){ toast('EA halted — reset session first','info'); return; }
+  autoBot = !autoBot;
+  botRunning = autoBot;
+  const tog = document.getElementById('autoToggle');
+  const state = document.getElementById('autoState');
+  if(autoBot){
+    tog.className='auto-toggle on';
+    state.textContent='ON';
+    const acLabel = analysisCandleMode==='tick' ? 'TICK' : 'CANDLE·'+analysisCandleTF;
+    setBotStatus('⚡ Auto CRT active · '+tradeMode+' · '+v('cfgSymbol')+' · AC:'+acLabel,'running');
+    toast('Auto CRT bot ON','info');
+  } else {
+    tog.className='auto-toggle off';
+    state.textContent='OFF';
+    setBotStatus('Auto CRT stopped · Manual trade active','');
+    toast('Auto CRT bot OFF','info');
+  }
+}
+
+// ─── ENABLE / DISABLE TRADE BUTTONS ──────────────
+function enableTradeButtons(enabled){
+  document.getElementById('btnBuy').disabled  = !enabled;
+  document.getElementById('btnSell').disabled = !enabled;
+}
+
+// ─── SYMBOL CHANGE ────────────────────────────────
+document.addEventListener('DOMContentLoaded', ()=>{
+  const symSel = document.getElementById('cfgSymbol');
+  if(symSel){
+    symSel.addEventListener('change', ()=>{
+      if(ws && ws.readyState===1){
+        candles=[]; currentCandle=null; tickCount=0;
+        subscribeTicks(symSel.value);
+        toast('Switched to '+symSel.value,'info');
+      }
+    });
+  }
+});
+
+// ─── UI HELPERS ───────────────────────────────────
+function setDot(cls){ const d=document.getElementById('wsDot'); d.className='ws-dot '+(cls||''); }
+function setBotStatus(msg,cls){ const el=document.getElementById('botStatus'); el.textContent=msg; el.className='bot-status '+(cls||''); }
+
+function setMode(mode, el){
+  tradeMode = mode;
+  document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  if(autoBot){
+    const acLabel = analysisCandleMode==='tick' ? 'TICK' : 'CANDLE·'+analysisCandleTF;
+    setBotStatus('⚡ Auto CRT · '+tradeMode+' · '+v('cfgSymbol')+' · AC:'+acLabel,'running');
+  }
+  saveState();
+}
+
+function setDurType(type, el){
+  durType = type;
+  document.querySelectorAll('.dur-pill').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  const hints = {ticks:'e.g. 5 ticks',seconds:'e.g. 30 seconds',minutes:'e.g. 1 minute'};
+  document.getElementById('durHint').textContent = hints[type]||'';
+  saveState();
+}
+
+// ─── ANALYSIS CANDLE CONTROLS ─────────────────────
+function setAnalysisCandle(mode, el){
+  analysisCandleMode = mode;
+  document.querySelectorAll('.acndl-mode-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+
+  const tfRow = document.getElementById('acTfRow');
+  const badge = document.getElementById('acModeBadge');
+
+  if(mode === 'tick'){
+    tfRow.classList.remove('visible');
+    badge.textContent = 'TICK';
+    document.getElementById('tickerCandles').textContent = '0 ticks';
+    document.getElementById('candlesLbl').textContent = 'Ticks (cur)';
+  } else {
+    tfRow.classList.add('visible');
+    badge.textContent = 'CANDLE · '+analysisCandleTF.toUpperCase();
+    document.getElementById('tickerCandles').textContent = '0';
+    document.getElementById('candlesLbl').textContent = 'Candles';
+  }
+
+  // Full reset of candle buffer
+  candles = []; currentCandle = null; tickCount = 0;
+  toast('Analysis → '+(mode==='tick'?'TICK MODE (5-tick candles)':'CANDLE MODE · '+analysisCandleTF),'info');
+  saveState();
+}
+
+function setAnalysisTF(tf, el){
+  analysisCandleTF = tf;
+  document.querySelectorAll('.acndl-pill').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('acModeBadge').textContent = 'CANDLE · '+tf.toUpperCase();
+
+  // Full reset so new candles align to the new timeframe from now
+  candles = []; currentCandle = null; tickCount = 0;
+  document.getElementById('tickerCandles').textContent = '0';
+  toast('Timeframe → '+tf+' (candles align to clock boundaries)','info');
+  saveState();
+}
+
+// ─── TOAST ────────────────────────────────────────
+function toast(msg, type){
+  const c = document.getElementById('toast');
+  const el = document.createElement('div');
+  el.className = 'toast-item '+(type||'');
+  el.textContent = msg;
+  c.appendChild(el);
+  setTimeout(()=>{ el.style.opacity='0'; el.style.transition='opacity .5s'; setTimeout(()=>el.remove(),500); },3500);
+}
+
+// ─── AUTO REFRESH PERSISTENCE GUARD ───────────────
+window.addEventListener('beforeunload', saveState);
+
+// ─── TOKEN PERSISTENCE HELPERS ────────────────────
+// Tokens saved with "Remember Me" go to localStorage (survives browser close).
+// Tokens saved without go to sessionStorage (survives refresh only).
+const TOKEN_KEY  = 'crt_token';
+const SERVER_KEY = 'crt_server';
+const REMEMBER_KEY = 'crt_remember';
+
+function saveToken(token, server, remember){
+  if(remember){
+    localStorage.setItem(TOKEN_KEY,  token);
+    localStorage.setItem(SERVER_KEY, server);
+    localStorage.setItem(REMEMBER_KEY, '1');
+    // Clear session copy so there's no duplicate
+    sessionStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(SERVER_KEY);
+  } else {
+    sessionStorage.setItem(TOKEN_KEY,  token);
+    sessionStorage.setItem(SERVER_KEY, server);
+    // Clear persistent copy if user unchecked remember
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(SERVER_KEY);
+    localStorage.removeItem(REMEMBER_KEY);
+  }
+}
+
+function loadSavedToken(){
+  // Prefer localStorage (persistent remember-me) over sessionStorage
+  const lsToken  = localStorage.getItem(TOKEN_KEY);
+  const lsServer = localStorage.getItem(SERVER_KEY);
+  if(lsToken){
+    return { token: lsToken, server: lsServer, remember: true };
+  }
+  const ssToken  = sessionStorage.getItem(TOKEN_KEY);
+  const ssServer = sessionStorage.getItem(SERVER_KEY);
+  if(ssToken){
+    return { token: ssToken, server: ssServer, remember: false };
+  }
+  return null;
+}
+
+function clearSavedToken(){
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(SERVER_KEY);
+  localStorage.removeItem(REMEMBER_KEY);
+  sessionStorage.removeItem(TOKEN_KEY);
+  sessionStorage.removeItem(SERVER_KEY);
+}
+
+// ─── INIT ─────────────────────────────────────────
+window.addEventListener('load', ()=>{
+  const saved = loadSavedToken();
+  if(saved){
+    apiToken  = saved.token;
+    serverUrl = saved.server;
+    document.getElementById('apiTokenInput').value = saved.token;
+    const serverSel = document.getElementById('serverSelect');
+    if(saved.server) serverSel.value = saved.server;
+    // Pre-tick "Remember Me" if token came from localStorage
+    const rememberChk = document.getElementById('rememberMe');
+    if(rememberChk) rememberChk.checked = saved.remember;
+    // Auto-reconnect
+    setLoginStatus('Reconnecting…','');
+    document.getElementById('btnLogin').disabled = true;
+    connectWS(true);
+  }
+});
+
+// Wrap doLogin to persist token after successful login attempt
+const origDoLogin = doLogin;
+window.doLogin = function(){
+  const token  = document.getElementById('apiTokenInput').value.trim();
+  const server = document.getElementById('serverSelect').value;
+  const remember = document.getElementById('rememberMe')?.checked || false;
+  saveToken(token, server, remember);
+  origDoLogin();
+};
+
+const origDoLogout = doLogout;
+window.doLogout = function(){
+  origDoLogout();
+  clearSavedToken();
+};
+
+</script>
+</body>
+</html>
