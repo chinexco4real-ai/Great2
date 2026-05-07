@@ -426,15 +426,15 @@
           </div>
 
           <div class="ctrl-row">
-            <label>Max Total Loss ($)</label>
+            <label>Max Loss — Net P/L ($)</label>
             <input type="number" id="cfgSL" value="5.00" min="0" step="0.01"/>
-            <span class="hint">EA stops when cumulative loss hits this · 0 = disabled</span>
+            <span class="hint">EA stops when Net P/L drops to −this value · 0 = disabled</span>
           </div>
 
           <div class="ctrl-row">
-            <label>Max Total Profit ($)</label>
+            <label>Max Profit — Net P/L ($)</label>
             <input type="number" id="cfgTP" value="10.00" min="0" step="0.01"/>
-            <span class="hint">EA stops when cumulative profit hits this · 0 = disabled</span>
+            <span class="hint">EA stops when Net P/L reaches +this value · 0 = disabled</span>
           </div>
 
           <div class="section-div"></div>
@@ -633,6 +633,36 @@
                 </div>
               </div>
             </div>
+
+            <!-- Filter 4: Support / Resistance Zone -->
+            <div class="filter-item" id="fi4">
+              <div class="filter-toggle-row" onclick="toggleFilter(4)">
+                <span class="f-name">
+                  <span class="f-badge">F4</span>
+                  Support / Resistance Zone
+                </span>
+                <label class="filter-switch" onclick="event.stopPropagation()">
+                  <input type="checkbox" id="fZoneEnabled" onchange="onFilterChange(4,this.checked)"/>
+                  <span class="filter-slider"></span>
+                </label>
+              </div>
+              <div class="filter-desc">
+                <div class="ctrl-row" style="margin-bottom:7px;">
+                  <label style="font-size:11px;letter-spacing:1px;">Zone Lookback (candles)</label>
+                  <input type="number" id="cfgZoneLookback" value="50" min="5" max="300" style="font-size:12px;padding:6px 9px;"/>
+                  <span class="hint" style="font-size:10px;">Candles scanned for swing highs/lows</span>
+                </div>
+                <div class="ctrl-row" style="margin-bottom:7px;">
+                  <label style="font-size:11px;letter-spacing:1px;">Zone Tolerance (%)</label>
+                  <input type="number" id="cfgZoneTolerance" value="0.30" min="0.01" max="5" step="0.01" style="font-size:12px;padding:6px 9px;"/>
+                  <span class="hint" style="font-size:10px;">e.g. 0.30% → at price 1000 = within 3 pts of zone</span>
+                </div>
+                <div class="f-rule">
+                  <span class="buy-txt">▲ BUY:</span> Signal candle low within tolerance of a swing support — price rejecting from below<br>
+                  <span class="sell-txt">▼ SELL:</span> Signal candle high within tolerance of a swing resistance — price rejecting from above
+                </div>
+              </div>
+            </div>
           </div>
 
           <div class="bot-status" id="botStatus">Connect wallet — then BUY / SELL or enable Auto CRT.</div>
@@ -812,6 +842,7 @@ let subscriptionId = null;
 let filterEmaEnabled     = false;   // Filter 1: EMA Wick-Cross
 let filterCandleClose    = false;   // Filter 2: Signal candle direction
 let filterCandle2        = false;   // Filter 3: Range candle direction
+let filterZoneEnabled    = false;   // Filter 4: Support/Resistance zone rejection
 
 // Running EMA value — recalculated on every new closed candle
 let emaValue = null;
@@ -986,7 +1017,7 @@ function fireTradeTime(){
 
 // ─── FILTER UI HELPERS ────────────────────────────
 function toggleFilter(n){
-  const ids = {1:'fEmaEnabled', 2:'fCandleCloseEnabled', 3:'fCandle2Enabled'};
+  const ids = {1:'fEmaEnabled', 2:'fCandleCloseEnabled', 3:'fCandle2Enabled', 4:'fZoneEnabled'};
   const chk = document.getElementById(ids[n]);
   chk.checked = !chk.checked;
   onFilterChange(n, chk.checked);
@@ -999,13 +1030,39 @@ function onFilterChange(n, enabled){
   if(n===1) filterEmaEnabled  = enabled;
   if(n===2) filterCandleClose = enabled;
   if(n===3) filterCandle2     = enabled;
-  const names = {1:'EMA Wick-Cross', 2:'Candle Close', 3:'Candle 2 (Range)'};
+  if(n===4) filterZoneEnabled = enabled;
+  const names = {1:'EMA Wick-Cross', 2:'Candle Close', 3:'Candle 2 (Range)', 4:'Support/Resistance Zone'};
   toast('Filter '+(enabled?'ON':'OFF')+' — '+names[n], 'info');
   saveState();
 }
 
 
-// ─── CONTRACT → LOG MAP ───────────────────────────
+// ─── SUPPORT / RESISTANCE ZONE DETECTION ─────────
+// Scans the last `lookback` closed candles (before the signal candle index)
+// for swing lows (support) and swing highs (resistance).
+// A swing low  = candle whose low  is lower  than both neighbours.
+// A swing high = candle whose high is higher than both neighbours.
+// Returns { supports: [...prices], resistances: [...prices] }
+function detectZones(candleArr, signalIndex, lookback){
+  const supports = [], resistances = [];
+  const start = Math.max(1, signalIndex - lookback);
+  const end   = signalIndex - 1; // exclude signal candle itself
+  for(let i = start; i <= end; i++){
+    const prev = candleArr[i - 1];
+    const cur  = candleArr[i];
+    const next = candleArr[i + 1];
+    if(!prev || !cur || !next) continue;
+    if(cur.low  < prev.low  && cur.low  < next.low)  supports.push(cur.low);
+    if(cur.high > prev.high && cur.high > next.high) resistances.push(cur.high);
+  }
+  return { supports, resistances };
+}
+
+// Returns true if `price` is within `tolerancePct`% of any level in `levels`
+function nearZone(price, levels, tolerancePct){
+  const tol = price * (tolerancePct / 100);
+  return levels.some(lvl => Math.abs(price - lvl) <= tol);
+}
 // Populated immediately in handleBuyResponse.
 // Used by handleContractUpdate to find the log entry
 // without relying on poc.passthrough (which Deriv does NOT echo on POC messages).
@@ -1017,7 +1074,8 @@ function saveState(){
     const s = {
       tradeMode, durType, tradeLog, stats, candles: candles.slice(-100),
       analysisCandleMode, analysisCandleTF,
-      filters: { ema: filterEmaEnabled, candleClose: filterCandleClose, candle2: filterCandle2, emaPeriod: v('cfgEmaPeriod') },
+      filters: { ema: filterEmaEnabled, candleClose: filterCandleClose, candle2: filterCandle2, emaPeriod: v('cfgEmaPeriod'),
+                 zone: filterZoneEnabled, zoneLookback: v('cfgZoneLookback'), zoneTolerance: v('cfgZoneTolerance') },
       tradeTime: { enabled: tradeTimeEnabled, time: tradeTimeValue, optAuto: ttOptAutoTrade, optRev: ttOptReverse, lastFiredDate: ttLastFiredDate },
       cfg: {
         symbol: v('cfgSymbol'), minRange: v('cfgMinRange'), maxPos: v('cfgMaxPos'),
@@ -1090,6 +1148,13 @@ function loadState(){
         if(chk3){ chk3.checked = filterCandle2; onFilterChange(3, filterCandle2); }
       }
       if(s.filters.emaPeriod !== undefined) setVal('cfgEmaPeriod', s.filters.emaPeriod);
+      if(s.filters.zone !== undefined){
+        filterZoneEnabled = !!s.filters.zone;
+        const chk4 = document.getElementById('fZoneEnabled');
+        if(chk4){ chk4.checked = filterZoneEnabled; onFilterChange(4, filterZoneEnabled); }
+      }
+      if(s.filters.zoneLookback  !== undefined) setVal('cfgZoneLookback',  s.filters.zoneLookback);
+      if(s.filters.zoneTolerance !== undefined) setVal('cfgZoneTolerance', s.filters.zoneTolerance);
     }
     // Restore Trade Time settings
     if(s.tradeTime){
@@ -1544,6 +1609,25 @@ function onNewCandle(){
     if(isBearish) isBearish = (range.close < range.open);     // range candle must be bearish
   }
 
+  // ── LAYER 5: FILTER 4 — SUPPORT / RESISTANCE ZONE REJECTION ──
+  // BUY:  signal candle low must be within tolerance of a detected support level
+  // SELL: signal candle high must be within tolerance of a detected resistance level
+  if(filterZoneEnabled && (isBullish || isBearish)){
+    const lookback  = Math.max(5, parseInt(v('cfgZoneLookback'))  || 50);
+    const tolerance = Math.max(0.01, parseFloat(v('cfgZoneTolerance')) || 0.30);
+    const signalIdx = candles.length - 1; // last closed candle
+    const { supports, resistances } = detectZones(candles, signalIdx, lookback);
+
+    if(isBullish){
+      // Price must be rejecting off a support — signal.low near a swing low
+      isBullish = nearZone(signal.low, supports, tolerance);
+    }
+    if(isBearish){
+      // Price must be rejecting off a resistance — signal.high near a swing high
+      isBearish = nearZone(signal.high, resistances, tolerance);
+    }
+  }
+
   const symbol = v('cfgSymbol');
 
   if(isBullish && (tradeMode==='BUY_ONLY'||tradeMode==='BOTH')){
@@ -1941,11 +2025,13 @@ function checkSessionLimits(){
 
   let haltReason = '';
 
-  if(slAmt > 0 && stats.totalLoss >= slAmt){
-    haltReason = '🛑 MAX LOSS $'+slAmt.toFixed(2)+' REACHED — EA HALTED';
+  // Max Loss: EA halts when Net P/L drops to -slAmt (net loss equals or exceeds limit)
+  if(slAmt > 0 && netProfit <= -slAmt){
+    haltReason = '🛑 MAX LOSS −$'+slAmt.toFixed(2)+' NET P/L REACHED — EA HALTED';
   }
+  // Max Profit: EA halts when Net P/L reaches or exceeds +tpAmt
   if(tpAmt > 0 && netProfit >= tpAmt){
-    haltReason = '🎯 TARGET PROFIT $'+tpAmt.toFixed(2)+' REACHED — EA HALTED';
+    haltReason = '🎯 TARGET PROFIT +$'+tpAmt.toFixed(2)+' NET P/L REACHED — EA HALTED';
   }
 
   if(haltReason && !eaHalted){
