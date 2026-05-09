@@ -653,13 +653,14 @@
                   <span class="hint" style="font-size:10px;">Candles scanned for swing highs/lows</span>
                 </div>
                 <div class="ctrl-row" style="margin-bottom:7px;">
-                  <label style="font-size:11px;letter-spacing:1px;">Zone Tolerance (%)</label>
-                  <input type="number" id="cfgZoneTolerance" value="0.30" min="0.01" max="5" step="0.01" style="font-size:12px;padding:6px 9px;"/>
-                  <span class="hint" style="font-size:10px;">e.g. 0.30% → at price 1000 = within 3 pts of zone</span>
+                  <label style="font-size:11px;letter-spacing:1px;">Zone Tolerance (× ATR)</label>
+                  <input type="number" id="cfgZoneTolerance" value="0.50" min="0.1" max="10" step="0.05" style="font-size:12px;padding:6px 9px;"/>
+                  <span class="hint" style="font-size:10px;">ATR multiplier — 0.5 = within half an ATR of zone level</span>
                 </div>
                 <div class="f-rule">
-                  <span class="buy-txt">▲ BUY:</span> Signal candle low within tolerance of a swing support — price rejecting from below<br>
-                  <span class="sell-txt">▼ SELL:</span> Signal candle high within tolerance of a swing resistance — price rejecting from above
+                  <span class="buy-txt">▲ BUY:</span> Signal candle low within ATR tolerance of a swing support — price rejecting from below<br>
+                  <span class="sell-txt">▼ SELL:</span> Signal candle high within ATR tolerance of a swing resistance — price rejecting from above<br>
+                  <span style="color:var(--muted);font-size:10px;">Swings use 2-bar confirmation · nearby levels auto-clustered</span>
                 </div>
               </div>
             </div>
@@ -1038,29 +1039,100 @@ function onFilterChange(n, enabled){
 
 
 // ─── SUPPORT / RESISTANCE ZONE DETECTION ─────────
-// Scans the last `lookback` closed candles (before the signal candle index)
-// for swing lows (support) and swing highs (resistance).
-// A swing low  = candle whose low  is lower  than both neighbours.
-// A swing high = candle whose high is higher than both neighbours.
-// Returns { supports: [...prices], resistances: [...prices] }
-function detectZones(candleArr, signalIndex, lookback){
-  const supports = [], resistances = [];
-  const start = Math.max(1, signalIndex - lookback);
-  const end   = signalIndex - 1; // exclude signal candle itself
+// Scans closed candles BEFORE the signal candle for swing pivots.
+//
+// Swing confirmation: a candle at index i is a swing low/high only if
+// the STRENGTH candles on each side all have higher lows / lower highs.
+// strength=2 is the default — far more reliable than single-neighbour.
+//
+// Zones are clustered: levels within clusterPct% of each other are merged
+// into one representative level (the mean), eliminating duplicate noise.
+//
+// signalIndex = index of the *signal* candle (candles.length - 1).
+// The scan covers [ signalIndex - lookback , signalIndex - 1 ] exclusively.
+// The strength window never reaches into the signal candle itself.
+function detectZones(candleArr, signalIndex, lookback, strength, clusterPct){
+  strength   = strength   || 2;
+  clusterPct = clusterPct || 0.5;   // merge zones within 0.5% of each other
+
+  const rawSupports = [], rawResistances = [];
+
+  // Exclude the signal candle and leave `strength` candles of right-side buffer
+  const end   = signalIndex - 1 - strength;
+  const start = Math.max(strength, signalIndex - lookback);
+
   for(let i = start; i <= end; i++){
-    const prev = candleArr[i - 1];
-    const cur  = candleArr[i];
-    const next = candleArr[i + 1];
-    if(!prev || !cur || !next) continue;
-    if(cur.low  < prev.low  && cur.low  < next.low)  supports.push(cur.low);
-    if(cur.high > prev.high && cur.high > next.high) resistances.push(cur.high);
+    const cur = candleArr[i];
+    if(!cur) continue;
+
+    // Check `strength` candles on left and right
+    let isSwingLow = true, isSwingHigh = true;
+    for(let d = 1; d <= strength; d++){
+      const left  = candleArr[i - d];
+      const right = candleArr[i + d];
+      if(!left || !right){ isSwingLow = false; isSwingHigh = false; break; }
+      if(left.low  <= cur.low  || right.low  <= cur.low)  isSwingLow  = false;
+      if(left.high >= cur.high || right.high >= cur.high) isSwingHigh = false;
+    }
+    if(isSwingLow)  rawSupports.push(cur.low);
+    if(isSwingHigh) rawResistances.push(cur.high);
   }
-  return { supports, resistances };
+
+  // Cluster merge: sort → walk → average nearby levels
+  function clusterLevels(levels){
+    if(levels.length === 0) return [];
+    levels.sort((a,b) => a - b);
+    const out = [];
+    let group = [levels[0]];
+    for(let k = 1; k < levels.length; k++){
+      const mid = group.reduce((s,v)=>s+v,0)/group.length;
+      if(Math.abs(levels[k] - mid) / mid * 100 <= clusterPct){
+        group.push(levels[k]);
+      } else {
+        out.push(group.reduce((s,v)=>s+v,0)/group.length);
+        group = [levels[k]];
+      }
+    }
+    out.push(group.reduce((s,v)=>s+v,0)/group.length);
+    return out;
+  }
+
+  return {
+    supports:    clusterLevels(rawSupports),
+    resistances: clusterLevels(rawResistances)
+  };
 }
 
-// Returns true if `price` is within `tolerancePct`% of any level in `levels`
-function nearZone(price, levels, tolerancePct){
-  const tol = price * (tolerancePct / 100);
+// ─── ATR-AWARE PROXIMITY CHECK ────────────────────
+// Computes a simple ATR over the last atrPeriod candles before signalIndex,
+// then checks whether `price` is within (tolerancePct / 100 * ATR) of any level.
+// Fallback: if ATR can't be computed, uses tolerancePct% of price directly.
+function calcATR(candleArr, signalIndex, period){
+  period = period || 14;
+  const end = signalIndex - 1;
+  const start = Math.max(1, end - period + 1);
+  let sum = 0, count = 0;
+  for(let i = start; i <= end; i++){
+    const cur  = candleArr[i];
+    const prev = candleArr[i - 1];
+    if(!cur || !prev) continue;
+    const tr = Math.max(
+      cur.high - cur.low,
+      Math.abs(cur.high - prev.close),
+      Math.abs(cur.low  - prev.close)
+    );
+    sum += tr; count++;
+  }
+  return count > 0 ? sum / count : null;
+}
+
+// toleranceMultiplier: how many ATRs away counts as "near the zone"
+// e.g. 0.5 = within half an ATR of the level
+function nearZoneATR(price, levels, atr, toleranceMultiplier){
+  if(!levels || levels.length === 0) return false;
+  const tol = atr !== null
+    ? atr * toleranceMultiplier
+    : price * (toleranceMultiplier / 100);   // fallback: treat as %
   return levels.some(lvl => Math.abs(price - lvl) <= tol);
 }
 // Populated immediately in handleBuyResponse.
@@ -1610,21 +1682,21 @@ function onNewCandle(){
   }
 
   // ── LAYER 5: FILTER 4 — SUPPORT / RESISTANCE ZONE REJECTION ──
-  // BUY:  signal candle low must be within tolerance of a detected support level
-  // SELL: signal candle high must be within tolerance of a detected resistance level
+  // BUY:  signal.low  must be within ATR-based tolerance of a clustered support level
+  // SELL: signal.high must be within ATR-based tolerance of a clustered resistance level
   if(filterZoneEnabled && (isBullish || isBearish)){
-    const lookback  = Math.max(5, parseInt(v('cfgZoneLookback'))  || 50);
-    const tolerance = Math.max(0.01, parseFloat(v('cfgZoneTolerance')) || 0.30);
-    const signalIdx = candles.length - 1; // last closed candle
-    const { supports, resistances } = detectZones(candles, signalIdx, lookback);
+    const lookback   = Math.max(10, parseInt(v('cfgZoneLookback'))   || 50);
+    const tolMult    = Math.max(0.1, parseFloat(v('cfgZoneTolerance')) || 0.5);
+    const signalIdx  = candles.length - 1;
+
+    const atr = calcATR(candles, signalIdx, 14);
+    const { supports, resistances } = detectZones(candles, signalIdx, lookback, 2, 0.5);
 
     if(isBullish){
-      // Price must be rejecting off a support — signal.low near a swing low
-      isBullish = nearZone(signal.low, supports, tolerance);
+      isBullish = nearZoneATR(signal.low,  supports,    atr, tolMult);
     }
     if(isBearish){
-      // Price must be rejecting off a resistance — signal.high near a swing high
-      isBearish = nearZone(signal.high, resistances, tolerance);
+      isBearish = nearZoneATR(signal.high, resistances, atr, tolMult);
     }
   }
 
