@@ -80,6 +80,16 @@
   .btn-logout{background:rgba(255,61,90,.12);border:1px solid rgba(255,61,90,.5);color:#ff6b85;padding:8px 18px;border-radius:7px;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:13px;cursor:pointer;letter-spacing:1px;transition:all .2s;}
   .btn-logout:hover{background:rgba(255,61,90,.22);border-color:var(--red);color:var(--red);}
 
+  /* ─── CURRENCY BADGE ─── */
+  .currency-badge{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:20px;font-family:'Orbitron',sans-serif;font-size:11px;font-weight:700;letter-spacing:1.5px;border:1px solid;cursor:default;transition:all .3s;}
+  .currency-badge.type-fiat  {background:rgba(45,139,255,.12);border-color:rgba(45,139,255,.5);color:#6ab5ff;}
+  .currency-badge.type-stable{background:rgba(0,230,118,.10);border-color:rgba(0,230,118,.45);color:#00e676;}
+  .currency-badge.type-crypto{background:rgba(245,197,24,.12);border-color:rgba(245,197,24,.5);color:#f5c518;}
+  .currency-type-badge{font-size:9px;letter-spacing:2px;padding:2px 7px;border-radius:10px;font-weight:800;text-transform:uppercase;}
+  .currency-type-badge.type-fiat  {background:rgba(45,139,255,.15);color:#6ab5ff;}
+  .currency-type-badge.type-stable{background:rgba(0,230,118,.15);color:#00e676;}
+  .currency-type-badge.type-crypto{background:rgba(245,197,24,.15);color:#f5c518;}
+
   /* ─── MAIN LAYOUT — desktop-first ─── */
   .main-grid{display:grid;grid-template-columns:var(--panel-w) 1fr var(--panel-w);gap:18px;padding:18px 20px;flex:1;align-items:start;max-width:1800px;margin:0 auto;width:100%;}
 
@@ -368,8 +378,10 @@
       </div>
       <div class="acct-info">
         <div class="name" id="hdrName">—</div>
-        <div class="bal" id="hdrBal">$0.00</div>
+        <div class="bal" id="hdrBal">0.00</div>
       </div>
+      <!-- Dynamic currency badge — updated on authorize -->
+      <span class="currency-badge type-fiat" id="currencyBadge" title="Account Currency">🇺🇸 USD</span>
       <span class="ws-dot" id="wsDot"></span>
       <button class="btn-logout" onclick="doLogout()">⏻ LOGOUT</button>
     </div>
@@ -570,26 +582,44 @@
           <div class="filter-section">
             <div class="section-lbl">⚗ Signal Filters</div>
 
-            <!-- Filter 1: EMA Wick-Cross -->
+            <!-- Filter 1: Dynamic Bollinger Band Wick-Cross -->
             <div class="filter-item" id="fi1">
               <div class="filter-toggle-row" onclick="toggleFilter(1)">
                 <span class="f-name">
                   <span class="f-badge">F1</span>
-                  EMA Wick-Cross
+                  Bollinger Band Wick-Cross
+                  <span style="font-size:9px;letter-spacing:1.5px;color:var(--accent2);margin-left:5px;font-family:'Share Tech Mono',monospace;">DYNAMIC</span>
                 </span>
                 <label class="filter-switch" onclick="event.stopPropagation()">
-                  <input type="checkbox" id="fEmaEnabled" onchange="onFilterChange(1,this.checked)"/>
+                  <input type="checkbox" id="fBBEnabled" onchange="onFilterChange(1,this.checked)"/>
                   <span class="filter-slider"></span>
                 </label>
               </div>
               <div class="filter-desc">
                 <div class="ctrl-row" style="margin-bottom:7px;">
-                  <label style="font-size:11px;letter-spacing:1px;">EMA Period</label>
-                  <input type="number" id="cfgEmaPeriod" value="50" min="1" max="500" style="font-size:12px;padding:6px 9px;"/>
+                  <label style="font-size:11px;letter-spacing:1px;">BB Period</label>
+                  <input type="number" id="cfgBBPeriod" value="20" min="2" max="500" style="font-size:12px;padding:6px 9px;"/>
+                  <span class="hint" style="font-size:10px;">Base SMA lookback (auto-adjusts to candle count)</span>
+                </div>
+                <div class="ctrl-row" style="margin-bottom:7px;">
+                  <label style="font-size:11px;letter-spacing:1px;">Base Std Dev (σ)</label>
+                  <input type="number" id="cfgBBStdDev" value="2.0" min="0.5" max="5" step="0.1" style="font-size:12px;padding:6px 9px;"/>
+                  <span class="hint" style="font-size:10px;">Starting multiplier — scales up with volatility</span>
+                </div>
+                <div class="ctrl-row" style="margin-bottom:7px;">
+                  <label style="font-size:11px;letter-spacing:1px;">Max Std Dev Cap (σ)</label>
+                  <input type="number" id="cfgBBMaxMult" value="4.0" min="1.0" max="10" step="0.1" style="font-size:12px;padding:6px 9px;"/>
+                  <span class="hint" style="font-size:10px;">Hard ceiling on adaptive multiplier · prevent over-expansion</span>
+                </div>
+                <div class="ctrl-row" style="margin-bottom:7px;">
+                  <label style="font-size:11px;letter-spacing:1px;">Volatility Lookback</label>
+                  <input type="number" id="cfgBBVolLookback" value="50" min="5" max="300" style="font-size:12px;padding:6px 9px;"/>
+                  <span class="hint" style="font-size:10px;">Candles used to measure baseline volatility for scaling</span>
                 </div>
                 <div class="f-rule">
-                  <span class="buy-txt">▲ BUY:</span> Body fully above EMA · lower wick crosses below<br>
-                  <span class="sell-txt">▼ SELL:</span> Body fully below EMA · upper wick crosses above
+                  <span class="buy-txt">▲ BUY:</span> Body fully above Lower Band · lower wick crosses below Lower Band<br>
+                  <span class="sell-txt">▼ SELL:</span> Body fully below Upper Band · upper wick crosses above Upper Band<br>
+                  <span style="color:var(--accent2);font-size:10px;font-family:'Share Tech Mono',monospace;">σ auto-scales with live ATR ratio — wider on spikes, tighter in calm</span>
                 </div>
               </div>
             </div>
@@ -634,36 +664,6 @@
               </div>
             </div>
 
-            <!-- Filter 4: Support / Resistance Zone -->
-            <div class="filter-item" id="fi4">
-              <div class="filter-toggle-row" onclick="toggleFilter(4)">
-                <span class="f-name">
-                  <span class="f-badge">F4</span>
-                  Support / Resistance Zone
-                </span>
-                <label class="filter-switch" onclick="event.stopPropagation()">
-                  <input type="checkbox" id="fZoneEnabled" onchange="onFilterChange(4,this.checked)"/>
-                  <span class="filter-slider"></span>
-                </label>
-              </div>
-              <div class="filter-desc">
-                <div class="ctrl-row" style="margin-bottom:7px;">
-                  <label style="font-size:11px;letter-spacing:1px;">Zone Lookback (candles)</label>
-                  <input type="number" id="cfgZoneLookback" value="50" min="5" max="300" style="font-size:12px;padding:6px 9px;"/>
-                  <span class="hint" style="font-size:10px;">Candles scanned for swing highs/lows</span>
-                </div>
-                <div class="ctrl-row" style="margin-bottom:7px;">
-                  <label style="font-size:11px;letter-spacing:1px;">Zone Tolerance (× ATR)</label>
-                  <input type="number" id="cfgZoneTolerance" value="0.50" min="0.1" max="10" step="0.05" style="font-size:12px;padding:6px 9px;"/>
-                  <span class="hint" style="font-size:10px;">ATR multiplier — 0.5 = within half an ATR of zone level</span>
-                </div>
-                <div class="f-rule">
-                  <span class="buy-txt">▲ BUY:</span> Signal candle low within ATR tolerance of a swing support — price rejecting from below<br>
-                  <span class="sell-txt">▼ SELL:</span> Signal candle high within ATR tolerance of a swing resistance — price rejecting from above<br>
-                  <span style="color:var(--muted);font-size:10px;">Swings use 2-bar confirmation · nearby levels auto-clustered</span>
-                </div>
-              </div>
-            </div>
           </div>
 
           <div class="bot-status" id="botStatus">Connect wallet — then BUY / SELL or enable Auto CRT.</div>
@@ -748,8 +748,12 @@
 
           <div class="section-div"></div>
           <div class="section-lbl">Account</div>
-          <div class="pnl-row"><span class="k">Balance</span><span class="v" id="sBalance" style="color:var(--green);">$0.00</span></div>
-          <div class="pnl-row"><span class="k">Currency</span><span class="v" id="sCurrency">—</span></div>
+          <div class="pnl-row"><span class="k">Balance</span><span class="v" id="sBalance" data-raw="0" style="color:var(--green);">0.00</span></div>
+          <div class="pnl-row" style="align-items:flex-start;flex-direction:column;gap:4px;">
+            <span class="k">Currency</span>
+            <span class="v" id="sCurrency" style="display:flex;align-items:center;gap:6px;">—</span>
+            <span class="currency-type-badge type-fiat" id="sCurrencyType">FIAT</span>
+          </div>
           <div class="pnl-row"><span class="k">Login ID</span><span class="v" id="sLoginId" style="color:#8ba4cc;">—</span></div>
         </div>
       </div>
@@ -769,6 +773,63 @@
 
 const STORAGE_KEY = 'crt_ea_state';
 let ws = null;
+
+// ─── CURRENCY REGISTRY ─────────────────────────────
+const CURRENCY_META = {
+  USD : { symbol:'$',   decimals:2, icon:'🇺🇸', type:'fiat',   label:'US Dollar'        },
+  EUR : { symbol:'€',   decimals:2, icon:'🇪🇺', type:'fiat',   label:'Euro'             },
+  GBP : { symbol:'£',   decimals:2, icon:'🇬🇧', type:'fiat',   label:'British Pound'    },
+  AUD : { symbol:'A$',  decimals:2, icon:'🇦🇺', type:'fiat',   label:'Australian Dollar'},
+  USDT: { symbol:'₮',   decimals:2, icon:'💵', type:'stable', label:'Tether USDT'      },
+  USDC: { symbol:'$',   decimals:2, icon:'💵', type:'stable', label:'USD Coin'         },
+  eUSDT:{ symbol:'₮',  decimals:2, icon:'💵', type:'stable', label:'eUSDT (TRC-20)'   },
+  BTC : { symbol:'₿',   decimals:8, icon:'🟠', type:'crypto', label:'Bitcoin'          },
+  ETH : { symbol:'Ξ',   decimals:8, icon:'🔷', type:'crypto', label:'Ethereum'         },
+  LTC : { symbol:'Ł',   decimals:8, icon:'⚪', type:'crypto', label:'Litecoin'         },
+  XRP : { symbol:'✕',   decimals:6, icon:'🔵', type:'crypto', label:'Ripple XRP'       },
+  UST : { symbol:'$',   decimals:2, icon:'💵', type:'stable', label:'TerraUSD'         },
+};
+
+let accountCurrency = 'USD';
+
+function fmtAmount(amount, currency){
+  const code = (currency || accountCurrency || 'USD').toUpperCase();
+  const meta = CURRENCY_META[code] || { symbol: code+' ', decimals:2 };
+  const num  = parseFloat(amount) || 0;
+  return meta.symbol + Math.abs(num).toFixed(meta.decimals);
+}
+
+function fmtSigned(amount, currency){
+  const num = parseFloat(amount) || 0;
+  const prefix = num >= 0 ? '+' : '-';
+  return prefix + fmtAmount(Math.abs(num), currency);
+}
+
+function getCurrencyMeta(currency){
+  const code = (currency || accountCurrency || 'USD').toUpperCase();
+  return CURRENCY_META[code] || { symbol: code+' ', decimals:2, icon:'💱', type:'fiat', label: code };
+}
+
+function applyCurrencyToUI(){
+  const meta = getCurrencyMeta(accountCurrency);
+  const badge = document.getElementById('currencyBadge');
+  if(badge){
+    badge.textContent = meta.icon + '\u2009' + accountCurrency;
+    badge.className   = 'currency-badge type-' + meta.type;
+    badge.title       = meta.label;
+  }
+  const statCurr = document.getElementById('sCurrency');
+  if(statCurr){
+    statCurr.innerHTML = '<span style="font-size:15px;">' + meta.icon + '</span> ' +
+      '<strong>' + accountCurrency + '</strong>' +
+      ' <span style="color:var(--muted);font-size:11px;">' + meta.label + '</span>';
+  }
+  const typeEl = document.getElementById('sCurrencyType');
+  if(typeEl){
+    typeEl.textContent = meta.type.toUpperCase();
+    typeEl.className = 'currency-type-badge type-' + meta.type;
+  }
+}
 
 // ─── SESSION TIMER ─────────────────────────────────
 let sessionStartTime = null;
@@ -840,13 +901,87 @@ let tickCount = 0;
 let subscriptionId = null;
 
 // ─── SIGNAL FILTER STATE ──────────────────────────
-let filterEmaEnabled     = false;   // Filter 1: EMA Wick-Cross
+let filterBBEnabled      = false;   // Filter 1: Bollinger Band Wick-Cross
 let filterCandleClose    = false;   // Filter 2: Signal candle direction
 let filterCandle2        = false;   // Filter 3: Range candle direction
-let filterZoneEnabled    = false;   // Filter 4: Support/Resistance zone rejection
 
 // Running EMA value — recalculated on every new closed candle
-let emaValue = null;
+let bbValue = { upper: null, lower: null, mid: null };
+
+// ─── DYNAMIC BOLLINGER BAND ────────────────────────
+// Standard BB uses a fixed σ multiplier — on synthetic indices
+// (Boom/Crash/Volatility) sudden spikes make fixed bands useless:
+// either always touched or never touched.
+//
+// Dynamic BB adapts the multiplier in real time:
+//   1. Compute ATR of the last `period` candles  → "current volatility"
+//   2. Compute ATR of the last `volLookback` candles → "baseline volatility"
+//   3. volatility ratio = currentATR / baselineATR
+//   4. adaptiveMult = baseMult × ratio   (capped at maxMult)
+//      → spike: ratio > 1 → bands widen  → fewer false signals
+//      → calm : ratio < 1 → bands tighten → more responsive signals
+//   5. Period also clamps to available candle count so early bars work.
+//
+// Returns { upper, lower, mid, mult } or null if insufficient data.
+function calcBB(candleArr, period, baseMult, maxMult, volLookback){
+  period      = Math.max(2,  period      || 20);
+  baseMult    = Math.max(0.5,baseMult    || 2.0);
+  maxMult     = Math.max(baseMult, maxMult || 4.0);
+  volLookback = Math.max(period, volLookback || 50);
+
+  const n = candleArr.length;
+  if(n < 2) return null;
+
+  // Clamp period to available candles (graceful start-up)
+  const p = Math.min(period, n);
+
+  // ── Middle band: SMA of last p closes ──
+  const slice = candleArr.slice(-p);
+  const mid   = slice.reduce((s, cd) => s + cd.close, 0) / p;
+
+  // ── Standard deviation of last p closes ──
+  const variance = slice.reduce((s, cd) => s + Math.pow(cd.close - mid, 2), 0) / p;
+  const stdDev   = Math.sqrt(variance);
+
+  // ── ATR helper (true range average) ──
+  function atrOf(arr){
+    let sum = 0, cnt = 0;
+    for(let i = 1; i < arr.length; i++){
+      const cur  = arr[i];
+      const prev = arr[i - 1];
+      const tr   = Math.max(
+        cur.high - cur.low,
+        Math.abs(cur.high - prev.close),
+        Math.abs(cur.low  - prev.close)
+      );
+      sum += tr; cnt++;
+    }
+    return cnt > 0 ? sum / cnt : 0;
+  }
+
+  // ── Current ATR (short window = last p candles) ──
+  const shortSlice    = candleArr.slice(-p);
+  const currentATR    = atrOf(shortSlice);
+
+  // ── Baseline ATR (long window = last volLookback candles) ──
+  const longLen       = Math.min(volLookback, n);
+  const longSlice     = candleArr.slice(-longLen);
+  const baselineATR   = atrOf(longSlice);
+
+  // ── Adaptive multiplier ──
+  let adaptiveMult = baseMult;
+  if(baselineATR > 0 && currentATR > 0){
+    const ratio  = currentATR / baselineATR;
+    adaptiveMult = Math.min(maxMult, Math.max(0.5, baseMult * ratio));
+  }
+
+  return {
+    mid,
+    upper: mid + stdDev * adaptiveMult,
+    lower: mid - stdDev * adaptiveMult,
+    mult:  adaptiveMult   // exposed for debugging
+  };
+}
 
 // ─── TRADE TIME SCHEDULER STATE ──────────────────
 let tradeTimeEnabled   = false;   // master enable
@@ -857,22 +992,7 @@ let ttCountdownTimer   = null;    // setInterval ref
 let ttFiredToday       = false;   // guard — fire once per calendar day
 let ttLastFiredDate    = '';      // 'YYYY-MM-DD' of last fire
 
-// ─── EMA CALCULATION ──────────────────────────────
-// Standard exponential moving average on close prices.
-// Seeded from SMA of the first `period` candles.
-function calcEMA(candleArr, period){
-  if(!candleArr || candleArr.length < period) return null;
-  period = Math.max(1, period);
-  const closes = candleArr.map(c => c.close);
-  let sum = 0;
-  for(let i = 0; i < period; i++) sum += closes[i];
-  let ema = sum / period;
-  const k = 2 / (period + 1);
-  for(let i = period; i < closes.length; i++){
-    ema = closes[i] * k + ema * (1 - k);
-  }
-  return ema;
-}
+
 
 // ─── TRADE TIME SCHEDULER LOGIC ──────────────────
 
@@ -1018,7 +1138,7 @@ function fireTradeTime(){
 
 // ─── FILTER UI HELPERS ────────────────────────────
 function toggleFilter(n){
-  const ids = {1:'fEmaEnabled', 2:'fCandleCloseEnabled', 3:'fCandle2Enabled', 4:'fZoneEnabled'};
+  const ids = {1:'fBBEnabled', 2:'fCandleCloseEnabled', 3:'fCandle2Enabled'};
   const chk = document.getElementById(ids[n]);
   chk.checked = !chk.checked;
   onFilterChange(n, chk.checked);
@@ -1028,113 +1148,16 @@ function onFilterChange(n, enabled){
   const el = document.getElementById('fi'+n);
   if(enabled) el.classList.add('enabled');
   else         el.classList.remove('enabled');
-  if(n===1) filterEmaEnabled  = enabled;
+  if(n===1) filterBBEnabled   = enabled;
   if(n===2) filterCandleClose = enabled;
   if(n===3) filterCandle2     = enabled;
-  if(n===4) filterZoneEnabled = enabled;
-  const names = {1:'EMA Wick-Cross', 2:'Candle Close', 3:'Candle 2 (Range)', 4:'Support/Resistance Zone'};
+  const names = {1:'Bollinger Band Wick-Cross', 2:'Candle Close', 3:'Candle 2 (Range)'};
   toast('Filter '+(enabled?'ON':'OFF')+' — '+names[n], 'info');
   saveState();
 }
 
 
-// ─── SUPPORT / RESISTANCE ZONE DETECTION ─────────
-// Scans closed candles BEFORE the signal candle for swing pivots.
-//
-// Swing confirmation: a candle at index i is a swing low/high only if
-// the STRENGTH candles on each side all have higher lows / lower highs.
-// strength=2 is the default — far more reliable than single-neighbour.
-//
-// Zones are clustered: levels within clusterPct% of each other are merged
-// into one representative level (the mean), eliminating duplicate noise.
-//
-// signalIndex = index of the *signal* candle (candles.length - 1).
-// The scan covers [ signalIndex - lookback , signalIndex - 1 ] exclusively.
-// The strength window never reaches into the signal candle itself.
-function detectZones(candleArr, signalIndex, lookback, strength, clusterPct){
-  strength   = strength   || 2;
-  clusterPct = clusterPct || 0.5;   // merge zones within 0.5% of each other
 
-  const rawSupports = [], rawResistances = [];
-
-  // Exclude the signal candle and leave `strength` candles of right-side buffer
-  const end   = signalIndex - 1 - strength;
-  const start = Math.max(strength, signalIndex - lookback);
-
-  for(let i = start; i <= end; i++){
-    const cur = candleArr[i];
-    if(!cur) continue;
-
-    // Check `strength` candles on left and right
-    let isSwingLow = true, isSwingHigh = true;
-    for(let d = 1; d <= strength; d++){
-      const left  = candleArr[i - d];
-      const right = candleArr[i + d];
-      if(!left || !right){ isSwingLow = false; isSwingHigh = false; break; }
-      if(left.low  <= cur.low  || right.low  <= cur.low)  isSwingLow  = false;
-      if(left.high >= cur.high || right.high >= cur.high) isSwingHigh = false;
-    }
-    if(isSwingLow)  rawSupports.push(cur.low);
-    if(isSwingHigh) rawResistances.push(cur.high);
-  }
-
-  // Cluster merge: sort → walk → average nearby levels
-  function clusterLevels(levels){
-    if(levels.length === 0) return [];
-    levels.sort((a,b) => a - b);
-    const out = [];
-    let group = [levels[0]];
-    for(let k = 1; k < levels.length; k++){
-      const mid = group.reduce((s,v)=>s+v,0)/group.length;
-      if(Math.abs(levels[k] - mid) / mid * 100 <= clusterPct){
-        group.push(levels[k]);
-      } else {
-        out.push(group.reduce((s,v)=>s+v,0)/group.length);
-        group = [levels[k]];
-      }
-    }
-    out.push(group.reduce((s,v)=>s+v,0)/group.length);
-    return out;
-  }
-
-  return {
-    supports:    clusterLevels(rawSupports),
-    resistances: clusterLevels(rawResistances)
-  };
-}
-
-// ─── ATR-AWARE PROXIMITY CHECK ────────────────────
-// Computes a simple ATR over the last atrPeriod candles before signalIndex,
-// then checks whether `price` is within (tolerancePct / 100 * ATR) of any level.
-// Fallback: if ATR can't be computed, uses tolerancePct% of price directly.
-function calcATR(candleArr, signalIndex, period){
-  period = period || 14;
-  const end = signalIndex - 1;
-  const start = Math.max(1, end - period + 1);
-  let sum = 0, count = 0;
-  for(let i = start; i <= end; i++){
-    const cur  = candleArr[i];
-    const prev = candleArr[i - 1];
-    if(!cur || !prev) continue;
-    const tr = Math.max(
-      cur.high - cur.low,
-      Math.abs(cur.high - prev.close),
-      Math.abs(cur.low  - prev.close)
-    );
-    sum += tr; count++;
-  }
-  return count > 0 ? sum / count : null;
-}
-
-// toleranceMultiplier: how many ATRs away counts as "near the zone"
-// e.g. 0.5 = within half an ATR of the level
-function nearZoneATR(price, levels, atr, toleranceMultiplier){
-  if(!levels || levels.length === 0) return false;
-  const tol = atr !== null
-    ? atr * toleranceMultiplier
-    : price * (toleranceMultiplier / 100);   // fallback: treat as %
-  return levels.some(lvl => Math.abs(price - lvl) <= tol);
-}
 // Populated immediately in handleBuyResponse.
 // Used by handleContractUpdate to find the log entry
 // without relying on poc.passthrough (which Deriv does NOT echo on POC messages).
@@ -1146,8 +1169,8 @@ function saveState(){
     const s = {
       tradeMode, durType, tradeLog, stats, candles: candles.slice(-100),
       analysisCandleMode, analysisCandleTF,
-      filters: { ema: filterEmaEnabled, candleClose: filterCandleClose, candle2: filterCandle2, emaPeriod: v('cfgEmaPeriod'),
-                 zone: filterZoneEnabled, zoneLookback: v('cfgZoneLookback'), zoneTolerance: v('cfgZoneTolerance') },
+      filters: { bb: filterBBEnabled, candleClose: filterCandleClose, candle2: filterCandle2,
+                 bbPeriod: v('cfgBBPeriod'), bbStdDev: v('cfgBBStdDev'), bbMaxMult: v('cfgBBMaxMult'), bbVolLookback: v('cfgBBVolLookback') },
       tradeTime: { enabled: tradeTimeEnabled, time: tradeTimeValue, optAuto: ttOptAutoTrade, optRev: ttOptReverse, lastFiredDate: ttLastFiredDate },
       cfg: {
         symbol: v('cfgSymbol'), minRange: v('cfgMinRange'), maxPos: v('cfgMaxPos'),
@@ -1205,9 +1228,9 @@ function loadState(){
     // Restore filter states
     if(s.filters){
       if(s.filters.ema !== undefined){
-        filterEmaEnabled = !!s.filters.ema;
-        const chk1 = document.getElementById('fEmaEnabled');
-        if(chk1){ chk1.checked = filterEmaEnabled; onFilterChange(1, filterEmaEnabled); }
+        filterBBEnabled = !!s.filters.bb;
+        const chk1 = document.getElementById('fBBEnabled');
+        if(chk1){ chk1.checked = filterBBEnabled; onFilterChange(1, filterBBEnabled); }
       }
       if(s.filters.candleClose !== undefined){
         filterCandleClose = !!s.filters.candleClose;
@@ -1219,14 +1242,10 @@ function loadState(){
         const chk3 = document.getElementById('fCandle2Enabled');
         if(chk3){ chk3.checked = filterCandle2; onFilterChange(3, filterCandle2); }
       }
-      if(s.filters.emaPeriod !== undefined) setVal('cfgEmaPeriod', s.filters.emaPeriod);
-      if(s.filters.zone !== undefined){
-        filterZoneEnabled = !!s.filters.zone;
-        const chk4 = document.getElementById('fZoneEnabled');
-        if(chk4){ chk4.checked = filterZoneEnabled; onFilterChange(4, filterZoneEnabled); }
-      }
-      if(s.filters.zoneLookback  !== undefined) setVal('cfgZoneLookback',  s.filters.zoneLookback);
-      if(s.filters.zoneTolerance !== undefined) setVal('cfgZoneTolerance', s.filters.zoneTolerance);
+      if(s.filters.bbPeriod      !== undefined) setVal('cfgBBPeriod',      s.filters.bbPeriod);
+      if(s.filters.bbStdDev      !== undefined) setVal('cfgBBStdDev',      s.filters.bbStdDev);
+      if(s.filters.bbMaxMult     !== undefined) setVal('cfgBBMaxMult',     s.filters.bbMaxMult);
+      if(s.filters.bbVolLookback !== undefined) setVal('cfgBBVolLookback', s.filters.bbVolLookback);
     }
     // Restore Trade Time settings
     if(s.tradeTime){
@@ -1361,11 +1380,16 @@ function handleMsg(msg, isLoginFlow){
     if(msg.error){ setLoginStatus('Auth failed: '+msg.error.message,'err'); document.getElementById('btnLogin').disabled=false; return; }
     const acc = msg.authorize;
     // Successful login
+    // Store and apply currency first — all subsequent formatting uses it
+    accountCurrency = (acc.currency || 'USD').toUpperCase();
     document.getElementById('hdrName').textContent = acc.fullname || acc.loginid;
-    document.getElementById('hdrBal').textContent = '$'+parseFloat(acc.balance).toFixed(2);
-    document.getElementById('sBalance').textContent = '$'+parseFloat(acc.balance).toFixed(2);
-    document.getElementById('sCurrency').textContent = acc.currency;
+    const balFormatted = fmtAmount(acc.balance);
+    const balEl = document.getElementById('hdrBal');
+    if(balEl){ balEl.textContent = balFormatted; }
+    const sBal = document.getElementById('sBalance');
+    if(sBal){ sBal.textContent = balFormatted; sBal.dataset.raw = parseFloat(acc.balance); }
     document.getElementById('sLoginId').textContent = acc.loginid;
+    applyCurrencyToUI();
     if(isLoginFlow){
       setLoginStatus('Connected! ✓','ok');
       setTimeout(()=>{
@@ -1397,8 +1421,13 @@ function handleMsg(msg, isLoginFlow){
 
   if(msg.msg_type === 'balance'){
     const b = msg.balance;
-    document.getElementById('hdrBal').textContent = '$'+parseFloat(b.balance).toFixed(2);
-    document.getElementById('sBalance').textContent = '$'+parseFloat(b.balance).toFixed(2);
+    // Balance update may carry a currency field; update our tracker if present
+    if(b.currency) accountCurrency = b.currency.toUpperCase();
+    const balFmt = fmtAmount(b.balance);
+    const hdrBal = document.getElementById('hdrBal');
+    const sBal   = document.getElementById('sBalance');
+    if(hdrBal) hdrBal.textContent = balFmt;
+    if(sBal){ sBal.textContent = balFmt; sBal.dataset.raw = parseFloat(b.balance); }
     return;
   }
 
@@ -1642,29 +1671,29 @@ function onNewCandle(){
   let isBullish = baseBullish && buyFilter;
   let isBearish = baseBearish && sellFilter;
 
-  // ── LAYER 2: FILTER 1 — EMA WICK-CROSS ──────────
-  // Recalculate EMA on every new candle using the closed candles array.
-  if(filterEmaEnabled){
-    const period = parseInt(v('cfgEmaPeriod')) || 50;
-    emaValue = calcEMA(candles, period);
-    if(emaValue === null){
-      // Not enough candles yet — drop signal silently
+  // ── LAYER 2: FILTER 1 — DYNAMIC BOLLINGER BAND WICK-CROSS ──
+  // BUY:  body (open & close) fully ABOVE Lower Band · lower wick dips BELOW Lower Band
+  // SELL: body (open & close) fully BELOW Upper Band · upper wick pokes ABOVE Upper Band
+  // σ multiplier adapts in real time to instrument volatility via ATR ratio.
+  if(filterBBEnabled){
+    const period     = parseInt(v('cfgBBPeriod'))      || 20;
+    const baseMult   = parseFloat(v('cfgBBStdDev'))    || 2.0;
+    const maxMult    = parseFloat(v('cfgBBMaxMult'))   || 4.0;
+    const volLookbk  = parseInt(v('cfgBBVolLookback')) || 50;
+    bbValue = calcBB(candles, period, baseMult, maxMult, volLookbk);
+    if(bbValue === null){
       isBullish = false;
       isBearish = false;
     } else {
       if(isBullish){
-        // Body (open AND close) must both be ABOVE EMA
-        const bodyAbove = signal.open > emaValue && signal.close > emaValue;
-        // Lower wick must pierce BELOW EMA
-        const wickBelow = signal.low < emaValue;
-        isBullish = bodyAbove && wickBelow;
+        const bodyAboveLower = signal.open > bbValue.lower && signal.close > bbValue.lower;
+        const wickBelowLower = signal.low  < bbValue.lower;
+        isBullish = bodyAboveLower && wickBelowLower;
       }
       if(isBearish){
-        // Body (open AND close) must both be BELOW EMA
-        const bodyBelow = signal.open < emaValue && signal.close < emaValue;
-        // Upper wick must pierce ABOVE EMA
-        const wickAbove = signal.high > emaValue;
-        isBearish = bodyBelow && wickAbove;
+        const bodyBelowUpper = signal.open < bbValue.upper && signal.close < bbValue.upper;
+        const wickAboveUpper = signal.high > bbValue.upper;
+        isBearish = bodyBelowUpper && wickAboveUpper;
       }
     }
   }
@@ -1681,24 +1710,6 @@ function onNewCandle(){
     if(isBearish) isBearish = (range.close < range.open);     // range candle must be bearish
   }
 
-  // ── LAYER 5: FILTER 4 — SUPPORT / RESISTANCE ZONE REJECTION ──
-  // BUY:  signal.low  must be within ATR-based tolerance of a clustered support level
-  // SELL: signal.high must be within ATR-based tolerance of a clustered resistance level
-  if(filterZoneEnabled && (isBullish || isBearish)){
-    const lookback   = Math.max(10, parseInt(v('cfgZoneLookback'))   || 50);
-    const tolMult    = Math.max(0.1, parseFloat(v('cfgZoneTolerance')) || 0.5);
-    const signalIdx  = candles.length - 1;
-
-    const atr = calcATR(candles, signalIdx, 14);
-    const { supports, resistances } = detectZones(candles, signalIdx, lookback, 2, 0.5);
-
-    if(isBullish){
-      isBullish = nearZoneATR(signal.low,  supports,    atr, tolMult);
-    }
-    if(isBearish){
-      isBearish = nearZoneATR(signal.high, resistances, atr, tolMult);
-    }
-  }
 
   const symbol = v('cfgSymbol');
 
@@ -1865,7 +1876,7 @@ function placeTrade(contractType, symbol, stake, slAmt, tpAmt, logId){
     parameters: {
       contract_type: contractType,
       symbol: symbol,
-      currency: 'USD',
+      currency: accountCurrency,   // dynamically set from account
       basis: 'stake',
       amount: stake,
       duration: dur,
@@ -1876,7 +1887,7 @@ function placeTrade(contractType, symbol, stake, slAmt, tpAmt, logId){
 
   send(proposal);
   const label = contractType==='CALL' ? '▲ RISE (BUY)' : '▼ FALL (SELL)';
-  setBotStatus(label+' placed · Stake $'+stake.toFixed(2)+' · '+symbol, contractType==='CALL'?'buy':'sell');
+  setBotStatus(label+' placed · Stake '+fmtAmount(stake)+' · '+symbol, contractType==='CALL'?'buy':'sell');
 }
 
 // ─── HANDLE BUY RESPONSE ──────────────────────────
@@ -2077,14 +2088,14 @@ function _settleLogEntry(le, finalProfit){
 
   const won = finalProfit > 0;
   le.result = won ? 'WIN' : 'LOSS';
-  le.pnl    = (finalProfit >= 0 ? '+' : '') + finalProfit.toFixed(2);
+  le.pnl    = (finalProfit >= 0 ? '+' : '-') + fmtAmount(Math.abs(finalProfit));
 
   if(won){ stats.wins++; stats.totalProfit += finalProfit; }
   else   { stats.losses++; stats.totalLoss += Math.abs(finalProfit); }
 
   rebuildLog();
   updateStats();
-  toast((won ? '✅ WIN' : '❌ LOSS') + ' $' + Math.abs(finalProfit).toFixed(2), 'info');
+  toast((won ? '✅ WIN' : '❌ LOSS') + ' ' + fmtAmount(Math.abs(finalProfit)), 'info');
   saveState();
   checkSessionLimits();
 }
@@ -2099,11 +2110,11 @@ function checkSessionLimits(){
 
   // Max Loss: EA halts when Net P/L drops to -slAmt (net loss equals or exceeds limit)
   if(slAmt > 0 && netProfit <= -slAmt){
-    haltReason = '🛑 MAX LOSS −$'+slAmt.toFixed(2)+' NET P/L REACHED — EA HALTED';
+    haltReason = '🛑 MAX LOSS −'+fmtAmount(slAmt)+' NET P/L REACHED — EA HALTED';
   }
   // Max Profit: EA halts when Net P/L reaches or exceeds +tpAmt
   if(tpAmt > 0 && netProfit >= tpAmt){
-    haltReason = '🎯 TARGET PROFIT +$'+tpAmt.toFixed(2)+' NET P/L REACHED — EA HALTED';
+    haltReason = '🎯 TARGET PROFIT +'+fmtAmount(tpAmt)+' NET P/L REACHED — EA HALTED';
   }
 
   if(haltReason && !eaHalted){
@@ -2198,10 +2209,10 @@ function renderPositions(){
     return `<div class="pos-item">
       <span class="pos-dir ${p.dir}">${p.dir.toUpperCase()}</span>
       <div class="pos-details">
-        <span style="color:var(--accent2)">${p.symbol}</span> · Stake: $${p.stake.toFixed(2)}<br>
+        <span style="color:var(--accent2)">${p.symbol}</span> · Stake: ${fmtAmount(p.stake)}<br>
         @ ${p.openTime}
       </div>
-      <span class="pos-pnl ${pnlCls}">${(p.currentPnl>=0?'+$':'-$')+Math.abs(p.currentPnl).toFixed(2)}</span>
+      <span class="pos-pnl ${pnlCls}">${(p.currentPnl>=0?'+':'-')+fmtAmount(Math.abs(p.currentPnl))}</span>
       <button class="btn-close-pos" onclick="manualClose('${cid}')">CLOSE</button>
     </div>`;
   }).join('');
@@ -2225,12 +2236,12 @@ function updateStats(){
   setText('sWinRate', wr+'%');
   document.getElementById('winRateFill').style.width = wr+'%';
 
-  setText('sTotalProfit', '+$'+stats.totalProfit.toFixed(2));
-  setText('sTotalLoss',   '-$'+stats.totalLoss.toFixed(2));
+  setText('sTotalProfit', '+'+fmtAmount(stats.totalProfit));
+  setText('sTotalLoss',   '-'+fmtAmount(stats.totalLoss));
 
   const net = stats.totalProfit - stats.totalLoss;
   const netEl = document.getElementById('sTotalPnL');
-  netEl.textContent = (net>=0?'+$':'-$')+Math.abs(net).toFixed(2);
+  netEl.textContent = (net>=0?'+':'-')+fmtAmount(Math.abs(net));
   netEl.style.color = net>0?'var(--green)':net<0?'var(--red)':'var(--text)';
 
   const lsEl = document.getElementById('sLastSignal');
