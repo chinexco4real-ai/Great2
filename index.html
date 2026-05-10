@@ -582,44 +582,26 @@
           <div class="filter-section">
             <div class="section-lbl">⚗ Signal Filters</div>
 
-            <!-- Filter 1: Dynamic Bollinger Band Wick-Cross -->
+            <!-- Filter 1: EMA Wick-Cross -->
             <div class="filter-item" id="fi1">
               <div class="filter-toggle-row" onclick="toggleFilter(1)">
                 <span class="f-name">
                   <span class="f-badge">F1</span>
-                  Bollinger Band Wick-Cross
-                  <span style="font-size:9px;letter-spacing:1.5px;color:var(--accent2);margin-left:5px;font-family:'Share Tech Mono',monospace;">DYNAMIC</span>
+                  EMA Wick-Cross
                 </span>
                 <label class="filter-switch" onclick="event.stopPropagation()">
-                  <input type="checkbox" id="fBBEnabled" onchange="onFilterChange(1,this.checked)"/>
+                  <input type="checkbox" id="fEmaEnabled" onchange="onFilterChange(1,this.checked)"/>
                   <span class="filter-slider"></span>
                 </label>
               </div>
               <div class="filter-desc">
                 <div class="ctrl-row" style="margin-bottom:7px;">
-                  <label style="font-size:11px;letter-spacing:1px;">BB Period</label>
-                  <input type="number" id="cfgBBPeriod" value="20" min="2" max="500" style="font-size:12px;padding:6px 9px;"/>
-                  <span class="hint" style="font-size:10px;">Base SMA lookback (auto-adjusts to candle count)</span>
-                </div>
-                <div class="ctrl-row" style="margin-bottom:7px;">
-                  <label style="font-size:11px;letter-spacing:1px;">Base Std Dev (σ)</label>
-                  <input type="number" id="cfgBBStdDev" value="2.0" min="0.5" max="5" step="0.1" style="font-size:12px;padding:6px 9px;"/>
-                  <span class="hint" style="font-size:10px;">Starting multiplier — scales up with volatility</span>
-                </div>
-                <div class="ctrl-row" style="margin-bottom:7px;">
-                  <label style="font-size:11px;letter-spacing:1px;">Max Std Dev Cap (σ)</label>
-                  <input type="number" id="cfgBBMaxMult" value="4.0" min="1.0" max="10" step="0.1" style="font-size:12px;padding:6px 9px;"/>
-                  <span class="hint" style="font-size:10px;">Hard ceiling on adaptive multiplier · prevent over-expansion</span>
-                </div>
-                <div class="ctrl-row" style="margin-bottom:7px;">
-                  <label style="font-size:11px;letter-spacing:1px;">Volatility Lookback</label>
-                  <input type="number" id="cfgBBVolLookback" value="50" min="5" max="300" style="font-size:12px;padding:6px 9px;"/>
-                  <span class="hint" style="font-size:10px;">Candles used to measure baseline volatility for scaling</span>
+                  <label style="font-size:11px;letter-spacing:1px;">EMA Period</label>
+                  <input type="number" id="cfgEmaPeriod" value="50" min="1" max="500" style="font-size:12px;padding:6px 9px;"/>
                 </div>
                 <div class="f-rule">
-                  <span class="buy-txt">▲ BUY:</span> Body fully above Lower Band · lower wick crosses below Lower Band<br>
-                  <span class="sell-txt">▼ SELL:</span> Body fully below Upper Band · upper wick crosses above Upper Band<br>
-                  <span style="color:var(--accent2);font-size:10px;font-family:'Share Tech Mono',monospace;">σ auto-scales with live ATR ratio — wider on spikes, tighter in calm</span>
+                  <span class="buy-txt">▲ BUY:</span> Body fully above EMA · lower wick crosses below EMA<br>
+                  <span class="sell-txt">▼ SELL:</span> Body fully below EMA · upper wick crosses above EMA
                 </div>
               </div>
             </div>
@@ -901,86 +883,28 @@ let tickCount = 0;
 let subscriptionId = null;
 
 // ─── SIGNAL FILTER STATE ──────────────────────────
-let filterBBEnabled      = false;   // Filter 1: Bollinger Band Wick-Cross
+let filterEmaEnabled     = false;   // Filter 1: EMA Wick-Cross
 let filterCandleClose    = false;   // Filter 2: Signal candle direction
 let filterCandle2        = false;   // Filter 3: Range candle direction
 
 // Running EMA value — recalculated on every new closed candle
-let bbValue = { upper: null, lower: null, mid: null };
+let emaValue = null;
 
-// ─── DYNAMIC BOLLINGER BAND ────────────────────────
-// Standard BB uses a fixed σ multiplier — on synthetic indices
-// (Boom/Crash/Volatility) sudden spikes make fixed bands useless:
-// either always touched or never touched.
-//
-// Dynamic BB adapts the multiplier in real time:
-//   1. Compute ATR of the last `period` candles  → "current volatility"
-//   2. Compute ATR of the last `volLookback` candles → "baseline volatility"
-//   3. volatility ratio = currentATR / baselineATR
-//   4. adaptiveMult = baseMult × ratio   (capped at maxMult)
-//      → spike: ratio > 1 → bands widen  → fewer false signals
-//      → calm : ratio < 1 → bands tighten → more responsive signals
-//   5. Period also clamps to available candle count so early bars work.
-//
-// Returns { upper, lower, mid, mult } or null if insufficient data.
-function calcBB(candleArr, period, baseMult, maxMult, volLookback){
-  period      = Math.max(2,  period      || 20);
-  baseMult    = Math.max(0.5,baseMult    || 2.0);
-  maxMult     = Math.max(baseMult, maxMult || 4.0);
-  volLookback = Math.max(period, volLookback || 50);
-
-  const n = candleArr.length;
-  if(n < 2) return null;
-
-  // Clamp period to available candles (graceful start-up)
-  const p = Math.min(period, n);
-
-  // ── Middle band: SMA of last p closes ──
-  const slice = candleArr.slice(-p);
-  const mid   = slice.reduce((s, cd) => s + cd.close, 0) / p;
-
-  // ── Standard deviation of last p closes ──
-  const variance = slice.reduce((s, cd) => s + Math.pow(cd.close - mid, 2), 0) / p;
-  const stdDev   = Math.sqrt(variance);
-
-  // ── ATR helper (true range average) ──
-  function atrOf(arr){
-    let sum = 0, cnt = 0;
-    for(let i = 1; i < arr.length; i++){
-      const cur  = arr[i];
-      const prev = arr[i - 1];
-      const tr   = Math.max(
-        cur.high - cur.low,
-        Math.abs(cur.high - prev.close),
-        Math.abs(cur.low  - prev.close)
-      );
-      sum += tr; cnt++;
-    }
-    return cnt > 0 ? sum / cnt : 0;
+// ─── EMA CALCULATION ──────────────────────────────
+// Standard exponential moving average on close prices.
+// Seeded from SMA of the first `period` candles.
+function calcEMA(candleArr, period){
+  if(!candleArr || candleArr.length < period) return null;
+  period = Math.max(1, period);
+  const closes = candleArr.map(c => c.close);
+  let sum = 0;
+  for(let i = 0; i < period; i++) sum += closes[i];
+  let ema = sum / period;
+  const k = 2 / (period + 1);
+  for(let i = period; i < closes.length; i++){
+    ema = closes[i] * k + ema * (1 - k);
   }
-
-  // ── Current ATR (short window = last p candles) ──
-  const shortSlice    = candleArr.slice(-p);
-  const currentATR    = atrOf(shortSlice);
-
-  // ── Baseline ATR (long window = last volLookback candles) ──
-  const longLen       = Math.min(volLookback, n);
-  const longSlice     = candleArr.slice(-longLen);
-  const baselineATR   = atrOf(longSlice);
-
-  // ── Adaptive multiplier ──
-  let adaptiveMult = baseMult;
-  if(baselineATR > 0 && currentATR > 0){
-    const ratio  = currentATR / baselineATR;
-    adaptiveMult = Math.min(maxMult, Math.max(0.5, baseMult * ratio));
-  }
-
-  return {
-    mid,
-    upper: mid + stdDev * adaptiveMult,
-    lower: mid - stdDev * adaptiveMult,
-    mult:  adaptiveMult   // exposed for debugging
-  };
+  return ema;
 }
 
 // ─── TRADE TIME SCHEDULER STATE ──────────────────
@@ -1138,7 +1062,7 @@ function fireTradeTime(){
 
 // ─── FILTER UI HELPERS ────────────────────────────
 function toggleFilter(n){
-  const ids = {1:'fBBEnabled', 2:'fCandleCloseEnabled', 3:'fCandle2Enabled'};
+  const ids = {1:'fEmaEnabled', 2:'fCandleCloseEnabled', 3:'fCandle2Enabled'};
   const chk = document.getElementById(ids[n]);
   chk.checked = !chk.checked;
   onFilterChange(n, chk.checked);
@@ -1148,10 +1072,10 @@ function onFilterChange(n, enabled){
   const el = document.getElementById('fi'+n);
   if(enabled) el.classList.add('enabled');
   else         el.classList.remove('enabled');
-  if(n===1) filterBBEnabled   = enabled;
+  if(n===1) filterEmaEnabled  = enabled;
   if(n===2) filterCandleClose = enabled;
   if(n===3) filterCandle2     = enabled;
-  const names = {1:'Bollinger Band Wick-Cross', 2:'Candle Close', 3:'Candle 2 (Range)'};
+  const names = {1:'EMA Wick-Cross', 2:'Candle Close', 3:'Candle 2 (Range)'};
   toast('Filter '+(enabled?'ON':'OFF')+' — '+names[n], 'info');
   saveState();
 }
@@ -1169,8 +1093,7 @@ function saveState(){
     const s = {
       tradeMode, durType, tradeLog, stats, candles: candles.slice(-100),
       analysisCandleMode, analysisCandleTF,
-      filters: { bb: filterBBEnabled, candleClose: filterCandleClose, candle2: filterCandle2,
-                 bbPeriod: v('cfgBBPeriod'), bbStdDev: v('cfgBBStdDev'), bbMaxMult: v('cfgBBMaxMult'), bbVolLookback: v('cfgBBVolLookback') },
+      filters: { ema: filterEmaEnabled, candleClose: filterCandleClose, candle2: filterCandle2, emaPeriod: v('cfgEmaPeriod') },
       tradeTime: { enabled: tradeTimeEnabled, time: tradeTimeValue, optAuto: ttOptAutoTrade, optRev: ttOptReverse, lastFiredDate: ttLastFiredDate },
       cfg: {
         symbol: v('cfgSymbol'), minRange: v('cfgMinRange'), maxPos: v('cfgMaxPos'),
@@ -1228,9 +1151,9 @@ function loadState(){
     // Restore filter states
     if(s.filters){
       if(s.filters.ema !== undefined){
-        filterBBEnabled = !!s.filters.bb;
-        const chk1 = document.getElementById('fBBEnabled');
-        if(chk1){ chk1.checked = filterBBEnabled; onFilterChange(1, filterBBEnabled); }
+        filterEmaEnabled = !!s.filters.ema;
+        const chk1 = document.getElementById('fEmaEnabled');
+        if(chk1){ chk1.checked = filterEmaEnabled; onFilterChange(1, filterEmaEnabled); }
       }
       if(s.filters.candleClose !== undefined){
         filterCandleClose = !!s.filters.candleClose;
@@ -1242,10 +1165,7 @@ function loadState(){
         const chk3 = document.getElementById('fCandle2Enabled');
         if(chk3){ chk3.checked = filterCandle2; onFilterChange(3, filterCandle2); }
       }
-      if(s.filters.bbPeriod      !== undefined) setVal('cfgBBPeriod',      s.filters.bbPeriod);
-      if(s.filters.bbStdDev      !== undefined) setVal('cfgBBStdDev',      s.filters.bbStdDev);
-      if(s.filters.bbMaxMult     !== undefined) setVal('cfgBBMaxMult',     s.filters.bbMaxMult);
-      if(s.filters.bbVolLookback !== undefined) setVal('cfgBBVolLookback', s.filters.bbVolLookback);
+      if(s.filters.emaPeriod !== undefined) setVal('cfgEmaPeriod', s.filters.emaPeriod);
     }
     // Restore Trade Time settings
     if(s.tradeTime){
@@ -1671,29 +1591,25 @@ function onNewCandle(){
   let isBullish = baseBullish && buyFilter;
   let isBearish = baseBearish && sellFilter;
 
-  // ── LAYER 2: FILTER 1 — DYNAMIC BOLLINGER BAND WICK-CROSS ──
-  // BUY:  body (open & close) fully ABOVE Lower Band · lower wick dips BELOW Lower Band
-  // SELL: body (open & close) fully BELOW Upper Band · upper wick pokes ABOVE Upper Band
-  // σ multiplier adapts in real time to instrument volatility via ATR ratio.
-  if(filterBBEnabled){
-    const period     = parseInt(v('cfgBBPeriod'))      || 20;
-    const baseMult   = parseFloat(v('cfgBBStdDev'))    || 2.0;
-    const maxMult    = parseFloat(v('cfgBBMaxMult'))   || 4.0;
-    const volLookbk  = parseInt(v('cfgBBVolLookback')) || 50;
-    bbValue = calcBB(candles, period, baseMult, maxMult, volLookbk);
-    if(bbValue === null){
+  // ── LAYER 2: FILTER 1 — EMA WICK-CROSS ──────────
+  // BUY:  body (open & close) fully ABOVE EMA · lower wick crosses BELOW EMA
+  // SELL: body (open & close) fully BELOW EMA · upper wick crosses ABOVE EMA
+  if(filterEmaEnabled){
+    const period = parseInt(v('cfgEmaPeriod')) || 50;
+    emaValue = calcEMA(candles, period);
+    if(emaValue === null){
       isBullish = false;
       isBearish = false;
     } else {
       if(isBullish){
-        const bodyAboveLower = signal.open > bbValue.lower && signal.close > bbValue.lower;
-        const wickBelowLower = signal.low  < bbValue.lower;
-        isBullish = bodyAboveLower && wickBelowLower;
+        const bodyAbove = signal.open > emaValue && signal.close > emaValue;
+        const wickBelow = signal.low  < emaValue;
+        isBullish = bodyAbove && wickBelow;
       }
       if(isBearish){
-        const bodyBelowUpper = signal.open < bbValue.upper && signal.close < bbValue.upper;
-        const wickAboveUpper = signal.high > bbValue.upper;
-        isBearish = bodyBelowUpper && wickAboveUpper;
+        const bodyBelow = signal.open < emaValue && signal.close < emaValue;
+        const wickAbove = signal.high > emaValue;
+        isBearish = bodyBelow && wickAbove;
       }
     }
   }
