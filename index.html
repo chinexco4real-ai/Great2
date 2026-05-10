@@ -90,6 +90,11 @@
   .currency-type-badge.type-stable{background:rgba(0,230,118,.15);color:#00e676;}
   .currency-type-badge.type-crypto{background:rgba(245,197,24,.15);color:#f5c518;}
 
+  /* ─── ACCOUNT TYPE BADGE (DEMO / LIVE) ─── */
+  .acct-type-badge{display:inline-flex;align-items:center;gap:5px;padding:5px 13px;border-radius:20px;font-family:'Orbitron',sans-serif;font-size:11px;font-weight:800;letter-spacing:2px;border:1px solid transparent;cursor:default;transition:all .4s;}
+  .acct-type-badge.is-demo{background:rgba(255,193,7,.12);border-color:rgba(255,193,7,.5);color:#ffc107;}
+  .acct-type-badge.is-live{background:rgba(0,230,118,.12);border-color:rgba(0,230,118,.5);color:#00e676;box-shadow:0 0 10px rgba(0,230,118,.15);}
+
   /* ─── MAIN LAYOUT — desktop-first ─── */
   .main-grid{display:grid;grid-template-columns:var(--panel-w) 1fr var(--panel-w);gap:18px;padding:18px 20px;flex:1;align-items:start;max-width:1800px;margin:0 auto;width:100%;}
 
@@ -354,13 +359,7 @@
         <label>Deriv API Token</label>
         <input type="password" id="apiTokenInput" placeholder="Enter your API token…" autocomplete="off"/>
       </div>
-      <div class="conn-field">
-        <label>Server</label>
-        <select id="serverSelect" style="min-width:200px;">
-          <option value="wss://ws.derivws.com/websockets/v3?app_id=116948">Deriv Live (Real)</option>
-          <option value="wss://ws.derivws.com/websockets/v3?app_id=116948" selected>Deriv Demo</option>
-        </select>
-      </div>
+
       <div class="conn-remember">
         <input type="checkbox" id="rememberMe"/>
         <label for="rememberMe">Remember token</label>
@@ -382,6 +381,8 @@
       </div>
       <!-- Dynamic currency badge — updated on authorize -->
       <span class="currency-badge type-fiat" id="currencyBadge" title="Account Currency">🇺🇸 USD</span>
+      <!-- Account type badge — auto-detected from token (DEMO / LIVE) -->
+      <span class="acct-type-badge" id="acctTypeBadge" title="Account Type">—</span>
       <span class="ws-dot" id="wsDot"></span>
       <button class="btn-logout" onclick="doLogout()">⏻ LOGOUT</button>
     </div>
@@ -736,6 +737,7 @@
             <span class="v" id="sCurrency" style="display:flex;align-items:center;gap:6px;">—</span>
             <span class="currency-type-badge type-fiat" id="sCurrencyType">FIAT</span>
           </div>
+          <div class="pnl-row"><span class="k">Account</span><span class="v" id="sAccType" style="color:var(--muted);">—</span></div>
           <div class="pnl-row"><span class="k">Login ID</span><span class="v" id="sLoginId" style="color:#8ba4cc;">—</span></div>
         </div>
       </div>
@@ -1222,10 +1224,9 @@ function getMarketLabel(symbol){
 // ─── LOGIN / LOGOUT ───────────────────────────────
 function doLogin(){
   const token = document.getElementById('apiTokenInput').value.trim();
-  const server = document.getElementById('serverSelect').value;
   if(!token){ setLoginStatus('Please enter your API token.','err'); return; }
-  apiToken = token;
-  serverUrl = server;
+  apiToken   = token;
+  serverUrl  = 'wss://ws.derivws.com/websockets/v3?app_id=116948';
   setLoginStatus('Connecting…','');
   document.getElementById('btnLogin').disabled = true;
   connectWS(true);
@@ -1300,6 +1301,24 @@ function handleMsg(msg, isLoginFlow){
     if(msg.error){ setLoginStatus('Auth failed: '+msg.error.message,'err'); document.getElementById('btnLogin').disabled=false; return; }
     const acc = msg.authorize;
     // Successful login
+    // ── Auto-detect account type from Deriv's is_virtual flag ──
+    // is_virtual === 1 → Demo account  |  0 → Real/Live account
+    const isDemo       = acc.is_virtual === 1 || acc.is_virtual === true;
+    const acctTypeLabel = isDemo ? '⚠ DEMO' : '● LIVE';
+    const acctTypeBadge = document.getElementById('acctTypeBadge');
+    if(acctTypeBadge){
+      acctTypeBadge.textContent = acctTypeLabel;
+      acctTypeBadge.className   = 'acct-type-badge ' + (isDemo ? 'is-demo' : 'is-live');
+      acctTypeBadge.title       = isDemo ? 'Virtual / Demo Account — trades are simulated'
+                                         : 'Real / Live Account — trades use real funds';
+    }
+    // Update stats panel account type row
+    const sAccType = document.getElementById('sAccType');
+    if(sAccType){
+      sAccType.textContent  = isDemo ? 'DEMO (Virtual)' : 'LIVE (Real)';
+      sAccType.style.color  = isDemo ? '#ffc107' : '#00e676';
+    }
+
     // Store and apply currency first — all subsequent formatting uses it
     accountCurrency = (acc.currency || 'USD').toUpperCase();
     document.getElementById('hdrName').textContent = acc.fullname || acc.loginid;
@@ -2506,10 +2525,8 @@ window.addEventListener('load', ()=>{
   const saved = loadSavedToken();
   if(saved){
     apiToken  = saved.token;
-    serverUrl = saved.server;
+    serverUrl = 'wss://ws.derivws.com/websockets/v3?app_id=116948';
     document.getElementById('apiTokenInput').value = saved.token;
-    const serverSel = document.getElementById('serverSelect');
-    if(saved.server) serverSel.value = saved.server;
     // Pre-tick "Remember Me" if token came from localStorage
     const rememberChk = document.getElementById('rememberMe');
     if(rememberChk) rememberChk.checked = saved.remember;
@@ -2523,8 +2540,8 @@ window.addEventListener('load', ()=>{
 // Wrap doLogin to persist token after successful login attempt
 const origDoLogin = doLogin;
 window.doLogin = function(){
-  const token  = document.getElementById('apiTokenInput').value.trim();
-  const server = document.getElementById('serverSelect').value;
+  const token   = document.getElementById('apiTokenInput').value.trim();
+  const server  = 'wss://ws.derivws.com/websockets/v3?app_id=116948';
   const remember = document.getElementById('rememberMe')?.checked || false;
   saveToken(token, server, remember);
   origDoLogin();
