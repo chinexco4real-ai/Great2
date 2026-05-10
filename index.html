@@ -980,8 +980,12 @@ let stats = {
 // scheduleEnabled : master on/off toggle
 // schedulePhase   : 'idle' | 'waiting_start' | 'trading' | 'stopped_day'
 // _scheduleInterval : the 1-second polling interval handle
+// scheduleArmed   : true only after a genuine idle→trading edge is detected
+//                   prevents instant fire when schedule is toggled ON while
+//                   the clock already sits inside the configured window
 let scheduleEnabled      = false;
 let schedulePhase        = 'idle';   // idle | waiting_start | trading | stopped_day
+let scheduleArmed        = false;    // must be false on first tick to block instant activation
 let _scheduleInterval    = null;
 let lastCandleEpoch = 0;
 let tickCount = 0;
@@ -2504,10 +2508,11 @@ function _hhmmToMins(str){
   return h * 60 + m;
 }
 
-// Returns current local minutes since midnight.
+// Returns current local minutes since midnight (includes fractional seconds so
+// the window boundary is checked to the second, not just the minute).
 function _nowMins(){
   const now = new Date();
-  return now.getHours() * 60 + now.getMinutes();
+  return now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
 }
 
 // Returns seconds until a target HH:MM (always positive, wraps midnight if needed).
@@ -2578,18 +2583,33 @@ function _scheduleTickUI(){
   if(isInWindow){
     // ── WITHIN TRADING WINDOW ────────────────────────
     if(schedulePhase !== 'trading'){
-      // Transition into trading window
-      schedulePhase = 'trading';
-      if(!eaHalted){
-        // Always enable autoBot when start time is reached — regardless of
-        // whether the user already had it on or not.
-        _forceAutoBotOn();
-        toast('⏰ Trade start time reached — Auto CRT enabled','info');
+      // We just crossed into the trading window.
+      // scheduleArmed guards against the case where the user enables the
+      // schedule (or changes the times) while the clock is already inside
+      // the window — in that case we do NOT fire _forceAutoBotOn()
+      // immediately; we wait for the next genuine start-time crossing.
+      if(!scheduleArmed){
+        // First time we see the window as active after the engine was
+        // (re)started or times were changed: just record the phase and
+        // show the countdown, but do NOT enable the bot yet.
+        schedulePhase = 'trading';
+        // Mark as armed so that on the NEXT cycle (tomorrow / after window
+        // closes and re-opens) the bot WILL be enabled automatically.
+        scheduleArmed = true;
+        // Show a status so the user knows why the bot didn't start
+        setBotStatus('Auto CRT stopped \u00b7 Manual trade active','');
+      } else {
+        // Genuine clock transition: was outside window, now inside.
+        schedulePhase = 'trading';
+        if(!eaHalted){
+          _forceAutoBotOn();
+          toast('\u23f0 Trade start time reached \u2014 Auto CRT enabled','info');
+        }
       }
     }
 
     const secsToEnd = _secsUntil(endMins);
-    statusBox.textContent = '🟢 TRADING WINDOW ACTIVE — ends at ' + v('scheduleEnd');
+    statusBox.textContent = '\ud83d\udfe2 TRADING WINDOW ACTIVE \u2014 ends at ' + v('scheduleEnd');
     statusBox.className = 'schedule-status-box active';
     cdRow.style.display = 'flex';
     cdLbl.textContent   = 'Ends in';
@@ -2602,8 +2622,8 @@ function _scheduleTickUI(){
       // Window just closed — Mode 2: always turn off autoBot at end time,
       // no matter who turned it on.
       _forceAutoBotOff();
-      toast('⏰ Trade end time reached — Auto CRT disabled','info');
-      setBotStatus('⏰ Trade window ended — waiting for next cycle at ' + v('scheduleStart'), 'error');
+      toast('\u23f0 Trade end time reached \u2014 Auto CRT disabled','info');
+      setBotStatus('\u23f0 Trade window ended \u2014 waiting for next cycle at ' + v('scheduleStart'), 'error');
       schedulePhase = 'waiting_start';
       // Also clear any eaHalt so the next cycle can start clean
       eaHalted = false;
@@ -2611,11 +2631,14 @@ function _scheduleTickUI(){
       enableTradeButtons(true);
     } else {
       schedulePhase = 'waiting_start';
+      // Once outside the window the engine is considered armed for the next
+      // crossing, so the bot will auto-enable when start time arrives again.
+      scheduleArmed = true;
     }
 
     // Show countdown to next start
     const secsToStart = _secsUntil(startMins);
-    statusBox.textContent = '⏳ Waiting for trade start · ' + v('scheduleStart') + ' → ' + v('scheduleEnd');
+    statusBox.textContent = '\u23f3 Waiting for trade start \u00b7 ' + v('scheduleStart') + ' \u2192 ' + v('scheduleEnd');
     statusBox.className = 'schedule-status-box waiting';
     cdRow.style.display = 'flex';
     cdLbl.textContent   = 'Starts in';
@@ -2664,6 +2687,11 @@ function _forceAutoBotOff(){
 // Called by the UI toggle checkbox.
 function onScheduleToggle(enabled){
   scheduleEnabled = enabled;
+  // Reset arm flag so the engine must observe a genuine outside->inside
+  // edge before it fires _forceAutoBotOn(). This prevents the bot from
+  // starting instantly when the toggle is turned ON while the current
+  // clock time already falls inside the configured trading window.
+  scheduleArmed = false;
   const statusBox = document.getElementById('scheduleStatusBox');
   const cdRow     = document.getElementById('scheduleCountdownRow');
 
@@ -2684,6 +2712,10 @@ function onScheduleToggle(enabled){
 // Called whenever start/end times change while enabled.
 function onScheduleParamChange(){
   if(scheduleEnabled){
+    // Reset arm flag — changing times is equivalent to re-enabling the schedule.
+    // The engine must observe the clock cross the new start boundary before
+    // activating; it will NOT fire immediately if the new window contains current time.
+    scheduleArmed = false;
     schedulePhase = 'idle';
     _scheduleTickUI();
   }
