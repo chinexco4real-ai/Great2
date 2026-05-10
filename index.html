@@ -41,26 +41,63 @@
   .session-timer .st-val{font-family:'Orbitron',sans-serif;font-size:17px;font-weight:700;color:var(--accent2);letter-spacing:2px;text-shadow:0 0 10px rgba(0,240,255,.4);transition:color .3s;}
   .session-timer.disconnected .st-val{color:#ff6b85;text-shadow:0 0 10px rgba(255,61,90,.4);}
   .session-timer .st-sub{font-size:9px;color:#8ba4cc;letter-spacing:1px;font-weight:600;}
-  #connectionBar{background:linear-gradient(135deg,var(--bg2) 0%,#0d1628 100%);border-bottom:2px solid var(--border2);padding:16px 24px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;box-shadow:0 4px 20px rgba(0,0,0,.4);}
-  #connectionBar::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 200% at 50% 50%,rgba(45,139,255,.04) 0%,transparent 70%);pointer-events:none;}
-  .conn-brand{display:flex;flex-direction:column;gap:2px;min-width:140px;}
+  /* ─── CONNECTION BAR ─── */
+  #connectionBar{
+    background:linear-gradient(135deg,var(--bg2) 0%,#0d1628 100%);
+    border-bottom:2px solid var(--border2);
+    padding:14px 20px;
+    display:flex;
+    align-items:center;
+    gap:16px;
+    flex-wrap:wrap;
+    box-shadow:0 4px 20px rgba(0,0,0,.4);
+    position:relative;
+  }
+  #connectionBar::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 200% at 50% 50%,rgba(45,139,255,.04) 0%,transparent 70%);pointer-events:none;z-index:0;}
+  #connectionBar > *{position:relative;z-index:1;}
+  .conn-brand{display:flex;flex-direction:column;gap:2px;flex-shrink:0;}
   .conn-brand .brand{font-family:'Orbitron',sans-serif;font-size:22px;font-weight:900;color:var(--accent2);letter-spacing:4px;text-shadow:0 0 24px rgba(0,240,255,.5);}
   .conn-brand .sub{font-size:10px;color:#8ba4cc;letter-spacing:2px;font-weight:600;}
-  .conn-fields{display:flex;align-items:center;gap:12px;flex:1;flex-wrap:wrap;}
-  .conn-field{display:flex;flex-direction:column;gap:4px;}
+  .conn-fields{display:flex;align-items:center;gap:10px;flex:1;flex-wrap:wrap;}
+  .conn-field{display:flex;flex-direction:column;gap:4px;flex:1;min-width:0;}
   .conn-field label{font-size:10px;letter-spacing:1.5px;color:#8ba4cc;text-transform:uppercase;font-weight:700;}
-  .conn-field input,.conn-field select{background:var(--bg3);border:1px solid var(--border2);color:var(--white);padding:9px 13px;border-radius:7px;font-family:'Share Tech Mono',monospace;font-size:13px;outline:none;transition:border .2s,box-shadow .2s;min-width:180px;}
-  .conn-field input{min-width:240px;}
+  .conn-field input,.conn-field select{background:var(--bg3);border:1px solid var(--border2);color:var(--white);padding:9px 13px;border-radius:7px;font-family:'Share Tech Mono',monospace;font-size:13px;outline:none;transition:border .2s,box-shadow .2s;width:100%;}
   .conn-field input:focus,.conn-field select:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(45,139,255,.2);}
-  .conn-remember{display:flex;align-items:center;gap:8px;cursor:pointer;}
+  .conn-remember{display:flex;align-items:center;gap:8px;cursor:pointer;flex-shrink:0;}
   .conn-remember input[type=checkbox]{width:15px;height:15px;accent-color:var(--accent);}
   .conn-remember label{font-size:11px;letter-spacing:1px;color:#8ba4cc;text-transform:uppercase;font-weight:700;cursor:pointer;white-space:nowrap;}
-  .btn-login{padding:11px 26px;background:linear-gradient(135deg,var(--accent),#0055cc);color:#fff;border:none;border-radius:7px;font-family:'Orbitron',sans-serif;font-size:12px;font-weight:700;letter-spacing:2px;cursor:pointer;transition:all .2s;box-shadow:0 4px 20px rgba(45,139,255,.35);white-space:nowrap;}
+  .btn-login{padding:11px 22px;background:linear-gradient(135deg,var(--accent),#0055cc);color:#fff;border:none;border-radius:7px;font-family:'Orbitron',sans-serif;font-size:12px;font-weight:700;letter-spacing:2px;cursor:pointer;transition:all .2s;box-shadow:0 4px 20px rgba(45,139,255,.35);white-space:nowrap;flex-shrink:0;}
   .btn-login:hover{filter:brightness(1.15);transform:translateY(-1px);box-shadow:0 6px 24px rgba(45,139,255,.5);}
   .btn-login:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none;}
   .login-status{font-size:12px;color:#8ba4cc;min-height:18px;font-weight:600;white-space:nowrap;}
   .login-status.err{color:var(--red);}
   .login-status.ok{color:var(--green);}
+
+  /* ─── ACCOUNT AREA (post-login) ─── */
+  #hdrAccountArea{
+    display:none;
+    width:100%;
+    flex-direction:column;
+    gap:10px;
+  }
+  /* Top row: session timer + account name/balance */
+  .hdr-acct-top{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    width:100%;
+  }
+  /* Bottom row: badges + ws dot + logout */
+  .hdr-acct-bottom{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    flex-wrap:wrap;
+    width:100%;
+  }
+  .hdr-acct-bottom .btn-logout{
+    margin-left:auto;
+  }
 
   /* ─── MAIN APP ─── */
   #app{display:flex;flex-direction:column;min-height:100vh;}
@@ -139,6 +176,20 @@
   .bot-status.buy{border-left-color:var(--accent);color:#6ab5ff;}
   .bot-status.sell{border-left-color:var(--red);color:#ff7090;}
   .bot-status.error{border-left-color:var(--red);color:#ff7090;}
+
+  /* ─── RECONNECT BANNER ─── */
+  #reconnectBanner{
+    display:none;
+    position:fixed;top:0;left:0;right:0;z-index:10000;
+    background:linear-gradient(90deg,rgba(255,61,90,.18),rgba(45,139,255,.18));
+    border-bottom:2px solid var(--red);
+    padding:10px 20px;
+    text-align:center;
+    font-family:'Orbitron',sans-serif;font-size:12px;font-weight:700;
+    letter-spacing:2px;color:#ff9aaa;
+    animation:reconnectPulse 1.6s ease-in-out infinite;
+  }
+  @keyframes reconnectPulse{0%,100%{opacity:.8}50%{opacity:1;color:#ff6b85;}}
 
   /* ─── AUTO BOT TOGGLE — HIGHLIGHTED ─── */
   .auto-toggle{display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,rgba(0,230,118,.08),rgba(45,139,255,.06));border:2px solid var(--green);border-radius:10px;padding:14px 16px;margin-top:9px;cursor:pointer;transition:all .3s;box-shadow:0 0 18px rgba(0,230,118,.18),inset 0 1px 0 rgba(0,230,118,.1);}
@@ -299,32 +350,7 @@
   .filter-desc .f-rule .sell-txt{color:#ff7090;}
 
 
-  /* ─── TRADE TIME SCHEDULER ─── */
-  .tradetime-section{background:rgba(0,230,118,.04);border:1px solid rgba(0,230,118,.22);border-radius:9px;padding:13px 15px;margin-top:9px;}
-  .tradetime-section .section-lbl{color:var(--green);font-size:11px;letter-spacing:2px;margin-bottom:10px;font-weight:700;}
-  .tradetime-toggle{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
-  .tradetime-toggle .tt-lbl{font-size:13px;letter-spacing:1px;color:var(--green);font-weight:700;text-transform:uppercase;}
-  .tradetime-body{display:none;}
-  .tradetime-body.visible{display:block;}
-  .tt-time-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
-  .tt-time-input{background:var(--bg3);border:1px solid var(--border2);color:var(--white);padding:9px 11px;border-radius:6px;font-family:'Share Tech Mono',monospace;font-size:16px;font-weight:700;outline:none;width:100%;transition:border .2s,box-shadow .2s;letter-spacing:2px;}
-  .tt-time-input:focus{border-color:var(--green);box-shadow:0 0 0 2px rgba(0,230,118,.15);}
-  .tt-options{display:flex;flex-direction:column;gap:7px;margin-bottom:10px;}
-  .tt-opt-row{display:flex;align-items:center;gap:9px;padding:8px 11px;background:var(--bg);border:1px solid var(--border2);border-radius:6px;cursor:pointer;transition:all .2s;}
-  .tt-opt-row:hover{border-color:#3a5580;}
-  .tt-opt-row.checked{border-color:rgba(0,230,118,.4);background:rgba(0,230,118,.06);}
-  .tt-opt-row input[type=checkbox]{width:15px;height:15px;accent-color:var(--green);flex-shrink:0;cursor:pointer;}
-  .tt-opt-row .tt-opt-lbl{font-size:12px;letter-spacing:.8px;font-weight:700;color:#8ba4cc;}
-  .tt-opt-row.checked .tt-opt-lbl{color:var(--text);}
-  .tt-countdown{display:flex;align-items:center;gap:12px;padding:9px 12px;background:var(--bg);border:1px solid rgba(0,230,118,.2);border-radius:7px;margin-top:3px;}
-  .tt-countdown .ttc-icon{font-size:18px;line-height:1;}
-  .tt-countdown .ttc-info{flex:1;}
-  .tt-countdown .ttc-lbl{font-size:10px;letter-spacing:1.5px;color:#8ba4cc;text-transform:uppercase;font-weight:700;}
-  .tt-countdown .ttc-val{font-family:'Orbitron',sans-serif;font-size:14px;font-weight:700;color:var(--green);letter-spacing:1px;text-shadow:0 0 8px rgba(0,230,118,.3);}
-  .tt-countdown.firing .ttc-val{color:#00ff88;text-shadow:0 0 14px rgba(0,255,136,.7);animation:pulse 1s infinite;}
-  .tt-status-badge{display:inline-block;font-size:10px;letter-spacing:1.5px;padding:2px 8px;border-radius:3px;font-family:'Share Tech Mono',monospace;font-weight:700;margin-top:6px;}
-  .tt-status-badge.waiting{background:rgba(245,197,24,.12);border:1px solid rgba(245,197,24,.3);color:var(--gold);}
-  .tt-status-badge.armed{background:rgba(0,230,118,.15);border:1px solid rgba(0,230,118,.35);color:var(--green);}
+
 
   /* ─── COOLDOWN TIMER ─── */
   .cooldown-section{background:rgba(245,197,24,.05);border:1px solid rgba(245,197,24,.2);border-radius:7px;padding:12px 14px;margin-top:9px;}
@@ -341,11 +367,92 @@
   .cooldown-label{font-size:11px;color:#8ba4cc;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;font-weight:700;}
   .cooldown-status{font-family:'Share Tech Mono',monospace;font-size:12px;color:#8ba4cc;font-weight:600;}
   .cooldown-status.active{color:#ff8c00;}
+
+  /* ─── TRADE SCHEDULE TIMER ─── */
+  .schedule-section{background:rgba(0,240,255,.04);border:1px solid rgba(0,240,255,.22);border-radius:9px;padding:13px 15px;margin-top:9px;}
+  .schedule-section .section-lbl{color:var(--accent2);font-size:11px;letter-spacing:2px;margin-bottom:10px;font-weight:700;}
+  .schedule-toggle-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px;}
+  .schedule-toggle-row .sch-lbl{font-size:12px;letter-spacing:1px;color:var(--text);font-weight:700;text-transform:uppercase;}
+  .schedule-switch{position:relative;width:44px;height:22px;flex-shrink:0;}
+  .schedule-switch input{opacity:0;width:0;height:0;}
+  .schedule-slider{position:absolute;inset:0;background:#1e2a42;border:1px solid var(--border2);border-radius:20px;cursor:pointer;transition:all .25s;}
+  .schedule-slider::before{content:'';position:absolute;height:16px;width:16px;left:2px;top:2px;background:#4a5a78;border-radius:50%;transition:all .25s;}
+  .schedule-switch input:checked + .schedule-slider{background:rgba(0,240,255,.18);border-color:var(--accent2);}
+  .schedule-switch input:checked + .schedule-slider::before{transform:translateX(22px);background:var(--accent2);box-shadow:0 0 6px rgba(0,240,255,.5);}
+  .schedule-time-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:9px;}
+  .schedule-time-field{display:flex;flex-direction:column;gap:4px;}
+  .schedule-time-field label{font-size:10px;letter-spacing:1.5px;color:#8ba4cc;text-transform:uppercase;font-weight:700;}
+  .schedule-time-field input[type=time]{background:var(--bg3);border:1px solid var(--border2);color:var(--white);padding:8px 10px;border-radius:6px;font-family:'Share Tech Mono',monospace;font-size:13px;font-weight:600;outline:none;width:100%;transition:border .2s;color-scheme:dark;}
+  .schedule-time-field input[type=time]:focus{border-color:var(--accent2);box-shadow:0 0 0 2px rgba(0,240,255,.15);}
+  .schedule-status-box{background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:9px 12px;font-family:'Share Tech Mono',monospace;font-size:11px;color:#8ba4cc;font-weight:600;line-height:1.7;min-height:38px;transition:border-color .3s,color .3s;}
+  .schedule-status-box.waiting {border-color:rgba(245,197,24,.4);color:var(--gold);}
+  .schedule-status-box.active  {border-color:rgba(0,230,118,.4);color:var(--green);}
+  .schedule-status-box.stopped {border-color:rgba(255,61,90,.4);color:#ff7090;}
+  .schedule-countdown{display:flex;align-items:center;gap:10px;margin-top:8px;}
+  .sch-cd-label{font-size:10px;color:#8ba4cc;letter-spacing:1.5px;text-transform:uppercase;font-weight:700;}
+  .sch-cd-val{font-family:'Orbitron',sans-serif;font-size:15px;font-weight:700;color:var(--accent2);letter-spacing:2px;text-shadow:0 0 8px rgba(0,240,255,.4);}
+  .sch-cd-val.imminent{color:var(--gold);text-shadow:0 0 8px rgba(245,197,24,.5);animation:pulse 1s infinite;}
+
+  /* ═══════════════════════════════
+     MOBILE RESPONSIVE — ≤ 600px
+  ═══════════════════════════════ */
+  @media (max-width:600px){
+
+    /* Connection bar stacks vertically */
+    #connectionBar{
+      flex-direction:column;
+      align-items:stretch;
+      padding:12px 14px;
+      gap:10px;
+    }
+    .conn-brand .brand{font-size:18px;letter-spacing:3px;}
+    .conn-brand .sub{font-size:9px;}
+
+    /* Token field full width */
+    .conn-fields{flex-direction:column;align-items:stretch;gap:8px;}
+    .conn-field{min-width:0;}
+    .conn-field input{min-width:0;width:100%;font-size:13px;}
+
+    /* Remember + connect on same row */
+    .conn-bottom-row{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+    .btn-login{width:100%;padding:12px;font-size:11px;}
+
+    /* Account area — already column, just tighten spacing */
+    #hdrAccountArea{gap:8px;}
+
+    /* Session timer smaller */
+    .session-timer{padding:6px 12px;min-width:0;}
+    .session-timer .st-val{font-size:14px;letter-spacing:1px;}
+
+    /* Name clips cleanly */
+    .acct-info .name{font-size:13px;}
+    .acct-info .bal{font-size:13px;}
+
+    /* Badge row wraps naturally, logout full width */
+    .hdr-acct-bottom{gap:6px;}
+    .currency-badge{font-size:10px;padding:4px 9px;}
+    .acct-type-badge{font-size:10px;padding:4px 10px;letter-spacing:1.5px;}
+    .btn-logout{
+      margin-left:0 !important;
+      width:100%;
+      padding:10px;
+      font-size:13px;
+      text-align:center;
+    }
+
+    /* Collapse main grid to single column */
+    .main-grid{
+      grid-template-columns:1fr !important;
+      padding:10px;
+      gap:12px;
+    }
+  }
 </style>
 </head>
 <body>
 
 <!-- ═══════════════════════════ APP ═══════════════════════════ -->
+<div id="reconnectBanner">⚡ CONNECTION LOST — RECONNECTING…</div>
 <div id="app">
 
   <!-- ─── CONNECTION BAR (replaces overlay login) ─── -->
@@ -368,23 +475,26 @@
       <div class="login-status" id="loginStatus"></div>
     </div>
     <!-- After login, show account info + logout here -->
-    <div id="hdrAccountArea" style="display:none;margin-left:auto;display:none;align-items:center;gap:14px;">
-      <!-- SESSION TIMER -->
-      <div class="session-timer" id="sessionTimerBox">
-        <span class="st-lbl">Session</span>
-        <span class="st-val" id="sessionTimerVal">00:00:00</span>
-        <span class="st-sub" id="sessionTimerSub">LIVE</span>
+    <div id="hdrAccountArea">
+      <!-- Row 1: Session timer + account name & balance -->
+      <div class="hdr-acct-top">
+        <div class="session-timer" id="sessionTimerBox">
+          <span class="st-lbl">Session</span>
+          <span class="st-val" id="sessionTimerVal">00:00:00</span>
+          <span class="st-sub" id="sessionTimerSub">LIVE</span>
+        </div>
+        <div class="acct-info" style="flex:1;min-width:0;">
+          <div class="name" id="hdrName" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">—</div>
+          <div class="bal" id="hdrBal">0.00</div>
+        </div>
+        <span class="ws-dot" id="wsDot"></span>
       </div>
-      <div class="acct-info">
-        <div class="name" id="hdrName">—</div>
-        <div class="bal" id="hdrBal">0.00</div>
+      <!-- Row 2: Currency badge + account type badge + logout -->
+      <div class="hdr-acct-bottom">
+        <span class="currency-badge type-fiat" id="currencyBadge" title="Account Currency">🇺🇸 USD</span>
+        <span class="acct-type-badge" id="acctTypeBadge" title="Account Type">—</span>
+        <button class="btn-logout" onclick="doLogout()">⏻ LOGOUT</button>
       </div>
-      <!-- Dynamic currency badge — updated on authorize -->
-      <span class="currency-badge type-fiat" id="currencyBadge" title="Account Currency">🇺🇸 USD</span>
-      <!-- Account type badge — auto-detected from token (DEMO / LIVE) -->
-      <span class="acct-type-badge" id="acctTypeBadge" title="Account Type">—</span>
-      <span class="ws-dot" id="wsDot"></span>
-      <button class="btn-logout" onclick="doLogout()">⏻ LOGOUT</button>
     </div>
   </div>
 
@@ -535,49 +645,6 @@
             </div>
           </div>
 
-          <!-- ── TRADE TIME SCHEDULER ── -->
-          <div class="tradetime-section">
-            <div class="section-lbl">⏰ Trade Time Scheduler</div>
-            <div class="tradetime-toggle">
-              <span class="tt-lbl">Schedule Auto-Start</span>
-              <label class="filter-switch" onclick="event.stopPropagation()">
-                <input type="checkbox" id="ttEnabled" onchange="onTradeTimeToggle(this.checked)"/>
-                <span class="filter-slider"></span>
-              </label>
-            </div>
-
-            <div class="tradetime-body" id="ttBody">
-              <!-- Time picker -->
-              <div class="ctrl-row" style="margin-bottom:8px;">
-                <label style="font-size:11px;letter-spacing:1px;">Start Time (HH:MM — 24h)</label>
-                <input type="time" id="cfgTradeTime" class="tt-time-input" value="08:00" onchange="onTradeTimeChange()"/>
-                <span class="hint">EA will auto-start at this time every day</span>
-              </div>
-
-              <!-- Options -->
-              <div class="section-lbl" style="color:#8ba4cc;margin-bottom:6px;margin-top:4px;">Enable at start time:</div>
-              <div class="tt-options">
-                <div class="tt-opt-row" id="ttOptAutoRow" onclick="ttOptClick('ttOptAuto')">
-                  <input type="checkbox" id="ttOptAuto" onclick="event.stopPropagation()" onchange="ttOptChange('ttOptAuto',this.checked)"/>
-                  <span class="tt-opt-lbl">⚡ Auto Trade</span>
-                </div>
-                <div class="tt-opt-row" id="ttOptRevRow" onclick="ttOptClick('ttOptRev')">
-                  <input type="checkbox" id="ttOptRev" onclick="event.stopPropagation()" onchange="ttOptChange('ttOptRev',this.checked)"/>
-                  <span class="tt-opt-lbl">⇄ Reverse Mode</span>
-                </div>
-              </div>
-
-              <!-- Countdown display -->
-              <div class="tt-countdown" id="ttCountdown">
-                <span class="ttc-icon">⏱</span>
-                <div class="ttc-info">
-                  <div class="ttc-lbl">Next trigger in</div>
-                  <div class="ttc-val" id="ttCountVal">--:--:--</div>
-                </div>
-                <span class="tt-status-badge waiting" id="ttStatusBadge">WAITING</span>
-              </div>
-            </div>
-          </div>
 
           <!-- ── SIGNAL FILTERS ── -->
           <div class="filter-section">
@@ -647,6 +714,37 @@
               </div>
             </div>
 
+          </div>
+
+          <!-- ── TRADE SCHEDULE TIMER ── -->
+          <div class="schedule-section">
+            <div class="section-lbl">⏰ Trade Schedule Timer</div>
+
+            <div class="schedule-toggle-row">
+              <span class="sch-lbl">Enable Schedule</span>
+              <label class="schedule-switch">
+                <input type="checkbox" id="scheduleEnabled" onchange="onScheduleToggle(this.checked)"/>
+                <span class="schedule-slider"></span>
+              </label>
+            </div>
+
+            <div class="schedule-time-row">
+              <div class="schedule-time-field">
+                <label>Start Trade</label>
+                <input type="time" id="scheduleStart" value="09:00" onchange="onScheduleParamChange()"/>
+              </div>
+              <div class="schedule-time-field">
+                <label>End Trade</label>
+                <input type="time" id="scheduleEnd" value="17:00" onchange="onScheduleParamChange()"/>
+              </div>
+            </div>
+
+            <div class="schedule-status-box" id="scheduleStatusBox">Schedule disabled</div>
+
+            <div class="schedule-countdown" id="scheduleCountdownRow" style="display:none;">
+              <span class="sch-cd-label" id="schCdLabel">Starts in</span>
+              <span class="sch-cd-val" id="schCdVal">—</span>
+            </div>
           </div>
 
           <div class="bot-status" id="botStatus">Connect wallet — then BUY / SELL or enable Auto CRT.</div>
@@ -752,7 +850,7 @@
 <script>
 // ═══════════════════════════════════════════════════
 //  CRT EA v8 — Deriv WebSocket Platform
-//  Strategy: Candle Range Theory + Signal Filters + Trade Time Scheduler
+//  Strategy: Candle Range Theory + Signal Filters
 // ═══════════════════════════════════════════════════
 
 const STORAGE_KEY = 'crt_ea_state';
@@ -878,8 +976,13 @@ let stats = {
   lastSignal:'', lastTime:''
 };
 
-// Tick accumulator for candle building
-let currentCandle = null;
+// ─── TRADE SCHEDULE STATE ─────────────────────────
+// scheduleEnabled : master on/off toggle
+// schedulePhase   : 'idle' | 'waiting_start' | 'trading' | 'stopped_day'
+// _scheduleInterval : the 1-second polling interval handle
+let scheduleEnabled      = false;
+let schedulePhase        = 'idle';   // idle | waiting_start | trading | stopped_day
+let _scheduleInterval    = null;
 let lastCandleEpoch = 0;
 let tickCount = 0;
 let subscriptionId = null;
@@ -909,158 +1012,7 @@ function calcEMA(candleArr, period){
   return ema;
 }
 
-// ─── TRADE TIME SCHEDULER STATE ──────────────────
-let tradeTimeEnabled   = false;   // master enable
-let tradeTimeValue     = '08:00'; // HH:MM string
-let ttOptAutoTrade     = false;   // tick: enable auto-trade at fire
-let ttOptReverse       = false;   // tick: enable reverse mode at fire
-let ttCountdownTimer   = null;    // setInterval ref
-let ttFiredToday       = false;   // guard — fire once per calendar day
-let ttLastFiredDate    = '';      // 'YYYY-MM-DD' of last fire
 
-
-
-// ─── TRADE TIME SCHEDULER LOGIC ──────────────────
-
-function onTradeTimeToggle(enabled){
-  tradeTimeEnabled = enabled;
-  const body = document.getElementById('ttBody');
-  if(enabled){
-    body.classList.add('visible');
-    tradeTimeValue = document.getElementById('cfgTradeTime').value || '08:00';
-    ttFiredToday   = false; // reset so it can fire today if time hasn't passed
-    startTradeTimeCountdown();
-    toast('⏰ Trade Time armed — starts at '+tradeTimeValue, 'info');
-  } else {
-    body.classList.remove('visible');
-    stopTradeTimeCountdown();
-    toast('⏰ Trade Time disabled', 'info');
-  }
-  saveState();
-}
-
-function onTradeTimeChange(){
-  tradeTimeValue = document.getElementById('cfgTradeTime').value || '08:00';
-  ttFiredToday   = false; // time changed — allow firing again today if applicable
-  if(tradeTimeEnabled){
-    stopTradeTimeCountdown();
-    startTradeTimeCountdown();
-  }
-  saveState();
-}
-
-function ttOptClick(id){
-  const chk = document.getElementById(id);
-  chk.checked = !chk.checked;
-  ttOptChange(id, chk.checked);
-}
-
-function ttOptChange(id, checked){
-  const rowId = id + 'Row';
-  const row   = document.getElementById(rowId);
-  if(row){ if(checked) row.classList.add('checked'); else row.classList.remove('checked'); }
-  if(id === 'ttOptAuto') ttOptAutoTrade = checked;
-  if(id === 'ttOptRev')  ttOptReverse   = checked;
-  saveState();
-}
-
-// Returns seconds until the next occurrence of HH:MM (today or tomorrow)
-function secsUntilTime(hhmm){
-  const now    = new Date();
-  const [hh, mm] = hhmm.split(':').map(Number);
-  const target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hh, mm, 0, 0);
-  let diff = Math.round((target - now) / 1000);
-  // Allow a firing window of 0–4 seconds past the target.
-  // Only push to tomorrow once we are more than 4 seconds past.
-  if(diff < -4) diff += 86400;
-  return diff;
-}
-
-// Returns today's date string YYYY-MM-DD
-function todayStr(){
-  const d = new Date();
-  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-}
-
-function startTradeTimeCountdown(){
-  stopTradeTimeCountdown();
-  if(!tradeTimeEnabled) return;
-
-  const badge    = document.getElementById('ttStatusBadge');
-  const countEl  = document.getElementById('ttCountVal');
-  const cntBox   = document.getElementById('ttCountdown');
-
-  function tick(){
-    if(!tradeTimeEnabled){ stopTradeTimeCountdown(); return; }
-
-    const secs = secsUntilTime(tradeTimeValue);
-    const today = todayStr();
-
-    // Format HH:MM:SS
-    const h = String(Math.floor(secs / 3600)).padStart(2,'0');
-    const m = String(Math.floor((secs % 3600) / 60)).padStart(2,'0');
-    const s = String(secs % 60).padStart(2,'0');
-    if(countEl) countEl.textContent = h+':'+m+':'+s;
-
-    // Firing window: within 0–2 seconds of target and not already fired today
-    if(secs <= 2 && ttLastFiredDate !== today){
-      ttLastFiredDate = today;
-      ttFiredToday    = true;
-      fireTradeTime();
-    }
-
-    // Badge state
-    if(badge){
-      if(secs <= 2){
-        badge.textContent = 'ARMED';
-        badge.className   = 'tt-status-badge armed';
-        if(cntBox) cntBox.classList.add('firing');
-      } else {
-        badge.textContent = 'WAITING';
-        badge.className   = 'tt-status-badge waiting';
-        if(cntBox) cntBox.classList.remove('firing');
-      }
-    }
-  }
-
-  tick(); // immediate first render
-  ttCountdownTimer = setInterval(tick, 1000);
-}
-
-function stopTradeTimeCountdown(){
-  if(ttCountdownTimer){ clearInterval(ttCountdownTimer); ttCountdownTimer = null; }
-  const countEl = document.getElementById('ttCountVal');
-  const badge   = document.getElementById('ttStatusBadge');
-  const cntBox  = document.getElementById('ttCountdown');
-  if(countEl) countEl.textContent = '--:--:--';
-  if(badge){ badge.textContent='OFF'; badge.className='tt-status-badge waiting'; }
-  if(cntBox) cntBox.classList.remove('firing');
-}
-
-function fireTradeTime(){
-  toast('⏰ Trade Time fired! Activating scheduled settings…', 'info');
-
-  // ── Step 1: Reverse Mode first (must be set before auto trade starts) ──
-  if(ttOptReverse && !reverseMode){
-    toggleReverseMode();   // uses the real toggle — keeps UI + state in sync
-    toast('⇄ Reverse Mode enabled by Trade Time', 'info');
-  }
-
-  // ── Step 2: Auto Trade ──
-  if(ttOptAutoTrade){
-    if(eaHalted){
-      toast('⏰ Trade Time: EA is halted — reset session first', 'info');
-    } else if(!ws || ws.readyState !== 1){
-      toast('⏰ Trade Time: Not connected — Auto Trade skipped', 'info');
-    } else if(!autoBot){
-      toggleAutoBot();     // uses the real toggle — keeps UI + state in sync
-      toast('⚡ Auto Trade enabled by Trade Time', 'info');
-    }
-    // already on → just resume, no action needed
-  }
-
-  saveState();
-}
 
 // ─── FILTER UI HELPERS ────────────────────────────
 function toggleFilter(n){
@@ -1096,11 +1048,15 @@ function saveState(){
       tradeMode, durType, tradeLog, stats, candles: candles.slice(-100),
       analysisCandleMode, analysisCandleTF,
       filters: { ema: filterEmaEnabled, candleClose: filterCandleClose, candle2: filterCandle2, emaPeriod: v('cfgEmaPeriod') },
-      tradeTime: { enabled: tradeTimeEnabled, time: tradeTimeValue, optAuto: ttOptAutoTrade, optRev: ttOptReverse, lastFiredDate: ttLastFiredDate },
       cfg: {
         symbol: v('cfgSymbol'), minRange: v('cfgMinRange'), maxPos: v('cfgMaxPos'),
         stake: v('cfgStake'), sl: v('cfgSL'), tp: v('cfgTP'),
         duration: v('cfgDuration')
+      },
+      schedule: {
+        enabled: scheduleEnabled,
+        start: v('scheduleStart'),
+        end:   v('scheduleEnd')
       }
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
@@ -1169,27 +1125,17 @@ function loadState(){
       }
       if(s.filters.emaPeriod !== undefined) setVal('cfgEmaPeriod', s.filters.emaPeriod);
     }
-    // Restore Trade Time settings
-    if(s.tradeTime){
-      const tt = s.tradeTime;
-      if(tt.time)         { tradeTimeValue = tt.time; setVal('cfgTradeTime', tt.time); }
-      if(tt.lastFiredDate)  ttLastFiredDate = tt.lastFiredDate;
-      if(tt.optAuto !== undefined){
-        ttOptAutoTrade = !!tt.optAuto;
-        const chkA = document.getElementById('ttOptAuto');
-        if(chkA){ chkA.checked = ttOptAutoTrade; ttOptChange('ttOptAuto', ttOptAutoTrade); }
-      }
-      if(tt.optRev !== undefined){
-        ttOptReverse = !!tt.optRev;
-        const chkR = document.getElementById('ttOptRev');
-        if(chkR){ chkR.checked = ttOptReverse; ttOptChange('ttOptRev', ttOptReverse); }
-      }
-      if(tt.enabled){
-        tradeTimeEnabled = true;
-        const chkTT = document.getElementById('ttEnabled');
-        if(chkTT){ chkTT.checked = true; onTradeTimeToggle(true); }
+
+    // Restore schedule settings
+    if(s.schedule){
+      if(s.schedule.start) setVal('scheduleStart', s.schedule.start);
+      if(s.schedule.end)   setVal('scheduleEnd',   s.schedule.end);
+      if(s.schedule.enabled){
+        const chk = document.getElementById('scheduleEnabled');
+        if(chk){ chk.checked = true; onScheduleToggle(true); }
       }
     }
+
     rebuildLog();
     updateStats();
   } catch(e){}
@@ -1233,11 +1179,19 @@ function doLogin(){
 }
 
 function doLogout(){
+  // Mark as intentional so onclose does NOT schedule a reconnect
+  _intentionalDisconnect = true;
+  if(_reconnectTimer){ clearTimeout(_reconnectTimer); _reconnectTimer = null; }
+  _reconnectCount = 0;
+  const banner = document.getElementById('reconnectBanner');
+  if(banner) banner.style.display = 'none';
+  // Stop schedule engine
+  _stopScheduleEngine();
+  schedulePhase = 'idle';
   autoBot = false;
   botRunning = false;
   if(ws){ ws.close(); ws=null; }
   stopSessionTimer();
-  stopTradeTimeCountdown(); // pause countdown while disconnected
   apiToken='';
   enableTradeButtons(false);
   const tog = document.getElementById('autoToggle');
@@ -1261,15 +1215,58 @@ function setLoginStatus(msg, cls){
 }
 
 // ─── WEBSOCKET ────────────────────────────────────
-let pendingLogin = false;
+let pendingLogin    = false;
+let _reconnectTimer = null;   // holds the setTimeout handle
+let _reconnectCount = 0;      // number of reconnect attempts this session
+let _intentionalDisconnect = false; // set true only on user-initiated logout
+
+// Exponential back-off: 3 s, 6 s, 12 s, 24 s … capped at 60 s
+function _reconnectDelay(){ return Math.min(3000 * Math.pow(2, _reconnectCount), 60000); }
+
+function _scheduleReconnect(){
+  if(_reconnectTimer) clearTimeout(_reconnectTimer);
+  if(_intentionalDisconnect) return;
+  if(!apiToken)              return;
+
+  const delay = _reconnectDelay();
+  const secs  = Math.round(delay / 1000);
+  _reconnectCount++;
+
+  // Show reconnect banner
+  const banner = document.getElementById('reconnectBanner');
+  if(banner){
+    banner.textContent = '⚡ CONNECTION LOST — RECONNECTING IN '+secs+'s… (ATTEMPT '+_reconnectCount+')';
+    banner.style.display = 'block';
+  }
+
+  setBotStatus('⚡ Reconnecting in '+secs+'s… (attempt '+_reconnectCount+')','error');
+  setLoginStatus('Reconnecting…','');
+
+  _reconnectTimer = setTimeout(()=>{
+    _reconnectTimer = null;
+    if(!_intentionalDisconnect && apiToken){
+      const banner2 = document.getElementById('reconnectBanner');
+      if(banner2) banner2.textContent = '⚡ RECONNECTING…';
+      connectWS(false);
+    }
+  }, delay);
+}
 
 function connectWS(isLoginFlow=false){
-  if(ws){ ws.close(); }
+  // Cancel any pending reconnect timer — we're connecting now
+  if(_reconnectTimer){ clearTimeout(_reconnectTimer); _reconnectTimer = null; }
+  _intentionalDisconnect = false;
+
+  if(ws){ try{ ws.close(); }catch(e){} }
   ws = new WebSocket(serverUrl);
   setDot('');
 
   ws.onopen = () => {
+    _reconnectCount = 0;   // reset back-off counter on successful connect
     setDot('connected');
+    // Hide reconnect banner
+    const banner = document.getElementById('reconnectBanner');
+    if(banner) banner.style.display = 'none';
     // Authorize
     send({ authorize: apiToken });
   };
@@ -1281,16 +1278,34 @@ function connectWS(isLoginFlow=false){
 
   ws.onerror = () => {
     setDot('error');
-    if(isLoginFlow){ setLoginStatus('Connection error. Check token/server.','err'); document.getElementById('btnLogin').disabled=false; }
-    setBotStatus('WebSocket error.','error');
+    if(isLoginFlow){
+      setLoginStatus('Connection error. Check token/server.','err');
+      document.getElementById('btnLogin').disabled=false;
+    }
+    setBotStatus('WebSocket error — will retry…','error');
   };
 
-  ws.onclose = () => {
+  ws.onclose = (evt) => {
     setDot('error');
     stopSessionTimer();
-    setBotStatus('Disconnected.','error');
     enableTradeButtons(false);
-    if(botRunning || autoBot){ setTimeout(()=>{ connectWS(false); },3000); }
+
+    if(_intentionalDisconnect){
+      setBotStatus('Disconnected.','error');
+      return;
+    }
+
+    // ── Token still in storage → always try to reconnect ──
+    const savedToken = loadSavedToken();
+    const hasToken   = !!apiToken || !!(savedToken && savedToken.token);
+
+    if(hasToken){
+      // Restore apiToken from storage if it was cleared somehow
+      if(!apiToken && savedToken) apiToken = savedToken.token;
+      _scheduleReconnect();
+    } else {
+      setBotStatus('Disconnected.','error');
+    }
   };
 }
 
@@ -1334,7 +1349,7 @@ function handleMsg(msg, isLoginFlow){
       setTimeout(()=>{
         // Switch connection bar to "connected" state — show account info
         const accArea = document.getElementById('hdrAccountArea');
-        if(accArea){ accArea.style.display='flex'; }
+        if(accArea){ accArea.style.display='flex'; accArea.style.flexDirection='column'; }
         startSessionTimer();
         loadState();
         // Start tick feed immediately using selected symbol
@@ -1343,17 +1358,28 @@ function handleMsg(msg, isLoginFlow){
         enableTradeButtons(true);
         // Re-poll any entries that were left OPEN/? from a previous session
         setTimeout(repollStaleEntries, 2000);
-        // Restart Trade Time countdown if it was armed before login
-        if(tradeTimeEnabled) startTradeTimeCountdown();
+        // Start schedule engine if it was re-enabled by loadState
+        if(scheduleEnabled){ _startScheduleEngine(); }
       }, 400);
     } else {
-      // Reconnect flow — restore state
+      // Reconnect flow — restore state without resetting UI
       enableTradeButtons(true);
       startTickFeed();
       subscribeBalance();
       setTimeout(repollStaleEntries, 2000);
-      // Restart Trade Time countdown if it was armed
-      if(tradeTimeEnabled) startTradeTimeCountdown();
+      // Restart session timer (it was stopped on disconnect)
+      startSessionTimer();
+      // Restart schedule engine if it was enabled
+      if(scheduleEnabled){ _startScheduleEngine(); }
+      // Restore autoBot if it was running before disconnect
+      if(autoBot){
+        const acLabel = analysisCandleMode==='tick' ? 'TICK' : 'CANDLE·'+analysisCandleTF;
+        setBotStatus('⚡ Auto CRT resumed · '+tradeMode+' · '+v('cfgSymbol')+' · AC:'+acLabel,'running');
+        toast('🔄 Reconnected — Auto CRT resumed','info');
+      } else {
+        setBotStatus('Reconnected — ready.','');
+        toast('🔄 Connection restored','info');
+      }
     }
     return;
   }
@@ -2067,6 +2093,8 @@ function checkSessionLimits(){
     enableTradeButtons(false);
     setBotStatus(haltReason, 'error');
     toast(haltReason, 'info');
+    // Notify schedule engine so it marks the day as stopped (Mode 1)
+    scheduleNotifyHalt();
   }
 }
 
@@ -2126,6 +2154,11 @@ function resetSession(){
   tradeLog = [];
   document.getElementById('eaHaltBanner').style.display='none';
   enableTradeButtons(true);
+  // Reset schedule phase so it can re-arm for the next window
+  if(scheduleEnabled){
+    schedulePhase = 'idle';
+    _scheduleTickUI();
+  }
   rebuildLog();
   updateStats();
   toast('Session reset — EA ready','info');
@@ -2457,6 +2490,226 @@ function setAnalysisTF(tf, el){
   document.getElementById('tickerCandles').textContent = '0';
   toast('Timeframe → '+tf+' (candles align to clock boundaries)','info');
   saveState();
+}
+
+// ─── TRADE SCHEDULE TIMER ENGINE ─────────────────────────────────
+// Parses "HH:MM" into total minutes since midnight (local time).
+function _hhmmToMins(str){
+  if(!str) return null;
+  const parts = str.split(':');
+  if(parts.length < 2) return null;
+  const h = parseInt(parts[0], 10);
+  const m = parseInt(parts[1], 10);
+  if(isNaN(h) || isNaN(m)) return null;
+  return h * 60 + m;
+}
+
+// Returns current local minutes since midnight.
+function _nowMins(){
+  const now = new Date();
+  return now.getHours() * 60 + now.getMinutes();
+}
+
+// Returns seconds until a target HH:MM (always positive, wraps midnight if needed).
+function _secsUntil(targetMins){
+  const now = new Date();
+  const nowSecs = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+  const targetSecs = targetMins * 60;
+  let diff = targetSecs - nowSecs;
+  if(diff < 0) diff += 86400; // wrap to next day
+  return diff;
+}
+
+// Formats seconds as HH:MM:SS.
+function _fmtCountdown(secs){
+  const s = Math.max(0, Math.round(secs));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sc = s % 60;
+  return (h>0 ? String(h).padStart(2,'0')+':' : '') +
+         String(m).padStart(2,'0') + ':' +
+         String(sc).padStart(2,'0');
+}
+
+// Master UI updater — called every second while schedule is enabled.
+function _scheduleTickUI(){
+  const startMins = _hhmmToMins(v('scheduleStart'));
+  const endMins   = _hhmmToMins(v('scheduleEnd'));
+  const statusBox = document.getElementById('scheduleStatusBox');
+  const cdRow     = document.getElementById('scheduleCountdownRow');
+  const cdLbl     = document.getElementById('schCdLabel');
+  const cdVal     = document.getElementById('schCdVal');
+
+  if(startMins === null || endMins === null){
+    statusBox.textContent = '⚠ Set valid Start and End times';
+    statusBox.className = 'schedule-status-box stopped';
+    cdRow.style.display = 'none';
+    return;
+  }
+
+  const nowMins    = _nowMins();
+  const isInWindow = _isInTradeWindow(nowMins, startMins, endMins);
+
+  // ── STOPPED_DAY: Mode 1 (SL/TP hit) stopped trading.
+  // Stay stopped ONLY while still inside what would be the trading window.
+  // The moment the window ends (or next start arrives), reset so the next
+  // cycle begins cleanly — this makes the schedule repeat daily non-stop.
+  if(schedulePhase === 'stopped_day'){
+    if(!isInWindow){
+      // Window has ended / next cycle has come around — reset phase
+      // so that when the window opens again the EA arms up fresh.
+      schedulePhase = 'waiting_start';
+      eaHalted = false;
+      document.getElementById('eaHaltBanner').style.display = 'none';
+      enableTradeButtons(true);
+    } else {
+      // Still inside the stopped window — show countdown to next cycle start
+      const secsToStart = _secsUntil(startMins);
+      statusBox.textContent = '🛑 Stopped (SL/TP) — next cycle at ' + v('scheduleStart');
+      statusBox.className = 'schedule-status-box stopped';
+      cdRow.style.display = 'flex';
+      cdLbl.textContent   = 'Next cycle in';
+      cdVal.textContent   = _fmtCountdown(secsToStart);
+      cdVal.className     = 'sch-cd-val';
+      return;
+    }
+  }
+
+  if(isInWindow){
+    // ── WITHIN TRADING WINDOW ────────────────────────
+    if(schedulePhase !== 'trading'){
+      // Transition into trading window
+      schedulePhase = 'trading';
+      if(!eaHalted){
+        // Always enable autoBot when start time is reached — regardless of
+        // whether the user already had it on or not.
+        _forceAutoBotOn();
+        toast('⏰ Trade start time reached — Auto CRT enabled','info');
+      }
+    }
+
+    const secsToEnd = _secsUntil(endMins);
+    statusBox.textContent = '🟢 TRADING WINDOW ACTIVE — ends at ' + v('scheduleEnd');
+    statusBox.className = 'schedule-status-box active';
+    cdRow.style.display = 'flex';
+    cdLbl.textContent   = 'Ends in';
+    cdVal.textContent   = _fmtCountdown(secsToEnd);
+    cdVal.className     = secsToEnd < 120 ? 'sch-cd-val imminent' : 'sch-cd-val';
+
+  } else {
+    // ── OUTSIDE TRADING WINDOW ───────────────────────
+    if(schedulePhase === 'trading'){
+      // Window just closed — Mode 2: always turn off autoBot at end time,
+      // no matter who turned it on.
+      _forceAutoBotOff();
+      toast('⏰ Trade end time reached — Auto CRT disabled','info');
+      setBotStatus('⏰ Trade window ended — waiting for next cycle at ' + v('scheduleStart'), 'error');
+      schedulePhase = 'waiting_start';
+      // Also clear any eaHalt so the next cycle can start clean
+      eaHalted = false;
+      document.getElementById('eaHaltBanner').style.display = 'none';
+      enableTradeButtons(true);
+    } else {
+      schedulePhase = 'waiting_start';
+    }
+
+    // Show countdown to next start
+    const secsToStart = _secsUntil(startMins);
+    statusBox.textContent = '⏳ Waiting for trade start · ' + v('scheduleStart') + ' → ' + v('scheduleEnd');
+    statusBox.className = 'schedule-status-box waiting';
+    cdRow.style.display = 'flex';
+    cdLbl.textContent   = 'Starts in';
+    cdVal.textContent   = _fmtCountdown(secsToStart);
+    cdVal.className     = secsToStart < 120 ? 'sch-cd-val imminent' : 'sch-cd-val';
+  }
+}
+
+// Returns true if nowMins is inside [startMins, endMins).
+// Handles overnight windows (start > end) gracefully.
+function _isInTradeWindow(nowMins, startMins, endMins){
+  if(startMins === endMins) return false;
+  if(startMins < endMins){
+    return nowMins >= startMins && nowMins < endMins;
+  } else {
+    // Overnight: e.g. 22:00 → 06:00
+    return nowMins >= startMins || nowMins < endMins;
+  }
+}
+
+// Force autoBot ON without the user click (schedule-driven).
+function _forceAutoBotOn(){
+  if(!ws || ws.readyState !== 1) return;
+  if(eaHalted) return;
+  autoBot    = true;
+  botRunning = true;
+  const tog   = document.getElementById('autoToggle');
+  const state = document.getElementById('autoState');
+  if(tog)   tog.className   = 'auto-toggle on';
+  if(state) state.textContent = 'ON';
+  const acLabel = analysisCandleMode==='tick' ? 'TICK' : 'CANDLE·'+analysisCandleTF;
+  setBotStatus('⚡ Auto CRT · '+tradeMode+' · '+v('cfgSymbol')+' · AC:'+acLabel,'running');
+}
+
+// Force autoBot OFF (schedule-driven).
+function _forceAutoBotOff(){
+  autoBot    = false;
+  botRunning = false;
+  const tog   = document.getElementById('autoToggle');
+  const state = document.getElementById('autoState');
+  if(tog)   tog.className   = 'auto-toggle off';
+  if(state) state.textContent = 'OFF';
+  setBotStatus('Auto CRT paused by schedule','');
+}
+
+// Called by the UI toggle checkbox.
+function onScheduleToggle(enabled){
+  scheduleEnabled = enabled;
+  const statusBox = document.getElementById('scheduleStatusBox');
+  const cdRow     = document.getElementById('scheduleCountdownRow');
+
+  if(enabled){
+    schedulePhase = 'idle';
+    _startScheduleEngine();
+    saveState();
+  } else {
+    _stopScheduleEngine();
+    schedulePhase = 'idle';
+    statusBox.textContent = 'Schedule disabled';
+    statusBox.className   = 'schedule-status-box';
+    cdRow.style.display   = 'none';
+    saveState();
+  }
+}
+
+// Called whenever start/end times change while enabled.
+function onScheduleParamChange(){
+  if(scheduleEnabled){
+    schedulePhase = 'idle';
+    _scheduleTickUI();
+  }
+  saveState();
+}
+
+function _startScheduleEngine(){
+  if(_scheduleInterval) clearInterval(_scheduleInterval);
+  _scheduleTickUI(); // immediate first render
+  _scheduleInterval = setInterval(_scheduleTickUI, 1000);
+}
+
+function _stopScheduleEngine(){
+  if(_scheduleInterval){ clearInterval(_scheduleInterval); _scheduleInterval = null; }
+}
+
+// Called by checkSessionLimits (Mode 1) when SL/TP is hit.
+// Marks the day as stopped so the schedule engine won't re-enable autoBot
+// until the current window ends and the next cycle begins.
+function scheduleNotifyHalt(){
+  if(!scheduleEnabled) return;
+  if(schedulePhase === 'trading'){
+    schedulePhase = 'stopped_day';
+    // Force a UI refresh so the stopped banner shows immediately
+    _scheduleTickUI();
+  }
 }
 
 // ─── TOAST ────────────────────────────────────────
