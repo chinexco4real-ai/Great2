@@ -712,6 +712,29 @@
                   <span class="sell-txt">▼ SELL:</span> Range candle closes bearish (close &lt; open)
                 </div>
               </div>
+
+            <!-- Filter 4: EMA Trend Filter -->
+            <div class="filter-item" id="fi4">
+              <div class="filter-toggle-row" onclick="toggleFilter(4)">
+                <span class="f-name">
+                  <span class="f-badge">F4</span>
+                  EMA Trend Filter
+                </span>
+                <label class="filter-switch" onclick="event.stopPropagation()">
+                  <input type="checkbox" id="fEmaTrendEnabled" onchange="onFilterChange(4,this.checked)"/>
+                  <span class="filter-slider"></span>
+                </label>
+              </div>
+              <div class="filter-desc">
+                <div class="ctrl-row" style="margin-bottom:7px;">
+                  <label style="font-size:11px;letter-spacing:1px;">EMA Period</label>
+                  <input type="number" id="cfgEmaTrendPeriod" value="200" min="1" max="500" style="font-size:12px;padding:6px 9px;"/>
+                </div>
+                <div class="f-rule">
+                  <span class="buy-txt">▲ RISE:</span> Current price is above EMA — bullish trend<br>
+                  <span class="sell-txt">▼ FALL:</span> Current price is below EMA — bearish trend
+                </div>
+              </div>
             </div>
 
           </div>
@@ -995,6 +1018,7 @@ let subscriptionId = null;
 let filterEmaEnabled     = false;   // Filter 1: EMA Wick-Cross
 let filterCandleClose    = false;   // Filter 2: Signal candle direction
 let filterCandle2        = false;   // Filter 3: Range candle direction
+let filterEmaTrend       = false;   // Filter 4: EMA Trend (price vs EMA)
 
 // Running EMA value — recalculated on every new closed candle
 let emaValue = null;
@@ -1020,7 +1044,7 @@ function calcEMA(candleArr, period){
 
 // ─── FILTER UI HELPERS ────────────────────────────
 function toggleFilter(n){
-  const ids = {1:'fEmaEnabled', 2:'fCandleCloseEnabled', 3:'fCandle2Enabled'};
+  const ids = {1:'fEmaEnabled', 2:'fCandleCloseEnabled', 3:'fCandle2Enabled', 4:'fEmaTrendEnabled'};
   const chk = document.getElementById(ids[n]);
   chk.checked = !chk.checked;
   onFilterChange(n, chk.checked);
@@ -1033,7 +1057,8 @@ function onFilterChange(n, enabled){
   if(n===1) filterEmaEnabled  = enabled;
   if(n===2) filterCandleClose = enabled;
   if(n===3) filterCandle2     = enabled;
-  const names = {1:'EMA Wick-Cross', 2:'Candle Close', 3:'Candle 2 (Range)'};
+  if(n===4) filterEmaTrend    = enabled;
+  const names = {1:'EMA Wick-Cross', 2:'Candle Close', 3:'Candle 2 (Range)', 4:'EMA Trend Filter'};
   toast('Filter '+(enabled?'ON':'OFF')+' — '+names[n], 'info');
   saveState();
 }
@@ -1051,7 +1076,7 @@ function saveState(){
     const s = {
       tradeMode, durType, tradeLog, stats, candles: candles.slice(-100),
       analysisCandleMode, analysisCandleTF,
-      filters: { ema: filterEmaEnabled, candleClose: filterCandleClose, candle2: filterCandle2, emaPeriod: v('cfgEmaPeriod') },
+      filters: { ema: filterEmaEnabled, candleClose: filterCandleClose, candle2: filterCandle2, emaTrend: filterEmaTrend, emaPeriod: v('cfgEmaPeriod'), emaTrendPeriod: v('cfgEmaTrendPeriod') },
       cfg: {
         symbol: v('cfgSymbol'), minRange: v('cfgMinRange'), maxPos: v('cfgMaxPos'),
         stake: v('cfgStake'), sl: v('cfgSL'), tp: v('cfgTP'),
@@ -1128,6 +1153,12 @@ function loadState(){
         if(chk3){ chk3.checked = filterCandle2; onFilterChange(3, filterCandle2); }
       }
       if(s.filters.emaPeriod !== undefined) setVal('cfgEmaPeriod', s.filters.emaPeriod);
+      if(s.filters.emaTrend !== undefined){
+        filterEmaTrend = !!s.filters.emaTrend;
+        const chk4 = document.getElementById('fEmaTrendEnabled');
+        if(chk4){ chk4.checked = filterEmaTrend; onFilterChange(4, filterEmaTrend); }
+      }
+      if(s.filters.emaTrendPeriod !== undefined) setVal('cfgEmaTrendPeriod', s.filters.emaTrendPeriod);
     }
 
     // Restore schedule settings
@@ -1145,9 +1176,21 @@ function loadState(){
   } catch(e){}
 }
 
+// ─── SAFE TRADE LOG TRIM ──────────────────────────
+// Never drops unsettled (OPEN / ? / __settling__) entries.
+// Only trims settled entries beyond the 10-entry display cap.
+function _trimTradeLog(){
+  const unsettled = tradeLog.filter(l => l.result === 'OPEN' || l.result === '?' || l.result === '__settling__');
+  const settled   = tradeLog.filter(l => l.result !== 'OPEN' && l.result !== '?' && l.result !== '__settling__');
+  if(settled.length > 10) settled.length = 10;
+  tradeLog.length = 0;
+  unsettled.forEach(e => tradeLog.push(e));
+  settled.forEach(e => tradeLog.push(e));
+}
+
 // ─── RE-POLL ANY STALE (?) ENTRIES AFTER CONNECTION ───────────
 function repollStaleEntries(){
-  const stale = tradeLog.filter(l => l.result === '?' && l.contractId);
+  const stale = tradeLog.filter(l => (l.result === '?' || l.result === 'OPEN') && l.contractId);
   stale.forEach(l => {
     setTimeout(()=>{ pollContractIfOpen(l.contractId); }, 1000);
   });
@@ -1675,6 +1718,23 @@ function onNewCandle(){
     if(isBearish) isBearish = (range.close < range.open);     // range candle must be bearish
   }
 
+  // ── LAYER 5: FILTER 4 — EMA TREND FILTER ────────────────
+  // RISE allowed only if current price > EMA (bullish trend)
+  // FALL allowed only if current price < EMA (bearish trend)
+  if(filterEmaTrend){
+    const trendPeriod = parseInt(v('cfgEmaTrendPeriod')) || 200;
+    const trendEma = calcEMA(candles, trendPeriod);
+    const currentPrice = signal.close;
+    if(trendEma === null){
+      // Not enough candles yet — block all signals
+      isBullish = false;
+      isBearish = false;
+    } else {
+      if(isBullish) isBullish = (currentPrice > trendEma);   // price above EMA → bullish trend only
+      if(isBearish) isBearish = (currentPrice < trendEma);   // price below EMA → bearish trend only
+    }
+  }
+
 
   const symbol = v('cfgSymbol');
 
@@ -1753,7 +1813,7 @@ function processBuySignal(candle, symbol){
     result:'OPEN', pnl:'—', contractId:null
   };
   tradeLog.unshift(logEntry);
-  if(tradeLog.length > 10) tradeLog.length = 10;
+  _trimTradeLog();
   rebuildLog();
 
   const toastDir = finalType==='CALL' ? '🔵 CRT RISE Signal' : '🔴 CRT FALL Signal (REVERSED)';
@@ -1804,7 +1864,7 @@ function processSellSignal(candle, symbol){
     result:'OPEN', pnl:'—', contractId:null
   };
   tradeLog.unshift(logEntry);
-  if(tradeLog.length > 10) tradeLog.length = 10;
+  _trimTradeLog();
   rebuildLog();
 
   const toastDir = finalType==='PUT' ? '🔴 CRT FALL Signal' : '🔵 CRT RISE Signal (REVERSED)';
@@ -2295,7 +2355,7 @@ function manualTrade(contractType){
     result:'OPEN', pnl:'—', contractId:null
   };
   tradeLog.unshift(logEntry);
-  if(tradeLog.length > 10) tradeLog.length = 10;
+  _trimTradeLog();
   rebuildLog();
 
   const reversed = finalType !== originalType;
