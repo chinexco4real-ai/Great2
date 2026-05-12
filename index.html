@@ -217,10 +217,10 @@
   .ticker-meta .tm-val{color:var(--white);font-size:14px;font-weight:700;}
 
   /* ─── LOG TABLE ─── */
-  .log-wrap{max-height:480px;overflow-y:auto;}
+  .log-wrap{height:370px;overflow-y:auto;overflow-x:hidden;border-radius:0 0 7px 7px;}
   table{width:100%;border-collapse:collapse;}
   thead tr{border-bottom:1px solid var(--border2);}
-  th{padding:9px 10px;text-align:left;font-size:11px;letter-spacing:1.5px;color:#8ba4cc;text-transform:uppercase;font-weight:700;}
+  th{padding:9px 10px;text-align:left;font-size:11px;letter-spacing:1.5px;color:#8ba4cc;text-transform:uppercase;font-weight:700;position:sticky;top:0;background:var(--bg2);z-index:2;}
   td{padding:8px 10px;border-bottom:1px solid rgba(37,53,82,.6);font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--text);font-weight:600;}
   tr:hover td{background:rgba(45,139,255,.06);}
   .tag-buy{color:#6ab5ff;background:rgba(45,139,255,.15);padding:2px 8px;border-radius:3px;font-size:11px;letter-spacing:.5px;font-weight:700;}
@@ -1181,9 +1181,10 @@ function loadState(){
 // Never drops unsettled (OPEN / ? / __settling__) entries.
 // Only trims settled entries beyond the 10-entry display cap.
 function _trimTradeLog(){
+  // No cap on storage — keep all trades forever.
+  // Unsettled entries float to the top so they are never lost.
   const unsettled = tradeLog.filter(l => l.result === 'OPEN' || l.result === '?' || l.result === '__settling__');
   const settled   = tradeLog.filter(l => l.result !== 'OPEN' && l.result !== '?' && l.result !== '__settling__');
-  if(settled.length > 10) settled.length = 10;
   tradeLog.length = 0;
   unsettled.forEach(e => tradeLog.push(e));
   settled.forEach(e => tradeLog.push(e));
@@ -2288,8 +2289,7 @@ function setText(id,val){ document.getElementById(id).textContent=val; }
 // ─── REBUILD LOG TABLE ────────────────────────────
 function rebuildLog(){
   const tbody = document.getElementById('logBody');
-  const visible = tradeLog.slice(0,10);
-  tbody.innerHTML = visible.map((l, idx)=>{
+  tbody.innerHTML = tradeLog.map((l, idx)=>{
     const sn = idx + 1;
     const dirTag = l.dir==='BUY'?'<span class="tag-buy">BUY</span>':'<span class="tag-sell">SELL</span>';
     const resCls = l.result==='WIN'?'tag-win':l.result==='LOSS'?'tag-loss':l.result==='OPEN'?'tag-open':l.result==='?'?'tag-open':'';
