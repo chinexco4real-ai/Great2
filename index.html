@@ -1488,11 +1488,14 @@ function handleMsg(msg, isLoginFlow){
       const cid     = String(msg.sell.contract_id);
       const soldFor = parseFloat(msg.sell.sold_for || 0);
       if(openPositions[cid]){
+        // Use stored buyPrice (original stake) — soldFor is 0 on a full loss,
+        // giving the correct -stake figure rather than 0
         const profit = soldFor - (openPositions[cid].buyPrice || 0);
         closePosition(cid, profit, 'sold');
       } else {
         const le = tradeLog.find(l => l.contractId === cid && (l.result === 'OPEN' || l.result === '?'));
         if(le){
+          // Same: use stored _buyPrice so a full loss records as -stake, not 0
           const profit = soldFor - (le._buyPrice || 0);
           _settleLogEntry(le, profit);
         }
@@ -1988,16 +1991,26 @@ function handleContractUpdate(poc){
   const statusDone = poc.status === 'won' || poc.status === 'lost' || poc.status === 'sold';
   const isSettleable = Number(poc.is_settleable) === 1;
   const isValidSell  = Number(poc.is_valid_to_sell);
-  const isFinished = isSold || isExpired || statusDone ||
-                     (isSettleable && isValidSell === 0);
+  // Only treat as finished when Deriv has definitively settled the contract.
+  // Removing the (isSettleable && isValidSell===0) condition prevents early
+  // settlement on a non-final tick which gives a lower-than-actual profit_loss.
+  const isFinished = isSold || isExpired || statusDone;
 
   // ── Calculate P&L ─────────────────────────────────
-  // Priority: profit_loss → sell_price-buy_price → profit field
+  // Only use profit_loss when the contract is fully and definitively settled
+  // (status = won / lost / sold / expired). Using it on live ticks gives a
+  // mark-to-market value that is lower than the final settled amount.
   let finalProfit = null;
-  if(poc.profit_loss !== undefined && poc.profit_loss !== null && poc.profit_loss !== ''){
+  const isDefinitivelySettled = statusDone || isSold || isExpired;
+  if(isDefinitivelySettled && poc.profit_loss !== undefined && poc.profit_loss !== null && poc.profit_loss !== ''){
+    // profit_loss from Deriv is the true net P&L — use it only on final settlement
     finalProfit = parseFloat(poc.profit_loss);
-  } else if(poc.sell_price !== undefined && poc.buy_price !== undefined){
-    finalProfit = parseFloat(poc.sell_price) - parseFloat(poc.buy_price);
+  } else if(poc.sell_price !== undefined){
+    // sell_price is the final payout; subtract the ORIGINAL stake (not live poc.buy_price
+    // which is a mark-to-market value and gives shallower losses than the true amount)
+    const pos = openPositions[String(poc.contract_id)];
+    const originalStake = pos ? pos.buyPrice : (parseFloat(poc.buy_price) || 0);
+    finalProfit = parseFloat(poc.sell_price) - originalStake;
   } else if(poc.profit !== undefined && poc.profit !== null && poc.profit !== ''){
     finalProfit = parseFloat(poc.profit);
   }
@@ -2202,33 +2215,10 @@ function resetSessionClick(){
 }
 
 function resetSession(){
-  eaHalted = false;
-  // Clear any active cooldown
-  if(cooldownTimer){ clearInterval(cooldownTimer); cooldownTimer=null; }
-  cooldownActive = false;
-  cooldownRemaining = 0;
-  document.getElementById('cooldownDisplay').style.display='none';
-  document.getElementById('cooldownRing').classList.remove('active');
-  stats.totalProfit = 0;
-  stats.totalLoss = 0;
-  stats.wins = 0;
-  stats.losses = 0;
-  stats.totalSignals = 0;
-  stats.buySigs = 0;
-  stats.sellSigs = 0;
-  stats.totalTrades = 0;
+  // Only clear the signal & trade log — nothing else is touched.
   tradeLog = [];
-  document.getElementById('eaHaltBanner').style.display='none';
-  enableTradeButtons(true);
-  // Reset schedule phase so it can re-arm for the next window
-  if(scheduleEnabled){
-    schedulePhase = 'idle';
-    _scheduleTickUI();
-  }
   rebuildLog();
-  updateStats();
-  toast('Session reset — EA ready','info');
-  saveState();
+  toast('Signal & trade log cleared','info');
 }
 
 // ─── RENDER POSITIONS ─────────────────────────────
