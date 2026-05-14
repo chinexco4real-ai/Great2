@@ -382,8 +382,12 @@
   .schedule-time-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:9px;}
   .schedule-time-field{display:flex;flex-direction:column;gap:4px;}
   .schedule-time-field label{font-size:10px;letter-spacing:1.5px;color:#8ba4cc;text-transform:uppercase;font-weight:700;}
-  .schedule-time-field input[type=time]{background:var(--bg3);border:1px solid var(--border2);color:var(--white);padding:8px 10px;border-radius:6px;font-family:'Share Tech Mono',monospace;font-size:13px;font-weight:600;outline:none;width:100%;transition:border .2s;color-scheme:dark;}
-  .schedule-time-field input[type=time]:focus{border-color:var(--accent2);box-shadow:0 0 0 2px rgba(0,240,255,.15);}
+  .time-picker-wrap{display:flex;align-items:center;gap:2px;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:4px 6px;transition:border .2s;}
+  .time-picker-wrap:focus-within{border-color:var(--accent2);box-shadow:0 0 0 2px rgba(0,240,255,.15);}
+  .tp-sel{background:transparent;border:none;color:var(--white);font-family:'Share Tech Mono',monospace;font-size:13px;font-weight:600;outline:none;cursor:pointer;-webkit-appearance:none;appearance:none;text-align:center;}
+  .tp-sel option{background:var(--bg2);color:var(--white);}
+  .tp-ampm{color:var(--accent2);font-size:12px;margin-left:2px;}
+  .tp-colon{color:var(--accent2);font-weight:700;font-size:15px;line-height:1;padding:0 1px;}
   .schedule-status-box{background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:9px 12px;font-family:'Share Tech Mono',monospace;font-size:11px;color:#8ba4cc;font-weight:600;line-height:1.7;min-height:38px;transition:border-color .3s,color .3s;}
   .schedule-status-box.waiting {border-color:rgba(245,197,24,.4);color:var(--gold);}
   .schedule-status-box.active  {border-color:rgba(0,230,118,.4);color:var(--green);}
@@ -755,11 +759,27 @@
             <div class="schedule-time-row">
               <div class="schedule-time-field">
                 <label>Start Trade</label>
-                <input type="time" id="scheduleStart" value="09:00" onchange="onScheduleParamChange()"/>
+                <div class="time-picker-wrap" id="tpStartWrap">
+                  <select id="tpStartHr"  class="tp-sel" onchange="_tpChange('Start')"></select>
+                  <span class="tp-colon">:</span>
+                  <select id="tpStartMin" class="tp-sel" onchange="_tpChange('Start')"></select>
+                  <select id="tpStartAmPm" class="tp-sel tp-ampm" onchange="_tpChange('Start')">
+                    <option value="AM">AM</option><option value="PM">PM</option>
+                  </select>
+                </div>
+                <input type="hidden" id="scheduleStart" value="09:00"/>
               </div>
               <div class="schedule-time-field">
                 <label>End Trade</label>
-                <input type="time" id="scheduleEnd" value="17:00" onchange="onScheduleParamChange()"/>
+                <div class="time-picker-wrap" id="tpEndWrap">
+                  <select id="tpEndHr"  class="tp-sel" onchange="_tpChange('End')"></select>
+                  <span class="tp-colon">:</span>
+                  <select id="tpEndMin" class="tp-sel" onchange="_tpChange('End')"></select>
+                  <select id="tpEndAmPm" class="tp-sel tp-ampm" onchange="_tpChange('End')">
+                    <option value="AM">AM</option><option value="PM" selected>PM</option>
+                  </select>
+                </div>
+                <input type="hidden" id="scheduleEnd" value="17:00"/>
               </div>
             </div>
 
@@ -890,7 +910,9 @@
 //  Strategy: Candle Range Theory + Signal Filters
 // ═══════════════════════════════════════════════════
 
-const STORAGE_KEY = 'crt_ea_state';
+const STORAGE_KEY    = 'crt_ea_state';
+const STATE_VERSION  = 2;   // Bump when saved format changes incompatibly.
+                             // v2: schedule times stored as 24hr HH:MM only.
 let ws = null;
 
 // ─── CURRENCY REGISTRY ─────────────────────────────
@@ -1089,6 +1111,7 @@ let contractLogMap = {}; // contractId (string) → logId (number)
 function saveState(){
   try {
     const s = {
+      _version: STATE_VERSION,
       tradeMode, durType, tradeLog, stats, candles: candles.slice(-100),
       analysisCandleMode, analysisCandleTF,
       filters: { ema: filterEmaEnabled, candleClose: filterCandleClose, candle2: filterCandle2, emaTrend: filterEmaTrend, emaPeriod: v('cfgEmaPeriod'), emaTrendPeriod: v('cfgEmaTrendPeriod') },
@@ -1112,6 +1135,13 @@ function loadState(){
     const raw = localStorage.getItem(STORAGE_KEY);
     if(!raw) return;
     const s = JSON.parse(raw);
+
+    // ── Version guard ──────────────────────────────────────────
+    // If saved state is from an older version, discard schedule times only
+    // (they may have been corrupted by the Android type="time" AM/PM bug).
+    // Everything else (tradeLog, stats, cfg) is safe to restore.
+    const savedVersion = s._version || 1;
+    const scheduleTimesValid = savedVersion >= STATE_VERSION;
     if(s.tradeMode && s.tradeMode !== 'SIGNAL'){
       tradeMode = s.tradeMode;
       // Map mode to button id
@@ -1178,8 +1208,17 @@ function loadState(){
 
     // Restore schedule settings
     if(s.schedule){
-      if(s.schedule.start) setVal('scheduleStart', s.schedule.start);
-      if(s.schedule.end)   setVal('scheduleEnd',   s.schedule.end);
+      // Only restore times if saved from v2+ (guaranteed 24hr HH:MM format).
+      // v1 saves may contain '09:00' for 9PM due to Android type=time AM/PM bug.
+      if(scheduleTimesValid){
+        if(s.schedule.start){ setVal('scheduleStart', s.schedule.start); _tpSeedFrom('Start', s.schedule.start); }
+        if(s.schedule.end)  { setVal('scheduleEnd',   s.schedule.end);   _tpSeedFrom('End',   s.schedule.end);   }
+      } else {
+        // Stale version — reset times to safe defaults, let user re-enter
+        setVal('scheduleStart', '06:00'); _tpSeedFrom('Start', '06:00');
+        setVal('scheduleEnd',   '21:00'); _tpSeedFrom('End',   '21:00');
+        toast('\u26a0\ufe0f Schedule times reset \u2014 please verify Start/End times', 'info');
+      }
       if(s.schedule.enabled){
         const chk = document.getElementById('scheduleEnabled');
         if(chk){ chk.checked = true; onScheduleToggle(true); }
@@ -2582,6 +2621,9 @@ function enableTradeButtons(enabled){
 
 // ─── SYMBOL CHANGE ────────────────────────────────
 document.addEventListener('DOMContentLoaded', ()=>{
+  // Initialise custom 12-hour time pickers (fixes Android type=time AM/PM bug)
+  _tpInit();
+
   const symSel = document.getElementById('cfgSymbol');
   if(symSel){
     symSel.addEventListener('change', ()=>{
@@ -2660,6 +2702,60 @@ function setAnalysisTF(tf, el){
 
 // ─── TRADE SCHEDULE TIMER ENGINE ─────────────────────────────────
 // Parses "HH:MM" into total minutes since midnight (local time).
+// ─── CUSTOM 12-HOUR TIME PICKER ────────────────────────────────
+// Fixes the Android Chrome bug where type="time" returns "09:00" for 9PM.
+// Dropdowns always write a clean 24-hour HH:MM to the hidden inputs.
+function _tpInit(){
+  ['Start','End'].forEach(which => {
+    const hrSel  = document.getElementById('tp'+which+'Hr');
+    const minSel = document.getElementById('tp'+which+'Min');
+    if(!hrSel || !minSel) return;
+    // Hours 1-12
+    for(let h=1; h<=12; h++){
+      const o = document.createElement('option');
+      o.value = String(h); o.textContent = String(h).padStart(2,'0');
+      hrSel.appendChild(o);
+    }
+    // Minutes 00-55 in steps of 5
+    for(let m=0; m<60; m+=5){
+      const o = document.createElement('option');
+      o.value = String(m); o.textContent = String(m).padStart(2,'0');
+      minSel.appendChild(o);
+    }
+  });
+  // Seed pickers from saved hidden-input values
+  _tpSeedFrom('Start', document.getElementById('scheduleStart').value || '09:00');
+  _tpSeedFrom('End',   document.getElementById('scheduleEnd').value   || '17:00');
+}
+
+function _tpSeedFrom(which, hhmm){
+  // hhmm is always 24-hour e.g. "17:00"
+  const parts = hhmm.split(':');
+  let h24 = parseInt(parts[0],10) || 0;
+  const m  = parseInt(parts[1],10) || 0;
+  const ampm = h24 < 12 ? 'AM' : 'PM';
+  let h12 = h24 % 12; if(h12 === 0) h12 = 12;
+
+  const hrSel   = document.getElementById('tp'+which+'Hr');
+  const minSel  = document.getElementById('tp'+which+'Min');
+  const ampmSel = document.getElementById('tp'+which+'AmPm');
+  if(hrSel)   hrSel.value   = String(h12);
+  if(minSel)  minSel.value  = String(m);
+  if(ampmSel) ampmSel.value = ampm;
+}
+
+function _tpChange(which){
+  const h12  = parseInt(document.getElementById('tp'+which+'Hr').value,   10) || 12;
+  const m    = parseInt(document.getElementById('tp'+which+'Min').value,  10) || 0;
+  const ampm = document.getElementById('tp'+which+'AmPm').value;
+  // Convert to 24-hour
+  let h24 = h12 % 12;
+  if(ampm === 'PM') h24 += 12;
+  const hhmm = String(h24).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+  document.getElementById('schedule'+which).value = hhmm;
+  onScheduleParamChange();
+}
+
 function _hhmmToMins(str){
   if(!str) return null;
   const parts = str.split(':');
