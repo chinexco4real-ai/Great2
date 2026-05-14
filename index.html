@@ -763,6 +763,14 @@
               </div>
             </div>
 
+            <div class="ctrl-row" style="margin-top:6px;" title="UTC offset for schedule times. E.g. +1 for WAT/Lagos, +3 for EAT, 0 for UTC/GMT. Set this to match your broker's clock.">
+              <label style="font-size:11px;letter-spacing:1px;">UTC Offset (hrs)</label>
+              <input type="number" id="cfgTzOffset" value="0" min="-12" max="14" step="0.5"
+                     style="font-size:12px;padding:6px 9px;width:70px;"
+                     onchange="onScheduleParamChange()"
+                     title="Hours offset from UTC. +1 = WAT (Nigeria), +3 = EAT, -5 = EST"/>
+            </div>
+
             <div class="schedule-status-box" id="scheduleStatusBox">Schedule disabled</div>
 
             <div class="schedule-countdown" id="scheduleCountdownRow" style="display:none;">
@@ -2664,18 +2672,32 @@ function _hhmmToMins(str){
 
 // Returns current local minutes since midnight (includes fractional seconds so
 // the window boundary is checked to the second, not just the minute).
-function _nowMins(){
-  const now = new Date();
-  return now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
+// ── Timezone offset in minutes (default 0 = UTC).
+// User can adjust via cfgTzOffset input if their broker/schedule runs on a
+// different zone than the browser's local time.
+function _getTzOffsetMins(){
+  const el = document.getElementById('cfgTzOffset');
+  return el ? (parseInt(el.value, 10) || 0) : 0;
 }
 
-// Returns seconds until a target HH:MM (always positive, wraps midnight if needed).
-function _secsUntil(targetMins){
+// Returns current time-of-day in minutes (with seconds as fraction),
+// adjusted for the schedule timezone offset.
+// Single source of truth — _secsUntil derives from this so window detection
+// and countdown always agree exactly.
+function _nowMins(){
   const now = new Date();
-  const nowSecs = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+  const utcMins = now.getUTCHours() * 60 + now.getUTCMinutes() + now.getUTCSeconds() / 60;
+  return (utcMins + _getTzOffsetMins() + 1440) % 1440;
+}
+
+// Returns seconds until targetMins (always positive, wraps midnight correctly).
+// Derived from _nowMins() so window detection and countdown always agree.
+function _secsUntil(targetMins){
+  const nowMins    = _nowMins();          // same source as _isInTradeWindow
   const targetSecs = targetMins * 60;
+  const nowSecs    = nowMins * 60;
   let diff = targetSecs - nowSecs;
-  if(diff < 0) diff += 86400; // wrap to next day
+  if(diff <= 0) diff += 86400;            // wrap to next occurrence (tomorrow)
   return diff;
 }
 
@@ -2802,13 +2824,16 @@ function _scheduleTickUI(){
 }
 
 // Returns true if nowMins is inside [startMins, endMins).
-// Handles overnight windows (start > end) gracefully.
+// Handles same-day and overnight (start > end) windows correctly.
 function _isInTradeWindow(nowMins, startMins, endMins){
   if(startMins === endMins) return false;
   if(startMins < endMins){
+    // Normal same-day window e.g. 06:00 → 07:00
+    // Active only when nowMins is between start and end
     return nowMins >= startMins && nowMins < endMins;
   } else {
-    // Overnight: e.g. 22:00 → 06:00
+    // Overnight window e.g. 22:00 → 06:00
+    // Active when nowMins is after start (evening) OR before end (early morning)
     return nowMins >= startMins || nowMins < endMins;
   }
 }
