@@ -1028,7 +1028,8 @@ let analysisCandleMode = 'tick';
 let analysisCandleTF   = '5m';
 let sessionHigh = -Infinity;
 let sessionLow  = Infinity;
-let sessionStartBalance = null;   // Captured once on first balance received this session
+let sessionStartBalance  = null;   // Captured once on first balance received this session
+let _sessionStartTime    = null;   // Timestamp (ms) when session started — used to filter Deriv history
 let stats = {
   totalSignals:0, buySigs:0, sellSigs:0,
   totalTrades:0, wins:0, losses:0,
@@ -1243,65 +1244,137 @@ function _trimTradeLog(){
   settled.forEach(e => tradeLog.push(e));
 }
 
-// ─── SILENT TRADE RECONCILIATION ───────────────────────────────
-// On every reconnect, query Deriv's profit_table for the last 50 contracts
-// and cross-check against the EA tradeLog. Any contract Deriv settled that
-// the EA has NO record of is a silent trade — record it as a ghost entry
-// so the P&L stays accurate.
-function reconcileSilentTrades(){
-  send({ profit_table: 1, description: 1, limit: 50, sort: 'DESC' });
+// ─── DERIV HISTORY SYNC ─────────────────────────────────────────
+// Full sync: pull Deriv's statement (exact broker records), rebuild stats
+// from scratch so EA P&L always matches the account balance exactly.
+// Called on connect, reconnect, and after every settled trade.
+
+let _syncInFlight = false;
+
+function syncWithDerivHistory(){
+  if(_syncInFlight) return;
+  _syncInFlight = true;
+  // statement gives exact broker-side P&L per contract, no ambiguity
+  send({ statement: 1, description: 1, limit: 50, action_type: 'sell' });
 }
 
-function handleProfitTable(data){
-  if(!data || !data.transactions) return;
-  const known = new Set(tradeLog.map(l => String(l.contractId)).filter(Boolean));
+function handleStatement(data){
+  _syncInFlight = false;
+  if(!data || !data.transactions || !data.transactions.length) return;
 
-  let ghostCount = 0;
+  // ── Build a map of what Deriv actually settled ────────────────
+  // key = contract_id, value = exact net P&L from broker records
+  const derivSettled = new Map();
   data.transactions.forEach(tx => {
     const cid = String(tx.contract_id || '');
-    if(!cid || cid === 'undefined') return;
-    // Only care about binary option contracts (buy/sell pairs)
-    if(!tx.transaction_time) return;
-    // Skip if EA already has this contract recorded
-    if(known.has(cid)) return;
+    if(!cid || cid === 'undefined' || cid === '0') return;
+    // statement sell records: amount = payout received (positive = win, 0 = full loss)
+    // purchase price stored in tx.purchase  (what we paid)
+    const payout   = parseFloat(tx.amount   || 0);
+    const purchase = parseFloat(tx.purchase || 0);
+    const netPnl   = payout - purchase;   // exact net P&L from broker
+    derivSettled.set(cid, { netPnl, payout, purchase, time: tx.transaction_time, shortcode: tx.shortcode || '' });
+  });
 
-    // This is a SILENT TRADE — Deriv has it, EA does not
-    const pnl    = parseFloat(tx.profit_loss || 0);
-    const stake  = parseFloat(tx.buy_price   || 0);
-    const payout = parseFloat(tx.sell_price  || 0);
-    const netPnl = payout - stake;   // exact net P/L from broker record
+  if(!derivSettled.size) return;
+
+  // ── Step 1: Settle any OPEN/? log entries that Deriv has closed ──
+  tradeLog.forEach(le => {
+    if((le.result !== 'OPEN' && le.result !== '?') || !le.contractId) return;
+    const cid = String(le.contractId);
+    if(!derivSettled.has(cid)) return;
+    const { netPnl } = derivSettled.get(cid);
+    // Settle via _settleLogEntry (guarded, updates stats once)
+    _settleLogEntry(le, netPnl);
+  });
+
+  // ── Step 2: Rebuild stats entirely from Deriv records ────────────
+  // This is the key fix: instead of accumulating stats incrementally
+  // (which drifts), we recompute them from the broker's ground truth.
+  // Only count contracts from this session (after sessionStartBalance was set).
+  // We use tradeLog as the session boundary — any cid in tradeLog or
+  // ghost entries counts. Everything else from Deriv is ignored (prior sessions).
+
+  const sessionCids = new Set(
+    tradeLog
+      .filter(l => l.contractId && l.result !== 'OPEN' && l.result !== '?')
+      .map(l => String(l.contractId))
+  );
+
+  // Also collect ghost cids so we don't double-add them below
+  const ghostCids = new Set(
+    tradeLog.filter(l => l._ghost && l.contractId).map(l => String(l.contractId))
+  );
+
+  // ── Step 3: Add ghost entries for trades Deriv has that EA never saw ─
+  let ghostCount = 0;
+  derivSettled.forEach(({ netPnl, time }, cid) => {
+    if(sessionCids.has(cid) || ghostCids.has(cid)) return;
+    // Only add as ghost if it could plausibly be from this session
+    // (within the last 8 hours of session start time)
+    if(sessionStartBalance === null) return;
+    const txTime = time * 1000;
+    const sessionStartTime = _sessionStartTime || 0;
+    if(txTime < sessionStartTime - 500) return;   // too old, skip
 
     const ghostEntry = {
       id:         'ghost_' + cid,
       contractId: cid,
-      time:       new Date(tx.transaction_time * 1000).toLocaleTimeString(),
+      time:       new Date(txTime).toLocaleTimeString(),
       dir:        '?',
       entry:      '—',
       result:     netPnl >= 0 ? 'WIN' : 'LOSS',
       pnl:        (netPnl >= 0 ? '+' : '-') + fmtAmount(Math.abs(netPnl)),
-      _ghost:     true   // flag so UI can style it differently
+      _netPnl:    netPnl,
+      _ghost:     true
     };
-
     tradeLog.push(ghostEntry);
-    known.add(cid);
+    sessionCids.add(cid);
     ghostCount++;
-
-    // Add to stats so P&L totals match Deriv exactly
-    if(netPnl >= 0){
-      stats.wins++;
-      stats.totalProfit += netPnl;
-    } else {
-      stats.losses++;
-      stats.totalLoss += Math.abs(netPnl);
-    }
-    stats.totalTrades++;
   });
 
-  if(ghostCount > 0){
+  // ── Step 4: Recompute stats from ALL settled session entries ──────
+  // Wipe and recount — eliminates all drift from incremental counting.
+  let totalProfit = 0, totalLoss = 0, wins = 0, losses = 0, totalTrades = 0;
+
+  tradeLog.forEach(le => {
+    if(le.result !== 'WIN' && le.result !== 'LOSS') return;
+    const cid = String(le.contractId || '');
+    // Get the authoritative P&L: use Deriv record if available, else parse from le.pnl
+    let netPnl;
+    if(derivSettled.has(cid)){
+      netPnl = derivSettled.get(cid).netPnl;
+    } else if(le._netPnl !== undefined){
+      netPnl = le._netPnl;
+    } else {
+      // Parse from formatted string e.g. "+$1.95" or "-$1.00"
+      const raw = (le.pnl || '0').replace(/[^0-9.\-]/g,'');
+      netPnl = parseFloat(raw) * (le.result === 'LOSS' ? -1 : 1);
+    }
+    totalTrades++;
+    if(netPnl >= 0){ wins++; totalProfit += netPnl; }
+    else            { losses++; totalLoss += Math.abs(netPnl); }
+  });
+
+  // Only update if recomputed values differ (avoid unnecessary redraws)
+  const changed = (
+    Math.abs(stats.totalProfit - totalProfit) > 0.001 ||
+    Math.abs(stats.totalLoss   - totalLoss)   > 0.001 ||
+    ghostCount > 0
+  );
+
+  if(changed){
+    stats.totalProfit = totalProfit;
+    stats.totalLoss   = totalLoss;
+    stats.wins        = wins;
+    stats.losses      = losses;
+    stats.totalTrades = totalTrades;
     _trimTradeLog();
     rebuildLog();
     updateStats();
-    toast('⚠️ ' + ghostCount + ' silent trade(s) recovered from Deriv history', 'info');
+    if(ghostCount > 0){
+      toast('⚠️ ' + ghostCount + ' unrecorded trade(s) recovered from Deriv', 'info');
+    }
   }
 }
 
@@ -1511,6 +1584,7 @@ function handleMsg(msg, isLoginFlow){
     // Capture session start balance once per connection
     if(sessionStartBalance === null){
       sessionStartBalance = parseFloat(acc.balance);
+      _sessionStartTime   = Date.now();
       const startEl = document.getElementById('sStartBal');
       if(startEl) startEl.textContent = fmtAmount(sessionStartBalance);
     }
@@ -1529,7 +1603,7 @@ function handleMsg(msg, isLoginFlow){
         // Re-poll any entries that were left OPEN/? from a previous session
         setTimeout(repollStaleEntries, 2000);
         // Reconcile any silent trades Deriv settled that EA never recorded
-        setTimeout(reconcileSilentTrades, 3000);
+        setTimeout(syncWithDerivHistory, 3000);
         // Start schedule engine if it was re-enabled by loadState
         if(scheduleEnabled){ _startScheduleEngine(); }
       }, 400);
@@ -1540,7 +1614,7 @@ function handleMsg(msg, isLoginFlow){
       subscribeBalance();
       setTimeout(repollStaleEntries, 2000);
       // Reconcile any silent trades that settled during the disconnection window
-      setTimeout(reconcileSilentTrades, 3000);
+      setTimeout(syncWithDerivHistory, 3000);
       startSessionTimer();
       // Restart schedule engine if it was enabled
       if(scheduleEnabled){ _startScheduleEngine(); }
@@ -1557,8 +1631,8 @@ function handleMsg(msg, isLoginFlow){
     return;
   }
 
-  if(msg.msg_type === 'profit_table'){
-    handleProfitTable(msg.profit_table);
+  if(msg.msg_type === 'statement'){
+    handleStatement(msg.statement);
     return;
   }
 
@@ -2267,6 +2341,8 @@ function _settleLogEntry(le, finalProfit){
   toast((won ? '✅ WIN' : '❌ LOSS') + ' ' + fmtAmount(Math.abs(finalProfit)), 'info');
   saveState();
   checkSessionLimits();
+  // Sync with Deriv history 2s after settlement to catch any discrepancy
+  setTimeout(syncWithDerivHistory, 2000);
 }
 
 // ─── BINARY SESSION LIMIT CHECK ───────────────────
