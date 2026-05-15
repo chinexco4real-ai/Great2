@@ -2420,10 +2420,27 @@ function resetSessionClick(){
 }
 
 function resetSession(){
-  // Only clear the signal & trade log — nothing else is touched.
+  // Clear signal & trade log
   tradeLog = [];
   rebuildLog();
-  toast('Signal & trade log cleared','info');
+
+  // Clear P&L stats
+  stats.totalProfit = 0;
+  stats.totalLoss   = 0;
+  stats.wins        = 0;
+  stats.losses      = 0;
+  stats.totalTrades = 0;
+
+  // Reset session baseline so Expected Balance recalculates from current balance
+  sessionStartBalance = null;
+  _sessionStartTime   = null;
+  const startEl = document.getElementById('sStartBal');
+  if(startEl) startEl.textContent = '—';
+  const expEl = document.getElementById('sExpectedBal');
+  if(expEl){ expEl.textContent = '—'; expEl.style.color = '#8ba4cc'; }
+
+  updateStats();
+  toast('Session reset — log & P/L cleared', 'info');
 }
 
 // ─── RENDER POSITIONS ─────────────────────────────
