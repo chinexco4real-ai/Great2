@@ -1260,13 +1260,16 @@ function handleProfitTable(data){
   data.transactions.forEach(tx => {
     const cid = String(tx.contract_id || '');
     if(!cid || cid === 'undefined') return;
+    // Only care about binary option contracts (buy/sell pairs)
     if(!tx.transaction_time) return;
+    // Skip if EA already has this contract recorded
     if(known.has(cid)) return;
 
+    // This is a SILENT TRADE — Deriv has it, EA does not
     const pnl    = parseFloat(tx.profit_loss || 0);
     const stake  = parseFloat(tx.buy_price   || 0);
     const payout = parseFloat(tx.sell_price  || 0);
-    const netPnl = payout - stake;
+    const netPnl = payout - stake;   // exact net P/L from broker record
 
     const ghostEntry = {
       id:         'ghost_' + cid,
@@ -1276,13 +1279,14 @@ function handleProfitTable(data){
       entry:      '—',
       result:     netPnl >= 0 ? 'WIN' : 'LOSS',
       pnl:        (netPnl >= 0 ? '+' : '-') + fmtAmount(Math.abs(netPnl)),
-      _ghost:     true
+      _ghost:     true   // flag so UI can style it differently
     };
 
     tradeLog.push(ghostEntry);
     known.add(cid);
     ghostCount++;
 
+    // Add to stats so P&L totals match Deriv exactly
     if(netPnl >= 0){
       stats.wins++;
       stats.totalProfit += netPnl;
@@ -2340,26 +2344,41 @@ function resetSessionClick(){
 }
 
 function resetSession(){
-  // Clear signal & trade log
+  // ── 1. Clear Signal & Trade Log ──────────────────
   tradeLog = [];
   rebuildLog();
 
-  // Clear P&L stats
-  stats.totalProfit = 0;
-  stats.totalLoss   = 0;
-  stats.wins        = 0;
-  stats.losses      = 0;
-  stats.totalTrades = 0;
+  // ── 2. Reset P & L + Statistics ──────────────────
+  // Only the counters that represent session results are cleared.
+  // Auto-trade state (autoBot, botRunning, eaHalted) is intentionally NOT touched.
+  stats.totalSignals = 0;
+  stats.buySigs      = 0;
+  stats.sellSigs     = 0;
+  stats.totalTrades  = 0;
+  stats.wins         = 0;
+  stats.losses       = 0;
+  stats.totalProfit  = 0;
+  stats.totalLoss    = 0;
+  stats.lastSignal   = '';
+  stats.lastTime     = '';
 
-  // Reset session baseline so Expected Balance recalculates from current balance
+  // Reset session start balance reference so Expected Balance recalculates
+  // cleanly from the current live balance on the next update.
   sessionStartBalance = null;
-  const startEl = document.getElementById('sStartBal');
-  if(startEl) startEl.textContent = '—';
-  const expEl = document.getElementById('sExpectedBal');
-  if(expEl){ expEl.textContent = '—'; expEl.style.color = '#8ba4cc'; }
 
+  // ── 3. Clear EA halt banner (if visible) ─────────
+  // Halts are tied to the P&L limits — clearing P&L also clears the halt.
+  eaHalted = false;
+  const haltBanner = document.getElementById('eaHaltBanner');
+  if(haltBanner) haltBanner.style.display = 'none';
+
+  // ── 4. Refresh stats UI ───────────────────────────
   updateStats();
-  toast('Session reset — log & P/L cleared', 'info');
+
+  // ── 5. Persist cleared state ──────────────────────
+  saveState();
+
+  toast('✓ Session reset — P&L, stats & log cleared', 'info');
 }
 
 // ─── RENDER POSITIONS ─────────────────────────────
