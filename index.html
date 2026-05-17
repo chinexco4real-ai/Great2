@@ -368,6 +368,22 @@
   .cooldown-status{font-family:'Share Tech Mono',monospace;font-size:12px;color:#8ba4cc;font-weight:600;}
   .cooldown-status.active{color:#ff8c00;}
 
+  /* ─── SMART COUNTER FILTER ─── */
+  .counter-section{background:rgba(255,140,0,.05);border:1px solid rgba(255,140,0,.25);border-radius:9px;padding:13px 15px;margin-top:9px;}
+  .counter-section .section-lbl{color:#ff8c00;font-size:11px;letter-spacing:2px;margin-bottom:10px;font-weight:700;}
+  .counter-toggle-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  .counter-toggle-row .ct-lbl{font-size:12px;letter-spacing:1px;color:var(--text);font-weight:700;text-transform:uppercase;}
+  .counter-switch{position:relative;width:44px;height:22px;flex-shrink:0;}
+  .counter-switch input{opacity:0;width:0;height:0;}
+  .counter-slider{position:absolute;inset:0;background:#1e2a42;border:1px solid var(--border2);border-radius:20px;cursor:pointer;transition:all .25s;}
+  .counter-slider::before{content:'';position:absolute;height:16px;width:16px;left:2px;top:2px;background:#4a5a78;border-radius:50%;transition:all .25s;}
+  .counter-switch input:checked + .counter-slider{background:rgba(255,140,0,.18);border-color:#ff8c00;}
+  .counter-switch input:checked + .counter-slider::before{transform:translateX(22px);background:#ff8c00;box-shadow:0 0 6px rgba(255,140,0,.5);}
+  .counter-status-box{background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:9px 12px;font-family:'Share Tech Mono',monospace;font-size:11px;color:#8ba4cc;font-weight:600;line-height:1.7;min-height:38px;margin-top:8px;transition:border-color .3s,color .3s;}
+  .counter-status-box.watching{border-color:rgba(255,140,0,.4);color:#ff8c00;}
+  .counter-status-box.fired   {border-color:rgba(255,61,90,.4);color:#ff7090;}
+  .counter-status-box.ok      {border-color:rgba(0,230,118,.4);color:var(--green);}
+
   /* ─── TRADE SCHEDULE TIMER ─── */
   .schedule-section{background:rgba(0,240,255,.04);border:1px solid rgba(0,240,255,.22);border-radius:9px;padding:13px 15px;margin-top:9px;}
   .schedule-section .section-lbl{color:var(--accent2);font-size:11px;letter-spacing:2px;margin-bottom:10px;font-weight:700;}
@@ -799,6 +815,34 @@
             </div>
           </div>
 
+          <!-- ── SMART COUNTER FILTER ── -->
+          <div class="counter-section">
+            <div class="section-lbl">⚡ Smart Counter Filter</div>
+
+            <div class="counter-toggle-row">
+              <span class="ct-lbl">Enable Counter Filter</span>
+              <label class="counter-switch">
+                <input type="checkbox" id="counterFilterEnabled" onchange="onCounterFilterToggle(this.checked)"/>
+                <span class="counter-slider"></span>
+              </label>
+            </div>
+
+            <div id="counterFilterBody" style="display:none;">
+              <div class="ctrl-row" style="margin-bottom:8px;" title="How many minutes after a trade opens before the counter check runs. If the position is in loss at that point, a counter trade is placed immediately.">
+                <label style="font-size:11px;letter-spacing:1px;">Wait Time (min)</label>
+                <input type="number" id="cfgCounterWait" value="3" min="1" max="60" step="1"
+                       style="font-size:12px;padding:6px 9px;width:70px;"/>
+              </div>
+              <div style="font-size:10px;color:#8ba4cc;line-height:1.6;margin-bottom:8px;font-family:'Share Tech Mono',monospace;">
+                After a trade opens, the counter filter waits the set time then checks P/L.<br>
+                ▸ <span style="color:var(--green);">Profit</span> → ignored, no counter trade.<br>
+                ▸ <span style="color:#ff7090;">Loss</span> → counter trade placed immediately.<br>
+                <span style="color:#ff8c00;">Counter trades are never themselves countered.</span>
+              </div>
+              <div class="counter-status-box" id="counterStatusBox">Waiting for next trade…</div>
+            </div>
+          </div>
+
           <div class="bot-status" id="botStatus">Connect wallet — then BUY / SELL or enable Auto CRT.</div>
         </div>
       </div>
@@ -1020,6 +1064,11 @@ let candles = [];          // array of {open,high,low,close,epoch}
 let openPositions = {};    // contract_id -> position object
 let tradeLog = [];
 let eaHalted = false;      // binary SL/TP halt flag
+
+// ── SMART COUNTER FILTER STATE ──────────────────────
+let counterFilterEnabled = false;   // master toggle
+// Map of contractId -> { timer, dir, logId } for pending counter checks
+const counterPendingMap = {};       // contractId -> setTimeout handle
 
 // ─── ANALYSIS CANDLE (separate from trade duration) ───
 // analysisCandleMode: 'tick' | 'candle'
@@ -2056,6 +2105,7 @@ function handleBuyResponse(buy){
   const logId = passthrough.log_id;
   const slAmt = passthrough.sl_amt||0;
   const tpAmt = passthrough.tp_amt||0;
+  const isCounter = !!passthrough.is_counter;  // ← counter flag
 
   // Stamp the map IMMEDIATELY so handleContractUpdate can always find
   // the log entry by contractId — poc messages do NOT carry passthrough.
@@ -2081,8 +2131,13 @@ function handleBuyResponse(buy){
     slAmt, tpAmt,
     logId,
     symbol: v('cfgSymbol'),
-    openTime: new Date().toLocaleTimeString()
+    openTime:   new Date().toLocaleTimeString(),
+    openTimeMs: Date.now(),
+    isCounter:  isCounter   // true for counter trades → never re-countered
   };
+
+  // ── Schedule counter check if filter is active ──
+  scheduleCounterCheck(String(contractId));
 
   // NOTE: We used buy+subscribe:1 so Deriv is already streaming POC updates.
   // For tick contracts on Volatility indices the POC subscription alone does
@@ -2239,6 +2294,10 @@ function closePosition(cid, finalProfit, status){
 
   delete openPositions[cid];
   delete contractLogMap[cid];
+
+  // Cancel any pending counter check for this position
+  cancelCounterCheck(cid);
+
   renderPositions();
 
   if(le){
@@ -2347,6 +2406,10 @@ function resetSession(){
   // ── 1. Clear Signal & Trade Log ──────────────────
   tradeLog = [];
   rebuildLog();
+
+  // Cancel any pending counter checks
+  Object.keys(counterPendingMap).forEach(cancelCounterCheck);
+  setCounterStatus('Waiting for next trade…', '');
 
   // ── 2. Reset P & L + Statistics ──────────────────
   // Only the counters that represent session results are cleared.
@@ -3111,7 +3174,164 @@ function clearSavedToken(){
   sessionStorage.removeItem(SERVER_KEY);
 }
 
-// ─── INIT ─────────────────────────────────────────
+// ═══════════════════════════════════════════════════
+//   SMART COUNTER FILTER
+// ═══════════════════════════════════════════════════
+
+function onCounterFilterToggle(enabled){
+  counterFilterEnabled = enabled;
+  const body = document.getElementById('counterFilterBody');
+  if(body) body.style.display = enabled ? 'block' : 'none';
+
+  // Cancel all pending checks when disabled
+  if(!enabled){
+    Object.keys(counterPendingMap).forEach(cancelCounterCheck);
+    setCounterStatus('Counter filter disabled.', '');
+  } else {
+    setCounterStatus('Waiting for next trade…', '');
+    toast('⚡ Counter Filter ON','info');
+  }
+}
+
+// Called by handleBuyResponse immediately after position is stored.
+function scheduleCounterCheck(cid){
+  cid = String(cid);
+  if(!counterFilterEnabled) return;
+
+  const pos = openPositions[cid];
+  if(!pos) return;
+
+  // Never schedule a counter check for a counter trade itself
+  if(pos.isCounter){
+    setCounterStatus('Counter trade active — no re-counter.', 'ok');
+    return;
+  }
+
+  const waitMs = (parseInt(document.getElementById('cfgCounterWait').value) || 3) * 60 * 1000;
+  const dir    = pos.dir; // 'call' or 'put'
+
+  setCounterStatus(`⏳ Watching ${dir.toUpperCase()} #${cid} — checking in ${Math.round(waitMs/60000)} min…`, 'watching');
+
+  const handle = setTimeout(()=>{
+    delete counterPendingMap[cid];
+    runCounterCheck(cid);
+  }, waitMs);
+
+  counterPendingMap[cid] = handle;
+}
+
+// Cancel a pending counter check (e.g. position closed before wait time)
+function cancelCounterCheck(cid){
+  cid = String(cid);
+  if(counterPendingMap[cid]){
+    clearTimeout(counterPendingMap[cid]);
+    delete counterPendingMap[cid];
+  }
+}
+
+// Runs at the end of the wait period. Checks P/L; fires counter if in loss.
+function runCounterCheck(cid){
+  cid = String(cid);
+  const pos = openPositions[cid];
+
+  // Position may have already closed — nothing to counter
+  if(!pos){
+    setCounterStatus('Position closed before counter check — skipped.', 'ok');
+    return;
+  }
+
+  const pnl = pos.currentPnl;  // live floating P/L streamed by Deriv POC
+
+  if(pnl >= 0){
+    // Profitable — do nothing
+    setCounterStatus(`✅ #${cid} in profit (${pnl >= 0 ? '+' : ''}${fmtAmount(Math.abs(pnl))}) — no counter trade.`, 'ok');
+    return;
+  }
+
+  // In loss — place immediate counter trade in the opposite direction
+  const counterType = (pos.dir === 'call') ? 'PUT' : 'CALL';
+  const symbol  = pos.symbol || v('cfgSymbol');
+  const stake   = parseFloat(v('cfgStake')) || pos.stake || 1;
+  const sl      = parseFloat(v('cfgSL'))    || 0;
+  const tp      = parseFloat(v('cfgTP'))    || 0;
+
+  setCounterStatus(`🔴 #${cid} in loss (${fmtAmount(Math.abs(pnl))}) — firing ${counterType} counter…`, 'fired');
+
+  // Build a log entry for the counter trade
+  const logEntry = {
+    id:         Date.now() + '_ct',
+    time:       new Date().toLocaleTimeString(),
+    signal:     counterType === 'CALL' ? '▲ COUNTER RISE' : '▼ COUNTER FALL',
+    entry:      '—',
+    market:     symbol,
+    result:     'OPEN',
+    pnl:        '—',
+    contractId: null,
+    _isCounter: true
+  };
+  stats.totalSignals++;
+  if(counterType === 'CALL') stats.buySigs++; else stats.sellSigs++;
+  stats.lastSignal = counterType === 'CALL' ? 'COUNTER BUY' : 'COUNTER SELL';
+  stats.lastTime   = logEntry.time;
+  tradeLog.unshift(logEntry);
+  rebuildLog();
+  updateStats();
+
+  // Place the counter trade — mark it so it can never itself be countered
+  placeCounterTrade(counterType, symbol, stake, sl, tp, logEntry.id);
+
+  toast(`⚡ Counter ${counterType} placed vs open loss`, 'info');
+}
+
+// Like placeTrade but stamps isCounter=true on the resulting position.
+function placeCounterTrade(contractType, symbol, stake, slAmt, tpAmt, logId){
+  stats.totalTrades++;
+
+  const dur = parseInt(v('cfgDuration')) || 5;
+  let durUnit;
+  if(durType === 'ticks')   durUnit = 't';
+  else if(durType === 'seconds') durUnit = 's';
+  else durUnit = 'm';
+
+  const proposal = {
+    buy:       1,
+    subscribe: 1,
+    price:     stake,
+    parameters:{
+      contract_type: contractType,
+      symbol:        symbol,
+      currency:      accountCurrency,
+      basis:         'stake',
+      amount:        stake,
+      duration:      dur,
+      duration_unit: durUnit
+    },
+    passthrough: { log_id: logId, sl_amt: slAmt, tp_amt: tpAmt, is_counter: true }
+  };
+
+  send(proposal);
+  const label = contractType === 'CALL' ? '▲ COUNTER RISE' : '▼ COUNTER FALL';
+  setBotStatus(label + ' placed · Stake ' + fmtAmount(stake) + ' · ' + symbol, contractType === 'CALL' ? 'buy' : 'sell');
+}
+
+function setCounterStatus(msg, cls){
+  const box = document.getElementById('counterStatusBox');
+  if(!box) return;
+  box.textContent = msg;
+  box.className   = 'counter-status-box' + (cls ? ' ' + cls : '');
+}
+
+// ── Patch handleBuyResponse to honour is_counter passthrough ──────
+// We need to mark counter positions so scheduleCounterCheck skips them.
+// This is done by intercepting the existing flow via a wrapper applied at init.
+(function patchBuyResponseForCounter(){
+  const _orig = window.handleBuyResponse;
+  if(!_orig) return; // safety — defined in same script, just apply inline below
+})();
+// (The actual integration is already inline via the openPositions block above
+//  and the `isCounter` flag set from passthrough — see handleBuyResponse.)
+
+
 window.addEventListener('load', ()=>{
   const saved = loadSavedToken();
   if(saved){
