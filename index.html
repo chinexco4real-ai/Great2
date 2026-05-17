@@ -1561,7 +1561,12 @@ function handleMsg(msg, isLoginFlow){
     if(sessionStartBalance === null){
       sessionStartBalance = parseFloat(acc.balance);
       const startEl = document.getElementById('sStartBal');
-      if(startEl) startEl.textContent = fmtAmount(sessionStartBalance);
+      if(startEl){
+        startEl.textContent = fmtAmount(sessionStartBalance);
+        startEl.style.color = 'var(--green)';
+      }
+      // Render expected balance immediately (net=0, so expected = start)
+      updateStats();
     }
     if(isLoginFlow){
       setLoginStatus('Connected! ✓','ok');
@@ -2412,7 +2417,6 @@ function resetSession(){
   setCounterStatus('Waiting for next trade…', '');
 
   // ── 2. Reset P & L + Statistics ──────────────────
-  // Only the counters that represent session results are cleared.
   // Auto-trade state (autoBot, botRunning, eaHalted) is intentionally NOT touched.
   stats.totalSignals = 0;
   stats.buySigs      = 0;
@@ -2425,20 +2429,32 @@ function resetSession(){
   stats.lastSignal   = '';
   stats.lastTime     = '';
 
-  // Reset session start balance reference so Expected Balance recalculates
-  // cleanly from the current live balance on the next update.
-  sessionStartBalance = null;
+  // ── 3. Snap session start balance to current live balance ──
+  // Read from the balance element which Deriv keeps up-to-date in real time.
+  const balEl = document.getElementById('sBalance');
+  const liveBal = balEl ? parseFloat(balEl.dataset.raw) : NaN;
+  if(!isNaN(liveBal) && liveBal > 0){
+    sessionStartBalance = liveBal;
+  } else {
+    // Fallback: null means updateStats will show '—' until next balance tick
+    sessionStartBalance = null;
+  }
+  // Update session start row immediately
+  const startEl = document.getElementById('sStartBal');
+  if(startEl){
+    startEl.textContent = sessionStartBalance !== null ? fmtAmount(sessionStartBalance) : '—';
+    startEl.style.color = 'var(--green)';
+  }
 
-  // ── 3. Clear EA halt banner (if visible) ─────────
-  // Halts are tied to the P&L limits — clearing P&L also clears the halt.
+  // ── 4. Clear EA halt banner ───────────────────────
   eaHalted = false;
   const haltBanner = document.getElementById('eaHaltBanner');
   if(haltBanner) haltBanner.style.display = 'none';
 
-  // ── 4. Refresh stats UI ───────────────────────────
+  // ── 5. Refresh all stats + Expected Balance ───────
   updateStats();
 
-  // ── 5. Persist cleared state ──────────────────────
+  // ── 6. Persist cleared state ──────────────────────
   saveState();
 
   toast('✓ Session reset — P&L, stats & log cleared', 'info');
@@ -2492,16 +2508,18 @@ function updateStats(){
   netEl.style.color = net>0?'var(--green)':net<0?'var(--red)':'var(--text)';
 
   // Expected Balance = session start balance + net P/L
-  // This is what Deriv balance SHOULD show if all trades are recorded correctly.
-  // If Deriv balance differs from this, there are unrecorded trades.
+  // Always visible once session start is known.
   const expEl = document.getElementById('sExpectedBal');
   if(expEl){
     if(sessionStartBalance !== null){
       const expected = sessionStartBalance + net;
       expEl.textContent = fmtAmount(expected);
-      expEl.style.color = net > 0 ? 'var(--green)' : net < 0 ? 'var(--red)' : 'var(--muted)';
+      expEl.style.color = net > 0 ? 'var(--green)' : net < 0 ? 'var(--red)' : 'var(--white)';
+      expEl.style.fontWeight = '700';
     } else {
       expEl.textContent = '—';
+      expEl.style.color = 'var(--muted)';
+      expEl.style.fontWeight = '600';
     }
   }
 
