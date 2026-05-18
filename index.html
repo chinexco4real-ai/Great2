@@ -977,6 +977,10 @@ const CURRENCY_META = {
 };
 
 let accountCurrency = 'USD';
+// The currency Deriv accepts in contract proposals for this account.
+// Fetched via payout_currencies after login — may differ from accountCurrency
+// (e.g. a USDT account's tradeable currency is confirmed by Deriv, not assumed).
+let tradeCurrency = 'USD';
 
 function fmtAmount(amount, currency){
   const code = (currency || accountCurrency || 'USD').toUpperCase();
@@ -1550,6 +1554,10 @@ function handleMsg(msg, isLoginFlow){
 
     // Store and apply currency first — all subsequent formatting uses it
     accountCurrency = (acc.currency || 'USD').toUpperCase();
+    // Default tradeCurrency to accountCurrency until payout_currencies confirms it
+    tradeCurrency = accountCurrency;
+    // Ask Deriv what currency is actually accepted in contract proposals for this account
+    send({ payout_currencies: 1 });
     document.getElementById('hdrName').textContent = acc.fullname || acc.loginid;
     const balFormatted = fmtAmount(acc.balance);
     const balEl = document.getElementById('hdrBal');
@@ -1626,6 +1634,22 @@ function handleMsg(msg, isLoginFlow){
     const sBal   = document.getElementById('sBalance');
     if(hdrBal) hdrBal.textContent = balFmt;
     if(sBal){ sBal.textContent = balFmt; sBal.dataset.raw = parseFloat(b.balance); }
+    return;
+  }
+
+  if(msg.msg_type === 'payout_currencies'){
+    // Deriv returns the list of currencies this account can use in contract proposals.
+    // Pick the one that matches the account currency — fall back to first in list or USD.
+    if(msg.payout_currencies && Array.isArray(msg.payout_currencies)){
+      const list = msg.payout_currencies;
+      if(list.includes(accountCurrency)){
+        tradeCurrency = accountCurrency;           // account currency is directly tradeable
+      } else if(list.length > 0){
+        tradeCurrency = list[0];                   // use first accepted currency (Deriv's choice)
+      } else {
+        tradeCurrency = 'USD';                     // safe fallback
+      }
+    }
     return;
   }
 
@@ -2106,20 +2130,10 @@ function placeTrade(contractType, symbol, stake, slAmt, tpAmt, logId){
   else if(durType==='seconds') durUnit='s';
   else durUnit='m';
 
-  // ── Currency-aware basis & amount ──────────────────
-  // Deriv rejects `basis:'stake'` for crypto & stablecoin accounts.
-  // For those accounts we must send `basis:'payout'` with a rounded payout amount.
-  // Fiat accounts work fine with `basis:'stake'`.
-  const meta      = getCurrencyMeta(accountCurrency);
-  const isCrypto  = meta.type === 'crypto' || meta.type === 'stable';
-  const tradeBase = isCrypto ? 'payout' : 'stake';
-
-  // Round to the currency's valid decimal precision to avoid InvalidAmountError
-  const precision  = meta.decimals || 2;
-  // For payout basis: typical binary option payout = stake × ~1.85 → round up cleanly
-  // We keep it simple: for crypto/stable we set payout = stake (user's input is treated
-  // as the desired payout). Deriv will deduct the correct stake from the balance.
-  const tradeAmount = parseFloat(stake.toFixed(precision));
+  // tradeCurrency is confirmed by Deriv's payout_currencies response after login.
+  // It is the exact currency string Deriv accepts for this account's contract proposals.
+  // Using accountCurrency directly causes "Invalid payout currency" for USDT/crypto accounts.
+  const tradeAmount = parseFloat(parseFloat(stake).toFixed(2));
 
   const proposal = {
     buy: 1,
@@ -2127,11 +2141,11 @@ function placeTrade(contractType, symbol, stake, slAmt, tpAmt, logId){
     price: tradeAmount,
     parameters: {
       contract_type: contractType,
-      symbol: symbol,
-      currency: accountCurrency,
-      basis:  tradeBase,
-      amount: tradeAmount,
-      duration: dur,
+      symbol:        symbol,
+      currency:      tradeCurrency,
+      basis:         'stake',
+      amount:        tradeAmount,
+      duration:      dur,
       duration_unit: durUnit
     },
     passthrough: { log_id: logId, sl_amt: slAmt, tp_amt: tpAmt }
@@ -2139,7 +2153,7 @@ function placeTrade(contractType, symbol, stake, slAmt, tpAmt, logId){
 
   send(proposal);
   const label = contractType==='CALL' ? '▲ RISE (BUY)' : '▼ FALL (SELL)';
-  setBotStatus(label+' placed · '+tradeBase+' '+fmtAmount(tradeAmount)+' · '+symbol, contractType==='CALL'?'buy':'sell');
+  setBotStatus(label+' placed · Stake '+fmtAmount(tradeAmount)+' · '+symbol, contractType==='CALL'?'buy':'sell');
 }
 
 // ─── HANDLE BUY RESPONSE ──────────────────────────
@@ -3350,12 +3364,9 @@ function placeCounterTrade(contractType, symbol, stake, slAmt, tpAmt, logId){
   else if(durType === 'seconds') durUnit = 's';
   else durUnit = 'm';
 
-  // Same currency-aware basis fix as placeTrade
+  // Same tradeCurrency approach as placeTrade — confirmed by payout_currencies
   const meta        = getCurrencyMeta(accountCurrency);
-  const isCrypto    = meta.type === 'crypto' || meta.type === 'stable';
-  const tradeBase   = isCrypto ? 'payout' : 'stake';
-  const precision   = meta.decimals || 2;
-  const tradeAmount = parseFloat(stake.toFixed(precision));
+  const tradeAmount = parseFloat(parseFloat(stake).toFixed(2));
 
   const proposal = {
     buy:       1,
@@ -3364,8 +3375,8 @@ function placeCounterTrade(contractType, symbol, stake, slAmt, tpAmt, logId){
     parameters:{
       contract_type: contractType,
       symbol:        symbol,
-      currency:      accountCurrency,
-      basis:         tradeBase,
+      currency:      tradeCurrency,
+      basis:         'stake',
       amount:        tradeAmount,
       duration:      dur,
       duration_unit: durUnit
@@ -3375,7 +3386,7 @@ function placeCounterTrade(contractType, symbol, stake, slAmt, tpAmt, logId){
 
   send(proposal);
   const label = contractType === 'CALL' ? '▲ COUNTER RISE' : '▼ COUNTER FALL';
-  setBotStatus(label + ' placed · ' + tradeBase + ' ' + fmtAmount(tradeAmount) + ' · ' + symbol, contractType === 'CALL' ? 'buy' : 'sell');
+  setBotStatus(label + ' placed · Stake ' + fmtAmount(tradeAmount) + ' · ' + symbol, contractType === 'CALL' ? 'buy' : 'sell');
 }
 
 function setCounterStatus(msg, cls){
