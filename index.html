@@ -228,6 +228,7 @@
   .tag-win{color:var(--green);font-weight:700;}
   .tag-loss{color:#ff7090;font-weight:700;}
   .tag-open{color:var(--gold);font-weight:700;}
+  .tag-failed{color:#ff8c00;font-weight:700;font-size:10px;letter-spacing:.5px;}
 
   /* ─── STATS PANEL ─── */
   .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:14px;}
@@ -1634,7 +1635,30 @@ function handleMsg(msg, isLoginFlow){
   }
 
   if(msg.msg_type === 'buy'){
-    if(msg.error){ setBotStatus('Trade error: '+msg.error.message,'error'); toast('Trade failed: '+msg.error.message,'info'); return; }
+    if(msg.error){
+      const errCode = msg.error.code    || '';
+      const errMsg  = msg.error.message || 'Unknown error';
+      setBotStatus('Trade error: ' + errMsg, 'error');
+      toast('Trade failed: ' + errMsg, 'info');
+
+      // ── Recover the orphaned log entry ────────────
+      // If a log entry was pre-created (logId in passthrough), mark it FAILED
+      // so it doesn't sit as OPEN forever and skew stats.
+      const logId = msg.echo_req && msg.echo_req.passthrough && msg.echo_req.passthrough.log_id;
+      if(logId){
+        const le = tradeLog.find(l => l.id === logId);
+        if(le && (le.result === 'OPEN' || le.result === '?')){
+          le.result = 'FAILED';
+          le.pnl    = '—';
+          le._failReason = errMsg;
+        }
+      }
+      // Rollback the totalTrades increment that placeTrade already did
+      if(stats.totalTrades > 0) stats.totalTrades--;
+      rebuildLog();
+      updateStats();
+      return;
+    }
     handleBuyResponse(msg.buy);
     return;
   }
@@ -2082,16 +2106,31 @@ function placeTrade(contractType, symbol, stake, slAmt, tpAmt, logId){
   else if(durType==='seconds') durUnit='s';
   else durUnit='m';
 
+  // ── Currency-aware basis & amount ──────────────────
+  // Deriv rejects `basis:'stake'` for crypto & stablecoin accounts.
+  // For those accounts we must send `basis:'payout'` with a rounded payout amount.
+  // Fiat accounts work fine with `basis:'stake'`.
+  const meta      = getCurrencyMeta(accountCurrency);
+  const isCrypto  = meta.type === 'crypto' || meta.type === 'stable';
+  const tradeBase = isCrypto ? 'payout' : 'stake';
+
+  // Round to the currency's valid decimal precision to avoid InvalidAmountError
+  const precision  = meta.decimals || 2;
+  // For payout basis: typical binary option payout = stake × ~1.85 → round up cleanly
+  // We keep it simple: for crypto/stable we set payout = stake (user's input is treated
+  // as the desired payout). Deriv will deduct the correct stake from the balance.
+  const tradeAmount = parseFloat(stake.toFixed(precision));
+
   const proposal = {
     buy: 1,
-    subscribe: 1,           // ← tells Deriv to stream POC updates in buy response
-    price: stake,
+    subscribe: 1,
+    price: tradeAmount,
     parameters: {
       contract_type: contractType,
       symbol: symbol,
-      currency: accountCurrency,   // dynamically set from account
-      basis: 'stake',
-      amount: stake,
+      currency: accountCurrency,
+      basis:  tradeBase,
+      amount: tradeAmount,
       duration: dur,
       duration_unit: durUnit
     },
@@ -2100,7 +2139,7 @@ function placeTrade(contractType, symbol, stake, slAmt, tpAmt, logId){
 
   send(proposal);
   const label = contractType==='CALL' ? '▲ RISE (BUY)' : '▼ FALL (SELL)';
-  setBotStatus(label+' placed · Stake '+fmtAmount(stake)+' · '+symbol, contractType==='CALL'?'buy':'sell');
+  setBotStatus(label+' placed · '+tradeBase+' '+fmtAmount(tradeAmount)+' · '+symbol, contractType==='CALL'?'buy':'sell');
 }
 
 // ─── HANDLE BUY RESPONSE ──────────────────────────
@@ -2542,7 +2581,7 @@ function rebuildLog(){
       : l.dir==='SELL'
         ? '<span class="tag-sell">SELL</span>'
         : '<span style="color:#8ba4cc;font-size:10px;letter-spacing:1px;">GHOST</span>';
-    const resCls = l.result==='WIN'?'tag-win':l.result==='LOSS'?'tag-loss':l.result==='OPEN'?'tag-open':l.result==='?'?'tag-open':'';
+    const resCls = l.result==='WIN'?'tag-win':l.result==='LOSS'?'tag-loss':l.result==='OPEN'?'tag-open':l.result==='?'?'tag-open':l.result==='FAILED'?'tag-failed':'';
     const resDisplay = l.result === '?' ? '?' : l.result;
     const pnlCls = l.pnl&&l.pnl.startsWith('+')?'tag-win':l.pnl&&l.pnl!=='—'?'tag-loss':'';
     const rowStyle = isGhost ? 'opacity:0.65;background:rgba(255,193,7,0.04);border-left:2px solid rgba(255,193,7,0.4);' : '';
@@ -2551,7 +2590,7 @@ function rebuildLog(){
       <td style="color:#8ba4cc;font-size:11px;letter-spacing:.5px;">${isGhost ? '👻' : sn}</td>
       <td>${l.time}</td><td>${dirTag}</td><td>${l.entry}</td>
       <td>${l.market||'—'}</td>
-      <td class="${resCls}" title="${l.result==='?'?'Result unknown – re-polling…':''}">${resDisplay}</td>
+      <td class="${resCls}" title="${l.result==='?'?'Result unknown – re-polling…':l.result==='FAILED'?(l._failReason||'Trade rejected by broker'):''}">${resDisplay}</td>
       <td class="${pnlCls}">${l.pnl}</td>
     </tr>`;
   }).join('');
@@ -3311,16 +3350,23 @@ function placeCounterTrade(contractType, symbol, stake, slAmt, tpAmt, logId){
   else if(durType === 'seconds') durUnit = 's';
   else durUnit = 'm';
 
+  // Same currency-aware basis fix as placeTrade
+  const meta        = getCurrencyMeta(accountCurrency);
+  const isCrypto    = meta.type === 'crypto' || meta.type === 'stable';
+  const tradeBase   = isCrypto ? 'payout' : 'stake';
+  const precision   = meta.decimals || 2;
+  const tradeAmount = parseFloat(stake.toFixed(precision));
+
   const proposal = {
     buy:       1,
     subscribe: 1,
-    price:     stake,
+    price:     tradeAmount,
     parameters:{
       contract_type: contractType,
       symbol:        symbol,
       currency:      accountCurrency,
-      basis:         'stake',
-      amount:        stake,
+      basis:         tradeBase,
+      amount:        tradeAmount,
       duration:      dur,
       duration_unit: durUnit
     },
@@ -3329,7 +3375,7 @@ function placeCounterTrade(contractType, symbol, stake, slAmt, tpAmt, logId){
 
   send(proposal);
   const label = contractType === 'CALL' ? '▲ COUNTER RISE' : '▼ COUNTER FALL';
-  setBotStatus(label + ' placed · Stake ' + fmtAmount(stake) + ' · ' + symbol, contractType === 'CALL' ? 'buy' : 'sell');
+  setBotStatus(label + ' placed · ' + tradeBase + ' ' + fmtAmount(tradeAmount) + ' · ' + symbol, contractType === 'CALL' ? 'buy' : 'sell');
 }
 
 function setCounterStatus(msg, cls){
