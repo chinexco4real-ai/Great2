@@ -373,21 +373,8 @@
   .cooldown-status{font-family:'Share Tech Mono',monospace;font-size:12px;color:#8ba4cc;font-weight:600;}
   .cooldown-status.active{color:#ff8c00;}
 
-  /* ─── SMART COUNTER FILTER ─── */
-  .counter-section{background:rgba(255,140,0,.05);border:1px solid rgba(255,140,0,.25);border-radius:9px;padding:13px 15px;margin-top:9px;}
-  .counter-section .section-lbl{color:#ff8c00;font-size:11px;letter-spacing:2px;margin-bottom:10px;font-weight:700;}
-  .counter-toggle-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
-  .counter-toggle-row .ct-lbl{font-size:12px;letter-spacing:1px;color:var(--text);font-weight:700;text-transform:uppercase;}
-  .counter-switch{position:relative;width:44px;height:22px;flex-shrink:0;}
-  .counter-switch input{opacity:0;width:0;height:0;}
-  .counter-slider{position:absolute;inset:0;background:#1e2a42;border:1px solid var(--border2);border-radius:20px;cursor:pointer;transition:all .25s;}
-  .counter-slider::before{content:'';position:absolute;height:16px;width:16px;left:2px;top:2px;background:#4a5a78;border-radius:50%;transition:all .25s;}
-  .counter-switch input:checked + .counter-slider{background:rgba(255,140,0,.18);border-color:#ff8c00;}
-  .counter-switch input:checked + .counter-slider::before{transform:translateX(22px);background:#ff8c00;box-shadow:0 0 6px rgba(255,140,0,.5);}
-  .counter-status-box{background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:9px 12px;font-family:'Share Tech Mono',monospace;font-size:11px;color:#8ba4cc;font-weight:600;line-height:1.7;min-height:38px;margin-top:8px;transition:border-color .3s,color .3s;}
-  .counter-status-box.watching{border-color:rgba(255,140,0,.4);color:#ff8c00;}
-  .counter-status-box.fired   {border-color:rgba(255,61,90,.4);color:#ff7090;}
-  .counter-status-box.ok      {border-color:rgba(0,230,118,.4);color:var(--green);}
+  /* ─── QUALITY FILTERS INFO BOX ─── */
+  .quality-info-box{background:var(--bg3);border:1px solid rgba(0,240,255,.2);border-radius:6px;padding:9px 12px;font-family:'Share Tech Mono',monospace;font-size:11px;color:#8ba4cc;font-weight:600;line-height:1.7;min-height:38px;margin-top:4px;}
 
   /* ─── TRADE SCHEDULE TIMER ─── */
   .schedule-section{background:rgba(0,240,255,.04);border:1px solid rgba(0,240,255,.22);border-radius:9px;padding:13px 15px;margin-top:9px;}
@@ -676,89 +663,33 @@
             <div class="section-lbl">⚗ Signal Filters</div>
 
             <!-- Filter 1: EMA Wick-Cross -->
-            <div class="filter-item" id="fi1">
+            <div class="filter-item enabled" id="fi1">
               <div class="filter-toggle-row" onclick="toggleFilter(1)">
                 <span class="f-name">
                   <span class="f-badge">F1</span>
                   EMA Wick-Cross
                 </span>
                 <label class="filter-switch" onclick="event.stopPropagation()">
-                  <input type="checkbox" id="fEmaEnabled" onchange="onFilterChange(1,this.checked)"/>
+                  <input type="checkbox" id="fEmaEnabled" onchange="onFilterChange(1,this.checked)" checked/>
                   <span class="filter-slider"></span>
                 </label>
               </div>
               <div class="filter-desc">
                 <div class="ctrl-row" style="margin-bottom:7px;">
                   <label style="font-size:11px;letter-spacing:1px;">EMA Period</label>
-                  <input type="number" id="cfgEmaPeriod" value="50" min="1" max="500" style="font-size:12px;padding:6px 9px;"/>
+                  <input type="number" id="cfgEmaPeriod" value="20" min="1" max="500" style="font-size:12px;padding:6px 9px;"/>
                 </div>
-                <div class="f-rule">
-                  <span class="buy-txt">▲ BUY:</span> Body fully above EMA · lower wick crosses below EMA<br>
-                  <span class="sell-txt">▼ SELL:</span> Body fully below EMA · upper wick crosses above EMA
-                </div>
-              </div>
-            </div>
-
-            <!-- Filter 2: Candle Close Direction -->
-            <div class="filter-item" id="fi2">
-              <div class="filter-toggle-row" onclick="toggleFilter(2)">
-                <span class="f-name">
-                  <span class="f-badge">F2</span>
-                  Candle Close
-                </span>
-                <label class="filter-switch" onclick="event.stopPropagation()">
-                  <input type="checkbox" id="fCandleCloseEnabled" onchange="onFilterChange(2,this.checked)"/>
-                  <span class="filter-slider"></span>
-                </label>
-              </div>
-              <div class="filter-desc">
-                <div class="f-rule">
-                  <span class="buy-txt">▲ BUY:</span> Signal candle closes bullish (close &gt; open)<br>
-                  <span class="sell-txt">▼ SELL:</span> Signal candle closes bearish (close &lt; open)
-                </div>
-              </div>
-            </div>
-
-            <!-- Filter 3: Range Candle Direction -->
-            <div class="filter-item" id="fi3">
-              <div class="filter-toggle-row" onclick="toggleFilter(3)">
-                <span class="f-name">
-                  <span class="f-badge">F3</span>
-                  Candle 2 (Range)
-                </span>
-                <label class="filter-switch" onclick="event.stopPropagation()">
-                  <input type="checkbox" id="fCandle2Enabled" onchange="onFilterChange(3,this.checked)"/>
-                  <span class="filter-slider"></span>
-                </label>
-              </div>
-              <div class="filter-desc">
-                <div class="f-rule">
-                  <span class="buy-txt">▲ BUY:</span> Range candle closes bullish (close &gt; open)<br>
-                  <span class="sell-txt">▼ SELL:</span> Range candle closes bearish (close &lt; open)
-                </div>
-              </div>
-            </div>
-
-            <!-- Filter 4: EMA Trend Filter -->
-            <div class="filter-item" id="fi4">
-              <div class="filter-toggle-row" onclick="toggleFilter(4)">
-                <span class="f-name">
-                  <span class="f-badge">F4</span>
-                  EMA Trend Filter
-                </span>
-                <label class="filter-switch" onclick="event.stopPropagation()">
-                  <input type="checkbox" id="fEmaTrendEnabled" onchange="onFilterChange(4,this.checked)"/>
-                  <span class="filter-slider"></span>
-                </label>
-              </div>
-              <div class="filter-desc">
                 <div class="ctrl-row" style="margin-bottom:7px;">
-                  <label style="font-size:11px;letter-spacing:1px;">EMA Period</label>
-                  <input type="number" id="cfgEmaTrendPeriod" value="50" min="1" max="500" style="font-size:12px;padding:6px 9px;"/>
+                  <label style="font-size:11px;letter-spacing:1px;">Cross Mode</label>
+                  <select id="cfgEmaWickMode" onchange="onEmaWickModeChange(this.value)" style="font-size:12px;padding:6px 9px;">
+                    <option value="strict">Strict — body fully above/below EMA</option>
+                    <option value="loose" selected>Loose — close on right side of EMA</option>
+                  </select>
                 </div>
-                <div class="f-rule">
-                  <span class="buy-txt">▲ RISE:</span> Current price is above EMA — bullish trend<br>
-                  <span class="sell-txt">▼ FALL:</span> Current price is below EMA — bearish trend
+                <div class="f-rule" id="f1RuleText">
+                  <span class="buy-txt">▲ BUY:</span> Close above EMA · lower wick crosses below EMA<br>
+                  <span class="sell-txt">▼ SELL:</span> Close below EMA · upper wick crosses above EMA<br>
+                  <span style="color:var(--gold);">Loose — body may straddle EMA</span>
                 </div>
               </div>
             </div>
@@ -820,33 +751,131 @@
             </div>
           </div>
 
-          <!-- ── SMART COUNTER FILTER ── -->
-          <div class="counter-section">
-            <div class="section-lbl">⚡ Smart Counter Filter</div>
+          <!-- ── QUALITY FILTERS ── -->
+          <div class="filter-section" style="margin-top:9px;">
+            <div class="section-lbl">🔬 Signal Quality Filters</div>
 
-            <div class="counter-toggle-row">
-              <span class="ct-lbl">Enable Counter Filter</span>
-              <label class="counter-switch">
-                <input type="checkbox" id="counterFilterEnabled" onchange="onCounterFilterToggle(this.checked)"/>
-                <span class="counter-slider"></span>
-              </label>
+            <!-- QF1: Range Window -->
+            <div class="filter-item enabled" id="qfi1">
+              <div class="filter-toggle-row" style="cursor:default;">
+                <span class="f-name">
+                  <span class="f-badge">Q1</span>
+                  Range Lookback Window
+                </span>
+              </div>
+              <div class="filter-desc" style="display:block;">
+                <div class="ctrl-row" style="margin-bottom:5px;">
+                  <label style="font-size:11px;letter-spacing:1px;">Candles (1–5)</label>
+                  <input type="number" id="cfgRangeWindow" value="1" min="1" max="5" style="font-size:12px;padding:6px 9px;"/>
+                </div>
+                <div class="f-rule">
+                  Range H/L = aggregate extreme of last N candles before signal.<br>
+                  <span style="color:var(--gold);">1 = original single-bar · 2–5 = consolidation zone</span>
+                </div>
+              </div>
             </div>
 
-            <div id="counterFilterBody" style="display:none;">
-              <div class="ctrl-row" style="margin-bottom:8px;" title="How long after a trade opens before the counter check runs. Supports decimals: 1.5 = 1 min 30 sec, 0.5 = 30 sec, 2.3 = 2 min 18 sec.">
-                <label style="font-size:11px;letter-spacing:1px;">Wait Time (min.sec)</label>
-                <input type="number" id="cfgCounterWait" value="3" min="0.1" max="60" step="0.1"
-                       style="font-size:12px;padding:6px 9px;width:70px;"/>
+            <!-- QF2: Min Sweep Depth -->
+            <div class="filter-item enabled" id="qfi2">
+              <div class="filter-toggle-row" onclick="toggleQFilter(2)">
+                <span class="f-name">
+                  <span class="f-badge">Q2</span>
+                  Min Sweep Depth
+                </span>
+                <label class="filter-switch" onclick="event.stopPropagation()">
+                  <input type="checkbox" id="qfSweepEnabled" onchange="onQFilterChange(2,this.checked)" checked/>
+                  <span class="filter-slider"></span>
+                </label>
               </div>
-              <div style="font-size:10px;color:#8ba4cc;line-height:1.6;margin-bottom:8px;font-family:'Share Tech Mono',monospace;">
-                After a trade opens, the counter filter waits the set time then checks P/L.<br>
-                ▸ Decimals = fraction of a minute: <span style="color:#ff8c00;">1.5 = 1m 30s · 2.3 = 2m 18s · 0.5 = 30s</span><br>
-                ▸ <span style="color:var(--green);">Profit</span> → ignored, no counter trade.<br>
-                ▸ <span style="color:#ff7090;">Loss</span> → counter trade placed immediately at remaining expiry of original trade.<br>
-                <span style="color:#ff8c00;">Counter trades are never themselves countered.</span>
+              <div class="filter-desc">
+                <div class="ctrl-row" style="margin-bottom:5px;">
+                  <label style="font-size:11px;letter-spacing:1px;">Min Sweep % of Range</label>
+                  <input type="number" id="cfgSweepDepth" value="20" min="1" max="100" style="font-size:12px;padding:6px 9px;"/>
+                </div>
+                <div class="f-rule">
+                  Sweep must exceed N% of the range candle size.<br>
+                  <span class="buy-txt">▲ BUY:</span> (rangeL − signal.low) ≥ N% × rangeSize<br>
+                  <span class="sell-txt">▼ SELL:</span> (signal.high − rangeH) ≥ N% × rangeSize
+                </div>
               </div>
-              <div class="counter-status-box" id="counterStatusBox">Waiting for next trade…</div>
             </div>
+
+            <!-- QF3: Body Rejection -->
+            <div class="filter-item enabled" id="qfi3">
+              <div class="filter-toggle-row" onclick="toggleQFilter(3)">
+                <span class="f-name">
+                  <span class="f-badge">Q3</span>
+                  Body Rejection Ratio
+                </span>
+                <label class="filter-switch" onclick="event.stopPropagation()">
+                  <input type="checkbox" id="qfBodyEnabled" onchange="onQFilterChange(3,this.checked)" checked/>
+                  <span class="filter-slider"></span>
+                </label>
+              </div>
+              <div class="filter-desc">
+                <div class="ctrl-row" style="margin-bottom:5px;">
+                  <label style="font-size:11px;letter-spacing:1px;">Min Body % of Candle Range</label>
+                  <input type="number" id="cfgBodyRatio" value="50" min="1" max="90" style="font-size:12px;padding:6px 9px;"/>
+                </div>
+                <div class="f-rule">
+                  |close − open| ≥ N% × (high − low) — filters doji candles.<br>
+                  <span style="color:var(--gold);">Recommended: 40–50%</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- QF5: Close Penetration -->
+            <div class="filter-item enabled" id="qfi5">
+              <div class="filter-toggle-row" onclick="toggleQFilter(5)">
+                <span class="f-name">
+                  <span class="f-badge">Q5</span>
+                  Close Penetration
+                </span>
+                <label class="filter-switch" onclick="event.stopPropagation()">
+                  <input type="checkbox" id="qfClosePenetrationEnabled" onchange="onQFilterChange(5,this.checked)" checked/>
+                  <span class="filter-slider"></span>
+                </label>
+              </div>
+              <div class="filter-desc">
+                <div class="ctrl-row" style="margin-bottom:5px;">
+                  <label style="font-size:11px;letter-spacing:1px;">Min Close % inside Range</label>
+                  <input type="number" id="cfgClosePct" value="33" min="5" max="80" style="font-size:12px;padding:6px 9px;" onchange="saveState()"/>
+                </div>
+                <div class="f-rule">
+                  Signal close must be at least N% of rangeSize inside the range.<br>
+                  <span class="buy-txt">▲ BUY:</span> (close − rangeLow) ≥ N% × rangeSize<br>
+                  <span class="sell-txt">▼ SELL:</span> (rangeHigh − close) ≥ N% × rangeSize<br>
+                  <span style="color:var(--gold);">Rejects weak edge-of-range closes.</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- QF6: Wick Dominance -->
+            <div class="filter-item enabled" id="qfi6">
+              <div class="filter-toggle-row" onclick="toggleQFilter(6)">
+                <span class="f-name">
+                  <span class="f-badge">Q6</span>
+                  Wick Dominance
+                </span>
+                <label class="filter-switch" onclick="event.stopPropagation()">
+                  <input type="checkbox" id="qfWickDominanceEnabled" onchange="onQFilterChange(6,this.checked)" checked/>
+                  <span class="filter-slider"></span>
+                </label>
+              </div>
+              <div class="filter-desc">
+                <div class="ctrl-row" style="margin-bottom:5px;">
+                  <label style="font-size:11px;letter-spacing:1px;">Sweep Wick Ratio (×)</label>
+                  <input type="number" id="cfgWickRatio" value="2.0" min="1" max="10" step="0.1" style="font-size:12px;padding:6px 9px;" onchange="saveState()"/>
+                </div>
+                <div class="f-rule">
+                  Sweep wick must be ≥ N× the opposite wick.<br>
+                  <span class="buy-txt">▲ BUY:</span> lowerWick ≥ ratio × upperWick<br>
+                  <span class="sell-txt">▼ SELL:</span> upperWick ≥ ratio × lowerWick<br>
+                  <span style="color:var(--gold);">Confirms strong rejection, not a weak tap.</span>
+                </div>
+              </div>
+            </div>
+
           </div>
 
           <div class="bot-status" id="botStatus">Connect wallet — then BUY / SELL or enable Auto CRT.</div>
@@ -1075,10 +1104,11 @@ let openPositions = {};    // contract_id -> position object
 let tradeLog = [];
 let eaHalted = false;      // binary SL/TP halt flag
 
-// ── SMART COUNTER FILTER STATE ──────────────────────
-let counterFilterEnabled = false;   // master toggle
-// Map of contractId -> { timer, dir, logId } for pending counter checks
-const counterPendingMap = {};       // contractId -> setTimeout handle
+// ── QUALITY FILTER STATE ────────────────────────────
+let qfSweepEnabled            = true;    // Q2: Min sweep depth 15% (default ON)
+let qfBodyEnabled             = true;    // Q3: Body rejection 40% (default ON)
+let qfClosePenetrationEnabled = true;    // Q5: Close penetration 25% (default ON)
+let qfWickDominanceEnabled    = true;    // Q6: Wick dominance ratio 1.5 (default ON)
 
 // ─── ANALYSIS CANDLE (separate from trade duration) ───
 // analysisCandleMode: 'tick' | 'candle'
@@ -1111,10 +1141,8 @@ let tickCount = 0;
 let subscriptionId = null;
 
 // ─── SIGNAL FILTER STATE ──────────────────────────
-let filterEmaEnabled     = false;   // Filter 1: EMA Wick-Cross
-let filterCandleClose    = false;   // Filter 2: Signal candle direction
-let filterCandle2        = false;   // Filter 3: Range candle direction
-let filterEmaTrend       = false;   // Filter 4: EMA Trend (price vs EMA)
+let filterEmaEnabled     = true;      // Filter 1: EMA Wick-Cross (default ON, period 20)
+let emaWickMode          = 'loose';   // F1 sub-mode: 'strict' (body fully outside EMA) | 'loose' (close on right side)
 
 // Running EMA value — recalculated on every new closed candle
 let emaValue = null;
@@ -1140,7 +1168,7 @@ function calcEMA(candleArr, period){
 
 // ─── FILTER UI HELPERS ────────────────────────────
 function toggleFilter(n){
-  const ids = {1:'fEmaEnabled', 2:'fCandleCloseEnabled', 3:'fCandle2Enabled', 4:'fEmaTrendEnabled'};
+  const ids = {1:'fEmaEnabled'};
   const chk = document.getElementById(ids[n]);
   chk.checked = !chk.checked;
   onFilterChange(n, chk.checked);
@@ -1151,11 +1179,51 @@ function onFilterChange(n, enabled){
   if(enabled) el.classList.add('enabled');
   else         el.classList.remove('enabled');
   if(n===1) filterEmaEnabled  = enabled;
-  if(n===2) filterCandleClose = enabled;
-  if(n===3) filterCandle2     = enabled;
-  if(n===4) filterEmaTrend    = enabled;
-  const names = {1:'EMA Wick-Cross', 2:'Candle Close', 3:'Candle 2 (Range)', 4:'EMA Trend Filter'};
+  const names = {1:'EMA Wick-Cross'};
   toast('Filter '+(enabled?'ON':'OFF')+' — '+names[n], 'info');
+  saveState();
+}
+
+// ─── EMA WICK MODE HANDLER ────────────────────────
+function onEmaWickModeChange(val){
+  emaWickMode = val;
+  // Update the rule-text hint to match selected mode
+  const ruleEl = document.getElementById('f1RuleText');
+  if(ruleEl){
+    if(val === 'loose'){
+      ruleEl.innerHTML =
+        '<span class="buy-txt">▲ BUY:</span> Close above EMA · lower wick crosses below EMA<br>' +
+        '<span class="sell-txt">▼ SELL:</span> Close below EMA · upper wick crosses above EMA<br>' +
+        '<span style="color:var(--gold);">Loose — body may straddle EMA</span>';
+    } else {
+      ruleEl.innerHTML =
+        '<span class="buy-txt">▲ BUY:</span> Body fully above EMA · lower wick crosses below EMA<br>' +
+        '<span class="sell-txt">▼ SELL:</span> Body fully below EMA · upper wick crosses above EMA';
+    }
+  }
+  saveState();
+}
+
+// ─── QUALITY FILTER UI HELPERS ─────────────────────
+function toggleQFilter(n){
+  const ids = {2:'qfSweepEnabled', 3:'qfBodyEnabled', 5:'qfClosePenetrationEnabled', 6:'qfWickDominanceEnabled'};
+  const chk = document.getElementById(ids[n]);
+  chk.checked = !chk.checked;
+  onQFilterChange(n, chk.checked);
+}
+
+function onQFilterChange(n, enabled){
+  const el = document.getElementById('qfi'+n);
+  if(el){
+    if(enabled) el.classList.add('enabled');
+    else         el.classList.remove('enabled');
+  }
+  if(n===2) qfSweepEnabled            = enabled;
+  if(n===3) qfBodyEnabled             = enabled;
+  if(n===5) qfClosePenetrationEnabled = enabled;
+  if(n===6) qfWickDominanceEnabled    = enabled;
+  const names = {2:'Min Sweep Depth', 3:'Body Rejection', 5:'Close Penetration', 6:'Wick Dominance'};
+  toast('Quality Filter '+(enabled?'ON':'OFF')+' — '+names[n], 'info');
   saveState();
 }
 
@@ -1173,7 +1241,8 @@ function saveState(){
       _version: STATE_VERSION,
       tradeMode, durType, tradeLog, stats, candles: candles.slice(-100),
       analysisCandleMode, analysisCandleTF,
-      filters: { ema: filterEmaEnabled, candleClose: filterCandleClose, candle2: filterCandle2, emaTrend: filterEmaTrend, emaPeriod: v('cfgEmaPeriod'), emaTrendPeriod: v('cfgEmaTrendPeriod') },
+      filters: { ema: filterEmaEnabled, emaWickMode, emaPeriod: v('cfgEmaPeriod') },
+      qFilters: { sweep: qfSweepEnabled, body: qfBodyEnabled, closePenetration: qfClosePenetrationEnabled, wickDominance: qfWickDominanceEnabled, rangeWindow: v('cfgRangeWindow'), sweepDepth: v('cfgSweepDepth'), bodyRatio: v('cfgBodyRatio'), closePct: v('cfgClosePct'), wickRatio: v('cfgWickRatio') },
       cfg: {
         symbol: v('cfgSymbol'), minRange: v('cfgMinRange'), maxPos: v('cfgMaxPos'),
         stake: v('cfgStake'), sl: v('cfgSL'), tp: v('cfgTP'),
@@ -1246,23 +1315,41 @@ function loadState(){
         const chk1 = document.getElementById('fEmaEnabled');
         if(chk1){ chk1.checked = filterEmaEnabled; onFilterChange(1, filterEmaEnabled); }
       }
-      if(s.filters.candleClose !== undefined){
-        filterCandleClose = !!s.filters.candleClose;
-        const chk2 = document.getElementById('fCandleCloseEnabled');
-        if(chk2){ chk2.checked = filterCandleClose; onFilterChange(2, filterCandleClose); }
-      }
-      if(s.filters.candle2 !== undefined){
-        filterCandle2 = !!s.filters.candle2;
-        const chk3 = document.getElementById('fCandle2Enabled');
-        if(chk3){ chk3.checked = filterCandle2; onFilterChange(3, filterCandle2); }
-      }
       if(s.filters.emaPeriod !== undefined) setVal('cfgEmaPeriod', s.filters.emaPeriod);
-      if(s.filters.emaTrend !== undefined){
-        filterEmaTrend = !!s.filters.emaTrend;
-        const chk4 = document.getElementById('fEmaTrendEnabled');
-        if(chk4){ chk4.checked = filterEmaTrend; onFilterChange(4, filterEmaTrend); }
+      if(s.filters.emaWickMode !== undefined){
+        emaWickMode = s.filters.emaWickMode;
+        const modeEl = document.getElementById('cfgEmaWickMode');
+        if(modeEl){ modeEl.value = emaWickMode; onEmaWickModeChange(emaWickMode); }
       }
-      if(s.filters.emaTrendPeriod !== undefined) setVal('cfgEmaTrendPeriod', s.filters.emaTrendPeriod);
+    }
+
+    // Restore quality filter settings
+    if(s.qFilters){
+      if(s.qFilters.rangeWindow !== undefined)  setVal('cfgRangeWindow', s.qFilters.rangeWindow);
+      if(s.qFilters.sweepDepth  !== undefined)  setVal('cfgSweepDepth',  s.qFilters.sweepDepth);
+      if(s.qFilters.bodyRatio   !== undefined)  setVal('cfgBodyRatio',   s.qFilters.bodyRatio);
+      if(s.qFilters.closePct    !== undefined)  setVal('cfgClosePct',    s.qFilters.closePct);
+      if(s.qFilters.wickRatio   !== undefined)  setVal('cfgWickRatio',   s.qFilters.wickRatio);
+      if(s.qFilters.sweep !== undefined){
+        qfSweepEnabled = !!s.qFilters.sweep;
+        const cq2 = document.getElementById('qfSweepEnabled');
+        if(cq2){ cq2.checked = qfSweepEnabled; onQFilterChange(2, qfSweepEnabled); }
+      }
+      if(s.qFilters.body !== undefined){
+        qfBodyEnabled = !!s.qFilters.body;
+        const cq3 = document.getElementById('qfBodyEnabled');
+        if(cq3){ cq3.checked = qfBodyEnabled; onQFilterChange(3, qfBodyEnabled); }
+      }
+      if(s.qFilters.closePenetration !== undefined){
+        qfClosePenetrationEnabled = !!s.qFilters.closePenetration;
+        const cq5 = document.getElementById('qfClosePenetrationEnabled');
+        if(cq5){ cq5.checked = qfClosePenetrationEnabled; onQFilterChange(5, qfClosePenetrationEnabled); }
+      }
+      if(s.qFilters.wickDominance !== undefined){
+        qfWickDominanceEnabled = !!s.qFilters.wickDominance;
+        const cq6 = document.getElementById('qfWickDominanceEnabled');
+        if(cq6){ cq6.checked = qfWickDominanceEnabled; onQFilterChange(6, qfWickDominanceEnabled); }
+      }
     }
 
     // Restore schedule settings
@@ -1934,34 +2021,109 @@ function handleTick(tick){
 function onNewCandle(){
   if(candles.length < 2) return;
 
-  // [n-2] = range candle, [n-1] = signal candle (just closed)
-  const range  = candles[candles.length - 2];
-  const signal = candles[candles.length - 1];
+  // ── Range Window: use N candles before the signal candle ──────
+  const rangeWindow = Math.max(1, Math.min(5, parseInt(v('cfgRangeWindow')) || 1));
+  // Need at least rangeWindow + 1 candles (range window + signal)
+  if(candles.length < rangeWindow + 1) return;
 
+  const signal = candles[candles.length - 1];  // just-closed signal candle
+
+  // Aggregate range H/L across the lookback window
+  const rangeCandles = candles.slice(-(rangeWindow + 1), -1);
+  const rangeHigh = Math.max(...rangeCandles.map(c => c.high));
+  const rangeLow  = Math.min(...rangeCandles.map(c => c.low));
+  // Representative close for scaling = last candle in the window
+  const range = rangeCandles[rangeCandles.length - 1];
+  const rangeSize = rangeHigh - rangeLow;
+
+  // ── Min Range: percentage-based scaling (no hard price cliffs) ──
   const minRange = parseFloat(v('cfgMinRange')) || 10;
-  const rangeSize = range.high - range.low;
-
-  // Scale minRange based on price magnitude
-  const scaledMin = minRange * (range.close < 100 ? 0.01 : range.close < 10000 ? 0.1 : 1);
+  // Scale as basis points of price — consistent across all instruments
+  const scaledMin = signal.close > 0
+    ? signal.close * (minRange / 10000)
+    : minRange * 0.01;
   if(rangeSize < scaledMin) return;
 
   // ── LAYER 1: BASE CRT LOGIC ──────────────────────
-  // Bullish: signal swept below range.low AND closed back above range.low
-  const baseBullish = (signal.low < range.low && signal.close > range.low);
-  // Bearish: signal swept above range.high AND closed back below range.high
-  const baseBearish = (signal.high > range.high && signal.close < range.high);
+  // Bullish: signal swept below rangeL AND closed back above rangeL
+  const baseBullish = (signal.low < rangeLow && signal.close > rangeLow);
+  // Bearish: signal swept above rangeH AND closed back below rangeH
+  const baseBearish = (signal.high > rangeHigh && signal.close < rangeHigh);
 
-  // BUY filter: signal.high must be STRICTLY BELOW range.high
-  const buyFilter  = (signal.high < range.high);
-  // SELL filter: signal.low must be STRICTLY ABOVE range.low
-  const sellFilter = (signal.low > range.low);
+  // BUY filter: signal.high must be STRICTLY BELOW rangeH
+  const buyFilter  = (signal.high < rangeHigh);
+  // SELL filter: signal.low must be STRICTLY ABOVE rangeLow
+  const sellFilter = (signal.low > rangeLow);
 
   let isBullish = baseBullish && buyFilter;
   let isBearish = baseBearish && sellFilter;
 
+  // ── Q2: Min Sweep Depth ──────────────────────────
+  if(qfSweepEnabled && rangeSize > 0){
+    const sweepPct = (parseFloat(v('cfgSweepDepth')) || 10) / 100;
+    if(isBullish){
+      const sweepDepth = rangeLow - signal.low;   // how far below rangeLow it swept
+      if(sweepDepth < rangeSize * sweepPct) isBullish = false;
+    }
+    if(isBearish){
+      const sweepDepth = signal.high - rangeHigh; // how far above rangeHigh it swept
+      if(sweepDepth < rangeSize * sweepPct) isBearish = false;
+    }
+  }
+
+  // ── Q3: Body Rejection Ratio ─────────────────────
+  if(qfBodyEnabled){
+    const candleRange = signal.high - signal.low;
+    if(candleRange > 0){
+      const bodyPct = (parseFloat(v('cfgBodyRatio')) || 30) / 100;
+      const bodySize = Math.abs(signal.close - signal.open);
+      if(bodySize < candleRange * bodyPct){
+        isBullish = false;
+        isBearish = false;
+      }
+    }
+  }
+
+  // ── Q5: Close Penetration ────────────────────────
+  // The signal candle's close must land at least N% of rangeSize INSIDE the
+  // range — not just barely above/below the swept level. A close hugging
+  // the range edge is a weak rejection that often fails.
+  if(qfClosePenetrationEnabled && rangeSize > 0){
+    const closePct = (parseFloat(v('cfgClosePct')) || 25) / 100;
+    if(isBullish){
+      // Bullish: close must be at least closePct × rangeSize above rangeLow
+      if((signal.close - rangeLow) < rangeSize * closePct) isBullish = false;
+    }
+    if(isBearish){
+      // Bearish: close must be at least closePct × rangeSize below rangeHigh
+      if((rangeHigh - signal.close) < rangeSize * closePct) isBearish = false;
+    }
+  }
+
+  // ── Q6: Wick Dominance ───────────────────────────
+  // The sweep wick must be proportionally larger than the opposite wick,
+  // confirming a strong rejection rather than a weak tap-and-drift.
+  // lowerWick = distance from body bottom to candle low
+  // upperWick = distance from body top to candle high
+  if(qfWickDominanceEnabled){
+    const bodyTop    = Math.max(signal.open, signal.close);
+    const bodyBottom = Math.min(signal.open, signal.close);
+    const lowerWick  = bodyBottom - signal.low;   // sweep wick for bullish
+    const upperWick  = signal.high - bodyTop;     // sweep wick for bearish
+    const wickRatio  = parseFloat(v('cfgWickRatio')) || 1.5;
+    if(isBullish){
+      // Lower wick (sweep) must dominate upper wick
+      if(lowerWick < upperWick * wickRatio) isBullish = false;
+    }
+    if(isBearish){
+      // Upper wick (sweep) must dominate lower wick
+      if(upperWick < lowerWick * wickRatio) isBearish = false;
+    }
+  }
+
   // ── LAYER 2: FILTER 1 — EMA WICK-CROSS ──────────
-  // BUY:  body (open & close) fully ABOVE EMA · lower wick crosses BELOW EMA
-  // SELL: body (open & close) fully BELOW EMA · upper wick crosses ABOVE EMA
+  // Strict: body (open & close) fully above/below EMA + wick crosses
+  // Loose:  close on correct side of EMA + wick crosses (body may straddle)
   if(filterEmaEnabled){
     const period = parseInt(v('cfgEmaPeriod')) || 50;
     emaValue = calcEMA(candles, period);
@@ -1969,48 +2131,23 @@ function onNewCandle(){
       isBullish = false;
       isBearish = false;
     } else {
+      const isLoose = (emaWickMode === 'loose');
       if(isBullish){
-        const bodyAbove = signal.open > emaValue && signal.close > emaValue;
-        const wickBelow = signal.low  < emaValue;
-        isBullish = bodyAbove && wickBelow;
+        const wickBelow = signal.low < emaValue;
+        const bullishPass = isLoose
+          ? (signal.close > emaValue && wickBelow)                              // loose: close above + wick below
+          : (signal.open > emaValue && signal.close > emaValue && wickBelow);   // strict: full body above + wick below
+        isBullish = bullishPass;
       }
       if(isBearish){
-        const bodyBelow = signal.open < emaValue && signal.close < emaValue;
         const wickAbove = signal.high > emaValue;
-        isBearish = bodyBelow && wickAbove;
+        const bearishPass = isLoose
+          ? (signal.close < emaValue && wickAbove)                              // loose: close below + wick above
+          : (signal.open < emaValue && signal.close < emaValue && wickAbove);   // strict: full body below + wick above
+        isBearish = bearishPass;
       }
     }
   }
-
-  // ── LAYER 3: FILTER 2 — SIGNAL CANDLE CLOSE DIRECTION ──
-  if(filterCandleClose){
-    if(isBullish) isBullish = (signal.close > signal.open);   // must close bullish
-    if(isBearish) isBearish = (signal.close < signal.open);   // must close bearish
-  }
-
-  // ── LAYER 4: FILTER 3 — RANGE (CANDLE 2) DIRECTION ──
-  if(filterCandle2){
-    if(isBullish) isBullish = (range.close > range.open);     // range candle must be bullish
-    if(isBearish) isBearish = (range.close < range.open);     // range candle must be bearish
-  }
-
-  // ── LAYER 5: FILTER 4 — EMA TREND FILTER ────────────────
-  // RISE allowed only if current price > EMA (bullish trend)
-  // FALL allowed only if current price < EMA (bearish trend)
-  if(filterEmaTrend){
-    const trendPeriod = parseInt(v('cfgEmaTrendPeriod')) || 200;
-    const trendEma = calcEMA(candles, trendPeriod);
-    const currentPrice = signal.close;
-    if(trendEma === null){
-      // Not enough candles yet — block all signals
-      isBullish = false;
-      isBearish = false;
-    } else {
-      if(isBullish) isBullish = (currentPrice > trendEma);   // price above EMA → bullish trend only
-      if(isBearish) isBearish = (currentPrice < trendEma);   // price below EMA → bearish trend only
-    }
-  }
-
 
   const symbol = v('cfgSymbol');
 
@@ -2199,7 +2336,6 @@ function handleBuyResponse(buy){
   const logId = passthrough.log_id;
   const slAmt = passthrough.sl_amt||0;
   const tpAmt = passthrough.tp_amt||0;
-  const isCounter = !!passthrough.is_counter;  // ← counter flag
 
   // Stamp the map IMMEDIATELY so handleContractUpdate can always find
   // the log entry by contractId — poc messages do NOT carry passthrough.
@@ -2235,12 +2371,8 @@ function handleBuyResponse(buy){
     openTimeMs: Date.now(),
     expiryMs:   _durMs ? Date.now() + _durMs : null,
     durType:    durType,
-    durValue:   _dur,
-    isCounter:  isCounter   // true for counter trades → never re-countered
+    durValue:   _dur
   };
-
-  // ── Schedule counter check if filter is active ──
-  scheduleCounterCheck(String(contractId));
 
   // NOTE: We used buy+subscribe:1 so Deriv is already streaming POC updates.
   // For tick contracts on Volatility indices the POC subscription alone does
@@ -2410,8 +2542,6 @@ function closePosition(cid, finalProfit, status){
 
   // Cancel this position's countdown timer (other positions keep their own timers)
   stopPositionTimer(cid);
-  // Cancel any pending counter check for this position
-  cancelCounterCheck(cid);
 
   renderPositions();
 
@@ -2522,9 +2652,6 @@ function resetSession(){
   tradeLog = [];
   rebuildLog();
 
-  // Cancel any pending counter checks
-  Object.keys(counterPendingMap).forEach(cancelCounterCheck);
-  setCounterStatus('Waiting for next trade…', '');
   // Cancel all position countdown timers
   stopAllPositionTimers();
 
@@ -3355,188 +3482,8 @@ function clearSavedToken(){
   sessionStorage.removeItem(SERVER_KEY);
 }
 
-// ═══════════════════════════════════════════════════
-//   SMART COUNTER FILTER
-// ═══════════════════════════════════════════════════
 
-function onCounterFilterToggle(enabled){
-  counterFilterEnabled = enabled;
-  const body = document.getElementById('counterFilterBody');
-  if(body) body.style.display = enabled ? 'block' : 'none';
 
-  // Cancel all pending checks when disabled
-  if(!enabled){
-    Object.keys(counterPendingMap).forEach(cancelCounterCheck);
-    setCounterStatus('Counter filter disabled.', '');
-  } else {
-    setCounterStatus('Waiting for next trade…', '');
-    toast('⚡ Counter Filter ON','info');
-  }
-}
-
-// Called by handleBuyResponse immediately after position is stored.
-function scheduleCounterCheck(cid){
-  cid = String(cid);
-  if(!counterFilterEnabled) return;
-
-  const pos = openPositions[cid];
-  if(!pos) return;
-
-  // Never schedule a counter check for a counter trade itself
-  if(pos.isCounter){
-    setCounterStatus('Counter trade active — no re-counter.', 'ok');
-    return;
-  }
-
-  // Parse decimal wait time: int part = minutes, decimal part treated as seconds (x100)
-  // e.g. 1.5 → 1 min 30 sec | 2.3 → 2 min 30 sec | 0.5 → 0 min 50 sec
-  // Decimal treated as true fraction of a minute: 1.5 = 1m 30s, 2.3 = 2m 18s, 0.5 = 30s
-  const rawWait  = parseFloat(document.getElementById('cfgCounterWait').value) || 3;
-  const waitMins = Math.floor(rawWait);
-  const waitSecs = Math.round((rawWait - waitMins) * 60); // fraction of a minute → seconds
-  const waitMs   = (waitMins * 60 + waitSecs) * 1000;
-  const waitLabel = waitMins > 0
-    ? (waitSecs > 0 ? `${waitMins}m ${waitSecs}s` : `${waitMins}m`)
-    : `${waitSecs}s`;
-  const dir = pos.dir; // 'call' or 'put'
-
-  setCounterStatus(`⏳ Watching ${dir.toUpperCase()} #${cid} — checking in ${waitLabel}…`, 'watching');
-
-  const handle = setTimeout(()=>{
-    delete counterPendingMap[cid];
-    runCounterCheck(cid);
-  }, waitMs);
-
-  counterPendingMap[cid] = handle;
-}
-
-// Cancel a pending counter check (e.g. position closed before wait time)
-function cancelCounterCheck(cid){
-  cid = String(cid);
-  if(counterPendingMap[cid]){
-    clearTimeout(counterPendingMap[cid]);
-    delete counterPendingMap[cid];
-  }
-}
-
-// Runs at the end of the wait period. Checks P/L; fires counter if in loss.
-function runCounterCheck(cid){
-  cid = String(cid);
-  const pos = openPositions[cid];
-
-  // Position may have already closed — nothing to counter
-  if(!pos){
-    setCounterStatus('Position closed before counter check — skipped.', 'ok');
-    return;
-  }
-
-  const pnl = pos.currentPnl;  // live floating P/L streamed by Deriv POC
-
-  if(pnl >= 0){
-    // Profitable — do nothing
-    setCounterStatus(`✅ #${cid} in profit (${pnl >= 0 ? '+' : ''}${fmtAmount(Math.abs(pnl))}) — no counter trade.`, 'ok');
-    return;
-  }
-
-  // In loss — place immediate counter trade in the opposite direction
-  const counterType = (pos.dir === 'call') ? 'PUT' : 'CALL';
-  const symbol  = pos.symbol || v('cfgSymbol');
-  const stake   = parseFloat(v('cfgStake')) || pos.stake || 1;
-  const sl      = parseFloat(v('cfgSL'))    || 0;
-  const tp      = parseFloat(v('cfgTP'))    || 0;
-
-  setCounterStatus(`🔴 #${cid} in loss (${fmtAmount(Math.abs(pnl))}) — firing ${counterType} counter…`, 'fired');
-  const remSec  = pos.expiryMs ? Math.max(5, Math.round((pos.expiryMs - Date.now()) / 1000)) : null;
-  const remLabel = remSec
-    ? ` (syncing to remaining ${remSec >= 60 ? Math.floor(remSec/60)+'m '+(remSec%60)+'s' : remSec+'s'})`
-    : '';
-  // remLabel is stored for the toast — counter duration is synced in placeCounterTrade
-
-  // Build a log entry for the counter trade
-  const logEntry = {
-    id:         Date.now() + '_ct',
-    time:       new Date().toLocaleTimeString(),
-    signal:     counterType === 'CALL' ? '▲ COUNTER RISE' : '▼ COUNTER FALL',
-    entry:      '—',
-    market:     symbol,
-    result:     'OPEN',
-    pnl:        '—',
-    contractId: null,
-    _isCounter: true
-  };
-  stats.totalSignals++;
-  if(counterType === 'CALL') stats.buySigs++; else stats.sellSigs++;
-  stats.lastSignal = counterType === 'CALL' ? 'COUNTER BUY' : 'COUNTER SELL';
-  stats.lastTime   = logEntry.time;
-  tradeLog.unshift(logEntry);
-  rebuildLog();
-  updateStats();
-
-  // Place the counter trade — mark it so it can never itself be countered
-  placeCounterTrade(counterType, symbol, stake, sl, tp, logEntry.id, pos.expiryMs);
-
-  toast(`⚡ Counter ${counterType} placed vs open loss${remLabel}`, 'info');
-}
-
-// Like placeTrade but stamps isCounter=true on the resulting position.
-// originExpiryMs: the expiryMs of the original trade — counter closes at the same time.
-function placeCounterTrade(contractType, symbol, stake, slAmt, tpAmt, logId, originExpiryMs){
-  stats.totalTrades++;
-
-  let dur, durUnit;
-  if(durType === 'ticks'){
-    // Tick contracts: can't sync to wall-clock expiry, use configured duration
-    dur     = parseInt(v('cfgDuration')) || 5;
-    durUnit = 't';
-  } else {
-    // Calculate remaining seconds until the original trade expires
-    const remMs = originExpiryMs ? Math.max(5000, originExpiryMs - Date.now()) : null;
-    if(remMs && durType !== 'ticks'){
-      // Always send in seconds so Deriv accepts fractional time accurately
-      dur     = Math.round(remMs / 1000);
-      durUnit = 's';
-    } else {
-      // Fallback: use configured duration
-      dur     = parseInt(v('cfgDuration')) || 5;
-      durUnit = durType === 'seconds' ? 's' : 'm';
-    }
-  }
-
-  // Use payoutCurrency confirmed by payout_currencies — same as placeTrade
-  const tradeAmount = parseFloat(parseFloat(stake).toFixed(2));
-  const proposalCcy = payoutCurrency || accountCurrency;
-
-  send({
-    proposal:      1,
-    amount:        tradeAmount,
-    basis:         'stake',
-    contract_type: contractType,
-    currency:      proposalCcy,
-    duration:      dur,
-    duration_unit: durUnit,
-    symbol:        symbol,
-    passthrough:   { log_id: logId, sl_amt: slAmt, tp_amt: tpAmt, is_counter: true }
-  });
-  const label = contractType === 'CALL' ? '▲ COUNTER RISE' : '▼ COUNTER FALL';
-  setBotStatus(label + ' placed · Stake ' + fmtAmount(tradeAmount) + ' · ' + symbol, contractType === 'CALL' ? 'buy' : 'sell');
-}
-
-function setCounterStatus(msg, cls){
-  const box = document.getElementById('counterStatusBox');
-  if(!box) return;
-  box.textContent = msg;
-  box.className   = 'counter-status-box' + (cls ? ' ' + cls : '');
-}
-
-// ── Patch handleBuyResponse to honour is_counter passthrough ──────
-// We need to mark counter positions so scheduleCounterCheck skips them.
-// This is done by intercepting the existing flow via a wrapper applied at init.
-(function patchBuyResponseForCounter(){
-  const _orig = window.handleBuyResponse;
-  if(!_orig) return; // safety — defined in same script, just apply inline below
-})();
-// (The actual integration is already inline via the openPositions block above
-//  and the `isCounter` flag set from passthrough — see handleBuyResponse.)
 
 
 window.addEventListener('load', ()=>{
