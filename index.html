@@ -711,42 +711,53 @@
               </div>
             </div>
 
-            <!-- Filter 2: Candle Close Direction -->
+            <!-- Filter 2: Min Sweep Depth -->
             <div class="filter-item" id="fi2">
               <div class="filter-toggle-row" onclick="toggleFilter(2)">
                 <span class="f-name">
                   <span class="f-badge">F2</span>
-                  Candle Close
+                  Min Sweep Depth
                 </span>
                 <label class="filter-switch" onclick="event.stopPropagation()">
-                  <input type="checkbox" id="fCandleCloseEnabled" onchange="onFilterChange(2,this.checked)"/>
+                  <input type="checkbox" id="fMinSweepEnabled" onchange="onFilterChange(2,this.checked)"/>
                   <span class="filter-slider"></span>
                 </label>
               </div>
               <div class="filter-desc">
+                <div class="ctrl-row" style="margin-bottom:7px;">
+                  <label style="font-size:11px;letter-spacing:1px;">MIN SWEEP % OF RANGE</label>
+                  <input type="number" id="cfgMinSweepPct" value="20" min="1" max="100" style="font-size:12px;padding:6px 9px;"/>
+                </div>
                 <div class="f-rule">
-                  <span class="buy-txt">▲ BUY:</span> Signal candle closes bullish (close &gt; open)<br>
-                  <span class="sell-txt">▼ SELL:</span> Signal candle closes bearish (close &lt; open)
+                  Sweep must exceed N% of the range candle size.<br>
+                  <span class="buy-txt">▲ BUY:</span> (rangeL − signal.low) ≥ N% × rangeSize<br>
+                  <span class="sell-txt">▼ SELL:</span> (signal.high − rangeH) ≥ N% × rangeSize
                 </div>
               </div>
             </div>
 
-            <!-- Filter 3: Range Candle Direction -->
+            <!-- Filter 3: Wick Dominance -->
             <div class="filter-item" id="fi3">
               <div class="filter-toggle-row" onclick="toggleFilter(3)">
                 <span class="f-name">
                   <span class="f-badge">F3</span>
-                  Candle 2 (Range)
+                  Wick Dominance
                 </span>
                 <label class="filter-switch" onclick="event.stopPropagation()">
-                  <input type="checkbox" id="fCandle2Enabled" onchange="onFilterChange(3,this.checked)"/>
+                  <input type="checkbox" id="fWickDomEnabled" onchange="onFilterChange(3,this.checked)"/>
                   <span class="filter-slider"></span>
                 </label>
               </div>
               <div class="filter-desc">
+                <div class="ctrl-row" style="margin-bottom:7px;">
+                  <label style="font-size:11px;letter-spacing:1px;">SWEEP WICK RATIO (×)</label>
+                  <input type="number" id="cfgWickRatio" value="2.0" min="0.1" max="20" step="0.1" style="font-size:12px;padding:6px 9px;"/>
+                </div>
                 <div class="f-rule">
-                  <span class="buy-txt">▲ BUY:</span> Range candle closes bullish (close &gt; open)<br>
-                  <span class="sell-txt">▼ SELL:</span> Range candle closes bearish (close &lt; open)
+                  Sweep wick must be ≥ N× the opposite wick.<br>
+                  <span class="buy-txt">▲ BUY:</span> lowerWick ≥ ratio × upperWick<br>
+                  <span class="sell-txt">▼ SELL:</span> upperWick ≥ ratio × lowerWick<br>
+                  <span style="color:var(--gold);font-size:11px;">Confirms strong rejection, not a weak tap.</span>
                 </div>
               </div>
             </div>
@@ -1146,8 +1157,8 @@ let subscriptionId = null;
 
 // ─── SIGNAL FILTER STATE ──────────────────────────
 let filterEmaEnabled     = false;   // Filter 1: EMA Wick-Cross
-let filterCandleClose    = false;   // Filter 2: Signal candle direction
-let filterCandle2        = false;   // Filter 3: Range candle direction
+let filterMinSweep       = false;   // Filter 2: Min Sweep Depth
+let filterWickDom        = false;   // Filter 3: Wick Dominance
 let filterEmaTrend       = false;   // Filter 4: EMA Trend (price vs EMA)
 
 // Running EMA value — recalculated on every new closed candle
@@ -1174,7 +1185,7 @@ function calcEMA(candleArr, period){
 
 // ─── FILTER UI HELPERS ────────────────────────────
 function toggleFilter(n){
-  const ids = {1:'fEmaEnabled', 2:'fCandleCloseEnabled', 3:'fCandle2Enabled', 4:'fEmaTrendEnabled'};
+  const ids = {1:'fEmaEnabled', 2:'fMinSweepEnabled', 3:'fWickDomEnabled', 4:'fEmaTrendEnabled'};
   const chk = document.getElementById(ids[n]);
   chk.checked = !chk.checked;
   onFilterChange(n, chk.checked);
@@ -1184,11 +1195,11 @@ function onFilterChange(n, enabled){
   const el = document.getElementById('fi'+n);
   if(enabled) el.classList.add('enabled');
   else         el.classList.remove('enabled');
-  if(n===1) filterEmaEnabled  = enabled;
-  if(n===2) filterCandleClose = enabled;
-  if(n===3) filterCandle2     = enabled;
-  if(n===4) filterEmaTrend    = enabled;
-  const names = {1:'EMA Wick-Cross', 2:'Candle Close', 3:'Candle 2 (Range)', 4:'EMA Trend Filter'};
+  if(n===1) filterEmaEnabled = enabled;
+  if(n===2) filterMinSweep   = enabled;
+  if(n===3) filterWickDom    = enabled;
+  if(n===4) filterEmaTrend   = enabled;
+  const names = {1:'EMA Wick-Cross', 2:'Min Sweep Depth', 3:'Wick Dominance', 4:'EMA Trend Filter'};
   toast('Filter '+(enabled?'ON':'OFF')+' — '+names[n], 'info');
   saveState();
 }
@@ -1207,7 +1218,7 @@ function saveState(){
       _version: STATE_VERSION,
       tradeMode, durType, tradeLog, stats, candles: candles.slice(-100),
       analysisCandleMode, analysisCandleTF,
-      filters: { ema: filterEmaEnabled, candleClose: filterCandleClose, candle2: filterCandle2, emaTrend: filterEmaTrend, emaPeriod: v('cfgEmaPeriod'), emaTrendPeriod: v('cfgEmaTrendPeriod') },
+      filters: { ema: filterEmaEnabled, minSweep: filterMinSweep, wickDom: filterWickDom, emaTrend: filterEmaTrend, emaPeriod: v('cfgEmaPeriod'), minSweepPct: v('cfgMinSweepPct'), wickRatio: v('cfgWickRatio'), emaTrendPeriod: v('cfgEmaTrendPeriod') },
       cfg: {
         symbol: v('cfgSymbol'), minRange: v('cfgMinRange'), maxPos: v('cfgMaxPos'),
         stake: v('cfgStake'), sl: v('cfgSL'), tp: v('cfgTP'),
@@ -1280,16 +1291,18 @@ function loadState(){
         const chk1 = document.getElementById('fEmaEnabled');
         if(chk1){ chk1.checked = filterEmaEnabled; onFilterChange(1, filterEmaEnabled); }
       }
-      if(s.filters.candleClose !== undefined){
-        filterCandleClose = !!s.filters.candleClose;
-        const chk2 = document.getElementById('fCandleCloseEnabled');
-        if(chk2){ chk2.checked = filterCandleClose; onFilterChange(2, filterCandleClose); }
+      if(s.filters.minSweep !== undefined){
+        filterMinSweep = !!s.filters.minSweep;
+        const chk2 = document.getElementById('fMinSweepEnabled');
+        if(chk2){ chk2.checked = filterMinSweep; onFilterChange(2, filterMinSweep); }
       }
-      if(s.filters.candle2 !== undefined){
-        filterCandle2 = !!s.filters.candle2;
-        const chk3 = document.getElementById('fCandle2Enabled');
-        if(chk3){ chk3.checked = filterCandle2; onFilterChange(3, filterCandle2); }
+      if(s.filters.minSweepPct !== undefined) setVal('cfgMinSweepPct', s.filters.minSweepPct);
+      if(s.filters.wickDom !== undefined){
+        filterWickDom = !!s.filters.wickDom;
+        const chk3 = document.getElementById('fWickDomEnabled');
+        if(chk3){ chk3.checked = filterWickDom; onFilterChange(3, filterWickDom); }
       }
+      if(s.filters.wickRatio !== undefined) setVal('cfgWickRatio', s.filters.wickRatio);
       if(s.filters.emaPeriod !== undefined) setVal('cfgEmaPeriod', s.filters.emaPeriod);
       if(s.filters.emaTrend !== undefined){
         filterEmaTrend = !!s.filters.emaTrend;
@@ -2016,16 +2029,37 @@ function onNewCandle(){
     }
   }
 
-  // ── LAYER 3: FILTER 2 — SIGNAL CANDLE CLOSE DIRECTION ──
-  if(filterCandleClose){
-    if(isBullish) isBullish = (signal.close > signal.open);   // must close bullish
-    if(isBearish) isBearish = (signal.close < signal.open);   // must close bearish
+  // ── LAYER 3: FILTER 2 — MIN SWEEP DEPTH ─────────
+  // BUY:  (range.low − signal.low)   ≥ N% × rangeSize
+  // SELL: (signal.high − range.high) ≥ N% × rangeSize
+  if(filterMinSweep){
+    const pct = (parseFloat(v('cfgMinSweepPct')) || 20) / 100;
+    const rangeSize2 = range.high - range.low;
+    if(isBullish){
+      const sweepDepth = range.low - signal.low;
+      isBullish = sweepDepth >= pct * rangeSize2;
+    }
+    if(isBearish){
+      const sweepDepth = signal.high - range.high;
+      isBearish = sweepDepth >= pct * rangeSize2;
+    }
   }
 
-  // ── LAYER 4: FILTER 3 — RANGE (CANDLE 2) DIRECTION ──
-  if(filterCandle2){
-    if(isBullish) isBullish = (range.close > range.open);     // range candle must be bullish
-    if(isBearish) isBearish = (range.close < range.open);     // range candle must be bearish
+  // ── LAYER 4: FILTER 3 — WICK DOMINANCE ──────────
+  // BUY:  lowerWick ≥ ratio × upperWick  (strong downward rejection)
+  // SELL: upperWick ≥ ratio × lowerWick  (strong upward rejection)
+  if(filterWickDom){
+    const ratio = parseFloat(v('cfgWickRatio')) || 2.0;
+    const sigBody  = Math.abs(signal.close - signal.open);
+    const sigBodyMid = (signal.open + signal.close) / 2;
+    const lowerWick = Math.min(signal.open, signal.close) - signal.low;
+    const upperWick = signal.high - Math.max(signal.open, signal.close);
+    if(isBullish){
+      isBullish = lowerWick >= ratio * Math.max(upperWick, 0.000001);
+    }
+    if(isBearish){
+      isBearish = upperWick >= ratio * Math.max(lowerWick, 0.000001);
+    }
   }
 
   // ── LAYER 5: FILTER 4 — EMA TREND FILTER ────────────────
