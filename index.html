@@ -401,6 +401,39 @@
   .counter-sub-section{background:rgba(255,140,0,.04);border:1px solid rgba(255,140,0,.18);border-radius:7px;padding:10px 12px;margin-bottom:9px;}
   .counter-sub-lbl{font-size:10px;letter-spacing:1.5px;color:#ff8c00;text-transform:uppercase;font-weight:700;margin-bottom:8px;}
 
+  /* ─── TRADE WAIT FUNCTION ─── */
+  .tradewait-section{background:rgba(138,43,226,.06);border:1px solid rgba(138,43,226,.35);border-radius:9px;padding:13px 15px;margin-top:9px;}
+  .tradewait-section .section-lbl{color:#bf7fff;font-size:11px;letter-spacing:2px;margin-bottom:10px;font-weight:700;}
+  .tradewait-toggle-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  .tradewait-toggle-row .tw-lbl{font-size:12px;letter-spacing:1px;color:var(--text);font-weight:700;text-transform:uppercase;}
+  .tradewait-switch{position:relative;width:44px;height:22px;flex-shrink:0;}
+  .tradewait-switch input{opacity:0;width:0;height:0;}
+  .tradewait-slider{position:absolute;inset:0;background:#1e2a42;border:1px solid var(--border2);border-radius:20px;cursor:pointer;transition:all .25s;}
+  .tradewait-slider::before{content:'';position:absolute;height:16px;width:16px;left:2px;top:2px;background:#4a5a78;border-radius:50%;transition:all .25s;}
+  .tradewait-switch input:checked + .tradewait-slider{background:rgba(138,43,226,.25);border-color:#a855f7;}
+  .tradewait-switch input:checked + .tradewait-slider::before{transform:translateX(22px);background:#a855f7;box-shadow:0 0 6px rgba(168,85,247,.6);}
+  .tradewait-body{display:none;}
+  .tradewait-body.visible{display:block;}
+  .tradewait-timer-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
+  .tradewait-time-field{display:flex;flex-direction:column;gap:4px;}
+  .tradewait-time-field label{font-size:10px;letter-spacing:1.5px;color:#8ba4cc;text-transform:uppercase;font-weight:700;}
+  .tradewait-time-field input{background:var(--bg3);border:1px solid var(--border2);color:var(--white);padding:8px 10px;border-radius:6px;font-family:'Share Tech Mono',monospace;font-size:14px;font-weight:700;outline:none;width:100%;text-align:center;transition:border .2s,box-shadow .2s;}
+  .tradewait-time-field input:focus{border-color:#a855f7;box-shadow:0 0 0 2px rgba(168,85,247,.2);}
+  .tradewait-status-box{background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:9px 12px;font-family:'Share Tech Mono',monospace;font-size:11px;color:#8ba4cc;font-weight:600;line-height:1.7;min-height:38px;margin-top:6px;transition:border-color .3s,color .3s;}
+  .tradewait-status-box.waiting{border-color:rgba(168,85,247,.4);color:#bf7fff;}
+  .tradewait-status-box.counting{border-color:rgba(245,197,24,.4);color:var(--gold);}
+  .tradewait-status-box.resuming{border-color:rgba(0,230,118,.4);color:var(--green);}
+  .tradewait-status-box.triggered{border-color:rgba(255,61,90,.4);color:#ff7090;}
+  .tradewait-countdown-row{display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding:9px 12px;background:rgba(138,43,226,.08);border:1px solid rgba(138,43,226,.22);border-radius:7px;}
+  .tw-cd-label{font-size:10px;color:#8ba4cc;letter-spacing:1.5px;text-transform:uppercase;font-weight:700;}
+  .tw-cd-val{font-family:'Orbitron',sans-serif;font-size:17px;font-weight:700;color:#a855f7;letter-spacing:2px;text-shadow:0 0 10px rgba(168,85,247,.4);}
+  .tw-cd-val.active{color:var(--gold);text-shadow:0 0 10px rgba(245,197,24,.5);animation:pulse 1s infinite;}
+  .tw-phase-badge{display:inline-block;font-size:9px;letter-spacing:1.5px;padding:3px 8px;border-radius:4px;font-family:'Orbitron',sans-serif;font-weight:700;text-transform:uppercase;margin-left:6px;}
+  .tw-phase-badge.idle{background:rgba(122,143,174,.12);color:#7a8fae;border:1px solid rgba(122,143,174,.2);}
+  .tw-phase-badge.monitoring{background:rgba(45,139,255,.12);color:#6ab5ff;border:1px solid rgba(45,139,255,.3);}
+  .tw-phase-badge.waiting{background:rgba(168,85,247,.15);color:#bf7fff;border:1px solid rgba(168,85,247,.3);}
+  .tw-phase-badge.resuming{background:rgba(0,230,118,.12);color:var(--green);border:1px solid rgba(0,230,118,.3);}
+
   /* ─── TRADE SCHEDULE TIMER ─── */
   .schedule-section{background:rgba(0,240,255,.04);border:1px solid rgba(0,240,255,.22);border-radius:9px;padding:13px 15px;margin-top:9px;}
   .schedule-section .section-lbl{color:var(--accent2);font-size:11px;letter-spacing:2px;margin-bottom:10px;font-weight:700;}
@@ -894,6 +927,50 @@
             </div>
           </div>
 
+          <!-- ── TRADE WAIT FUNCTION ── -->
+          <div class="tradewait-section">
+            <div class="section-lbl">⏳ Trade Wait Function</div>
+
+            <div class="tradewait-toggle-row">
+              <span class="tw-lbl">Enable Trade Wait</span>
+              <label class="tradewait-switch">
+                <input type="checkbox" id="tradeWaitEnabled" onchange="onTradeWaitToggle(this.checked)"/>
+                <span class="tradewait-slider"></span>
+              </label>
+            </div>
+
+            <div class="tradewait-body" id="tradeWaitBody">
+              <div style="font-size:10px;color:#8ba4cc;line-height:1.6;margin-bottom:10px;font-family:'Share Tech Mono',monospace;">
+                ▸ Monitors Net P/L each time a trade closes.<br>
+                ▸ When <span style="color:var(--green);">Target Profit</span> or <span style="color:#ff7090;">Max Loss</span> is hit:<br>
+                &nbsp;&nbsp;→ Session resets automatically.<br>
+                &nbsp;&nbsp;→ Auto-trade pauses for the wait timer.<br>
+                &nbsp;&nbsp;→ Auto-trade resumes when timer elapses.<br>
+                ▸ Cycle repeats endlessly while enabled.
+              </div>
+
+              <div class="tradewait-timer-row">
+                <div class="tradewait-time-field">
+                  <label>Hours</label>
+                  <input type="number" id="twWaitHours" value="0" min="0" max="23" step="1" placeholder="0" oninput="onTradeWaitParamChange()"/>
+                </div>
+                <div class="tradewait-time-field">
+                  <label>Minutes</label>
+                  <input type="number" id="twWaitMinutes" value="5" min="0" max="59" step="1" placeholder="5" oninput="onTradeWaitParamChange()"/>
+                </div>
+              </div>
+              <div style="font-size:10px;color:#8ba4cc;font-family:'Share Tech Mono',monospace;margin-bottom:8px;" id="twTotalDisplay">Wait duration: <span style="color:#bf7fff;">5 min 0 sec</span></div>
+
+              <div class="tradewait-status-box" id="tradeWaitStatusBox">Trade Wait idle — monitoring disabled.</div>
+
+              <div class="tradewait-countdown-row" id="tradeWaitCdRow" style="display:none;">
+                <span class="tw-cd-label">Resume in</span>
+                <span class="tw-cd-val" id="tradeWaitCdVal">--:--:--</span>
+                <span class="tw-phase-badge idle" id="twPhaseBadge">IDLE</span>
+              </div>
+            </div>
+          </div>
+
           <div class="bot-status" id="botStatus">Connect wallet — then BUY / SELL or enable Auto CRT.</div>
         </div>
       </div>
@@ -1228,6 +1305,11 @@ function saveState(){
         enabled: scheduleEnabled,
         start: v('scheduleStart'),
         end:   v('scheduleEnd')
+      },
+      tradeWait: {
+        enabled:      tradeWaitEnabled,
+        waitHours:    v('twWaitHours'),
+        waitMinutes:  v('twWaitMinutes')
       }
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
@@ -1333,6 +1415,16 @@ function loadState(){
 
     rebuildLog();
     updateStats();
+    // Restore Trade Wait settings
+    if(s.tradeWait){
+      if(s.tradeWait.waitHours   !== undefined) setVal('twWaitHours',   s.tradeWait.waitHours);
+      if(s.tradeWait.waitMinutes !== undefined) setVal('twWaitMinutes', s.tradeWait.waitMinutes);
+      if(s.tradeWait.enabled){
+        const twChk = document.getElementById('tradeWaitEnabled');
+        if(twChk){ twChk.checked = true; onTradeWaitToggle(true); }
+      }
+      onTradeWaitParamChange();
+    }
   } catch(e){}
 }
 
@@ -2529,6 +2621,14 @@ function checkSessionLimits(){
   }
 
   if(haltReason && !eaHalted){
+    // ── Trade Wait intercept ──────────────────────────────────────────
+    // If Trade Wait is enabled, hand off to it instead of a hard halt.
+    // It will reset the session, wait, then resume auto-trade on its own.
+    const reasonShort = tpAmt > 0 && netProfit >= tpAmt
+      ? '🎯 TARGET PROFIT +'+fmtAmount(tpAmt)+' REACHED'
+      : '🛑 MAX LOSS −'+fmtAmount(slAmt)+' REACHED';
+    if(tradeWaitHandleLimit(reasonShort)) return;
+    // ── Normal halt (Trade Wait disabled) ────────────────────────────
     eaHalted = true;
     autoBot = false;
     botRunning = false;
@@ -3622,6 +3722,200 @@ function setCounterStatus(msg, cls){
 // (The actual integration is already inline via the openPositions block above
 //  and the `isCounter` flag set from passthrough — see handleBuyResponse.)
 
+
+// ═══════════════════════════════════════════════════
+//  TRADE WAIT FUNCTION
+//  Monitors TP/SL → auto-resets session → waits timer
+//  → re-enables auto-trade → repeats endlessly.
+// ═══════════════════════════════════════════════════
+
+let tradeWaitEnabled   = false;    // master toggle
+let tradeWaitPhase     = 'idle';   // idle | monitoring | waiting | resuming
+let _twCountdownTimer  = null;     // setInterval for countdown display
+let _twResumeTimer     = null;     // setTimeout for actual resume
+let _twWaitMs          = 0;        // computed wait in milliseconds
+
+// Called when the toggle is switched
+function onTradeWaitToggle(enabled){
+  tradeWaitEnabled = enabled;
+  const body = document.getElementById('tradeWaitBody');
+  if(body) body.classList.toggle('visible', enabled);
+
+  if(!enabled){
+    _twCancelTimers();
+    _twSetPhase('idle');
+    setTradeWaitStatus('Trade Wait disabled.', '');
+    const cdRow = document.getElementById('tradeWaitCdRow');
+    if(cdRow) cdRow.style.display = 'none';
+  } else {
+    _twComputeWait();
+    _twSetPhase('monitoring');
+    setTradeWaitStatus('⏳ Monitoring — waiting for TP/SL to trigger…', 'waiting');
+    toast('⏳ Trade Wait enabled — monitoring P/L', 'info');
+  }
+  saveState();
+}
+
+// Recompute wait ms from inputs
+function _twComputeWait(){
+  const hrs  = parseInt(document.getElementById('twWaitHours').value)   || 0;
+  const mins = parseInt(document.getElementById('twWaitMinutes').value) || 0;
+  _twWaitMs = (hrs * 3600 + mins * 60) * 1000;
+  if(_twWaitMs <= 0) _twWaitMs = 60000; // minimum 1 minute safety floor
+  return _twWaitMs;
+}
+
+// Called when timer inputs change — update display label
+function onTradeWaitParamChange(){
+  const hrs  = parseInt(document.getElementById('twWaitHours').value)   || 0;
+  const mins = parseInt(document.getElementById('twWaitMinutes').value) || 0;
+  const totalSecs = hrs * 3600 + mins * 60;
+  const disp = document.getElementById('twTotalDisplay');
+  if(disp){
+    const h = hrs > 0 ? hrs + ' hr ' : '';
+    const m = mins + ' min';
+    disp.innerHTML = 'Wait duration: <span style="color:#bf7fff;">' + h + m + ' 0 sec</span>';
+  }
+  _twComputeWait();
+}
+
+// Set the visual phase badge
+function _twSetPhase(phase){
+  tradeWaitPhase = phase;
+  const badge = document.getElementById('twPhaseBadge');
+  if(!badge) return;
+  badge.className = 'tw-phase-badge ' + phase;
+  const labels = { idle:'IDLE', monitoring:'WATCHING', waiting:'WAITING', resuming:'RESUMING' };
+  badge.textContent = labels[phase] || phase.toUpperCase();
+}
+
+// Update the status box
+function setTradeWaitStatus(msg, cls){
+  const box = document.getElementById('tradeWaitStatusBox');
+  if(!box) return;
+  box.textContent = msg;
+  box.className = 'tradewait-status-box' + (cls ? ' ' + cls : '');
+}
+
+// Cancel all running TW timers
+function _twCancelTimers(){
+  if(_twCountdownTimer){ clearInterval(_twCountdownTimer); _twCountdownTimer = null; }
+  if(_twResumeTimer)   { clearTimeout(_twResumeTimer);    _twResumeTimer    = null; }
+}
+
+// START the wait countdown — called right after session is auto-reset
+function _twStartCountdown(){
+  _twCancelTimers();
+  _twComputeWait();
+  _twSetPhase('waiting');
+
+  const cdRow = document.getElementById('tradeWaitCdRow');
+  if(cdRow) cdRow.style.display = 'flex';
+
+  const endMs = Date.now() + _twWaitMs;
+
+  // Live countdown display (updates every second)
+  _twCountdownTimer = setInterval(()=>{
+    const remaining = Math.max(0, endMs - Date.now());
+    const totalSec  = Math.floor(remaining / 1000);
+    const h = String(Math.floor(totalSec / 3600)).padStart(2,'0');
+    const m = String(Math.floor((totalSec % 3600) / 60)).padStart(2,'0');
+    const s = String(totalSec % 60).padStart(2,'0');
+    const cdVal = document.getElementById('tradeWaitCdVal');
+    if(cdVal){
+      cdVal.textContent = h + ':' + m + ':' + s;
+      cdVal.className   = 'tw-cd-val' + (totalSec <= 30 ? ' active' : '');
+    }
+    setTradeWaitStatus(
+      '⏸ Auto-trade paused · Resumes in ' + h + ':' + m + ':' + s,
+      'counting'
+    );
+    if(remaining <= 0){
+      clearInterval(_twCountdownTimer);
+      _twCountdownTimer = null;
+    }
+  }, 1000);
+
+  // Actual resume trigger
+  _twResumeTimer = setTimeout(()=>{
+    _twResumeTimer = null;
+    _twResumeAutoTrade();
+  }, _twWaitMs);
+}
+
+// Called when the wait timer elapses — re-enable auto-trade and resume
+function _twResumeAutoTrade(){
+  if(!tradeWaitEnabled) return;   // user disabled while waiting — do nothing
+
+  _twCancelTimers();
+  _twSetPhase('resuming');
+
+  const cdVal = document.getElementById('tradeWaitCdVal');
+  if(cdVal){ cdVal.textContent = '00:00:00'; cdVal.className = 'tw-cd-val'; }
+
+  setTradeWaitStatus('✅ Timer elapsed — re-enabling auto-trade…', 'resuming');
+  toast('⏳ Trade Wait complete — resuming auto-trade', 'info');
+
+  // Re-enable the auto-trade bot
+  if(!autoBot){
+    autoBot     = true;
+    botRunning  = true;
+    eaHalted    = false; // ensure halt flag is cleared too
+
+    // Clear halt banner if visible
+    const banner = document.getElementById('eaHaltBanner');
+    if(banner) banner.style.display = 'none';
+
+    // Flip toggle UI to ON
+    const tog = document.getElementById('autoToggle');
+    if(tog){
+      tog.className = 'auto-toggle on';
+      document.getElementById('autoState').textContent = 'ON';
+    }
+    // Re-enable trade buttons
+    enableTradeButtons(true);
+    setBotStatus('⏳ Trade Wait resumed — CRT Auto-Trade ON', 'running');
+  }
+
+  // Back to monitoring phase — ready for next TP/SL cycle
+  _twSetPhase('monitoring');
+  setTradeWaitStatus('⏳ Monitoring — waiting for TP/SL to trigger…', 'waiting');
+
+  // Hide countdown row
+  const cdRow = document.getElementById('tradeWaitCdRow');
+  if(cdRow) cdRow.style.display = 'none';
+}
+
+// ─── MAIN HOOK — called by checkSessionLimits() after TP or SL fires ──────
+// Replaces the normal halt path when Trade Wait is enabled.
+// Returns true if Trade Wait handled the event (so checkSessionLimits skips normal halt).
+function tradeWaitHandleLimit(reason){
+  if(!tradeWaitEnabled) return false;          // not our job
+  if(tradeWaitPhase === 'waiting') return true; // already in wait — don't double-trigger
+
+  // 1) Show what triggered
+  setTradeWaitStatus('🔁 ' + reason + ' — resetting session…', 'triggered');
+  toast('🔁 Trade Wait: ' + reason + ' — auto-resetting', 'info');
+
+  // 2) Pause auto-trade immediately (don't fully halt — we'll resume)
+  autoBot    = false;
+  botRunning = false;
+  const tog  = document.getElementById('autoToggle');
+  if(tog){ tog.className = 'auto-toggle off'; document.getElementById('autoState').textContent = 'OFF'; }
+
+  // Clear halt banner (we handle our own UX)
+  const banner = document.getElementById('eaHaltBanner');
+  if(banner) banner.style.display = 'none';
+
+  // 3) Reset session stats (with a tiny delay so final trade settles in UI)
+  setTimeout(()=>{
+    resetSession();
+    // 4) Immediately start the wait countdown
+    _twStartCountdown();
+  }, 400);
+
+  return true;  // handled — skip normal eaHalted path
+}
 
 window.addEventListener('load', ()=>{
   const saved = loadSavedToken();
