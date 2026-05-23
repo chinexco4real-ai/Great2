@@ -946,7 +946,9 @@
                 &nbsp;&nbsp;→ Session resets automatically.<br>
                 &nbsp;&nbsp;→ Auto-trade pauses for the wait timer.<br>
                 &nbsp;&nbsp;→ Auto-trade resumes when timer elapses.<br>
-                ▸ Cycle repeats endlessly while enabled.
+                ▸ Cycle repeats endlessly while enabled.<br>
+                <span style="color:rgba(168,85,247,.8);">▸ Schedule Timer has priority — Trade Wait</span><br>
+                <span style="color:rgba(168,85,247,.8);">&nbsp;&nbsp;cannot resume outside schedule window.</span>
               </div>
 
               <div class="tradewait-timer-row">
@@ -3337,6 +3339,18 @@ function _scheduleTickUI(){
       // Window just closed — Mode 2: always turn off autoBot at end time,
       // no matter who turned it on.
       _forceAutoBotOff();
+      // If Trade Wait is mid-countdown, abort it — the schedule has authority.
+      if(tradeWaitEnabled && (tradeWaitPhase === 'waiting' || tradeWaitPhase === 'resuming')){
+        _twCancelTimers();
+        _twSetPhase('monitoring');
+        setTradeWaitStatus(
+          '⏸ Schedule window closed — Trade Wait countdown aborted.\n' +
+          '  Auto-trade will resume at next scheduled start time.',
+          'waiting'
+        );
+        const twCdRow = document.getElementById('tradeWaitCdRow');
+        if(twCdRow) twCdRow.style.display = 'none';
+      }
       toast('\u23f0 Trade end time reached \u2014 Auto CRT disabled','info');
       setBotStatus('\u23f0 Trade window ended \u2014 waiting for next cycle at ' + v('scheduleStart'), 'error');
       schedulePhase = 'waiting_start';
@@ -3727,6 +3741,13 @@ function setCounterStatus(msg, cls){
 //  TRADE WAIT FUNCTION
 //  Monitors TP/SL → auto-resets session → waits timer
 //  → re-enables auto-trade → repeats endlessly.
+//
+//  SCHEDULE PRIORITY RULE:
+//  Trade Wait NEVER overrides the Schedule Timer.
+//  If the schedule window has ended (or was never open),
+//  Trade Wait will NOT re-enable auto-trade. It simply
+//  cancels quietly and lets the Schedule engine re-enable
+//  auto-trade at the next scheduled start time.
 // ═══════════════════════════════════════════════════
 
 let tradeWaitEnabled   = false;    // master toggle
@@ -3734,6 +3755,18 @@ let tradeWaitPhase     = 'idle';   // idle | monitoring | waiting | resuming
 let _twCountdownTimer  = null;     // setInterval for countdown display
 let _twResumeTimer     = null;     // setTimeout for actual resume
 let _twWaitMs          = 0;        // computed wait in milliseconds
+
+// ── Schedule guard: returns true if the Schedule Timer is enabled
+//    AND the current time is OUTSIDE the trade window (window closed/ended).
+//    In that case Trade Wait must NOT re-enable auto-trade.
+function _twScheduleBlocksResume(){
+  if(!scheduleEnabled) return false;                // schedule not in use — no block
+  // If the schedule phase is anything other than 'trading', the window is not open.
+  // 'stopped_day' means SL/TP fired and the window is still nominally open but
+  // the schedule engine has stopped the bot — we should also not override that.
+  if(schedulePhase === 'trading') return false;     // window is open — Trade Wait may resume
+  return true;                                      // window closed / waiting — block resume
+}
 
 // Called when the toggle is switched
 function onTradeWaitToggle(enabled){
@@ -3769,7 +3802,6 @@ function _twComputeWait(){
 function onTradeWaitParamChange(){
   const hrs  = parseInt(document.getElementById('twWaitHours').value)   || 0;
   const mins = parseInt(document.getElementById('twWaitMinutes').value) || 0;
-  const totalSecs = hrs * 3600 + mins * 60;
   const disp = document.getElementById('twTotalDisplay');
   if(disp){
     const h = hrs > 0 ? hrs + ' hr ' : '';
@@ -3803,10 +3835,30 @@ function _twCancelTimers(){
   if(_twResumeTimer)   { clearTimeout(_twResumeTimer);    _twResumeTimer    = null; }
 }
 
-// START the wait countdown — called right after session is auto-reset
+// START the wait countdown — called right after session is auto-reset.
+// If the schedule window is already closed, we skip the countdown entirely
+// and hand control back to the schedule engine.
 function _twStartCountdown(){
   _twCancelTimers();
   _twComputeWait();
+
+  // ── SCHEDULE PRIORITY CHECK ─────────────────────────────────────
+  // If the Schedule Timer is enabled and the window is already closed,
+  // Trade Wait must NOT start a countdown or re-enable auto-trade.
+  // The Schedule engine will handle re-enabling at the next start time.
+  if(_twScheduleBlocksResume()){
+    _twSetPhase('monitoring');
+    setTradeWaitStatus(
+      '⏸ Schedule window closed — Trade Wait deferred.\n' +
+      '  Auto-trade will resume at next scheduled start time.',
+      'waiting'
+    );
+    const cdRow = document.getElementById('tradeWaitCdRow');
+    if(cdRow) cdRow.style.display = 'none';
+    toast('⏳ Trade Wait deferred — schedule window closed', 'info');
+    return;  // do not start countdown; schedule engine takes over
+  }
+
   _twSetPhase('waiting');
 
   const cdRow = document.getElementById('tradeWaitCdRow');
@@ -3816,6 +3868,23 @@ function _twStartCountdown(){
 
   // Live countdown display (updates every second)
   _twCountdownTimer = setInterval(()=>{
+    // ── Mid-countdown schedule check ────────────────────────────────
+    // If the schedule window closes WHILE the countdown is running,
+    // abort the countdown immediately — schedule takes priority.
+    if(_twScheduleBlocksResume()){
+      _twCancelTimers();
+      _twSetPhase('monitoring');
+      setTradeWaitStatus(
+        '⏸ Schedule window closed mid-wait — Trade Wait aborted.\n' +
+        '  Auto-trade will resume at next scheduled start time.',
+        'waiting'
+      );
+      const cdRowMid = document.getElementById('tradeWaitCdRow');
+      if(cdRowMid) cdRowMid.style.display = 'none';
+      toast('⏳ Trade Wait aborted — schedule window closed', 'info');
+      return;
+    }
+
     const remaining = Math.max(0, endMs - Date.now());
     const totalSec  = Math.floor(remaining / 1000);
     const h = String(Math.floor(totalSec / 3600)).padStart(2,'0');
@@ -3843,16 +3912,34 @@ function _twStartCountdown(){
   }, _twWaitMs);
 }
 
-// Called when the wait timer elapses — re-enable auto-trade and resume
+// Called when the wait timer elapses — re-enable auto-trade and resume.
+// Respects the Schedule Timer: if the window is now closed, do NOT resume.
 function _twResumeAutoTrade(){
   if(!tradeWaitEnabled) return;   // user disabled while waiting — do nothing
 
   _twCancelTimers();
-  _twSetPhase('resuming');
 
   const cdVal = document.getElementById('tradeWaitCdVal');
   if(cdVal){ cdVal.textContent = '00:00:00'; cdVal.className = 'tw-cd-val'; }
 
+  // ── SCHEDULE PRIORITY CHECK ─────────────────────────────────────
+  // Timer elapsed but the schedule window may have since closed.
+  // If it has, do NOT re-enable auto-trade — let the schedule engine
+  // handle it at the next start time.
+  if(_twScheduleBlocksResume()){
+    _twSetPhase('monitoring');
+    setTradeWaitStatus(
+      '⏸ Wait complete, but schedule window is closed.\n' +
+      '  Auto-trade will resume at next scheduled start time.',
+      'waiting'
+    );
+    const cdRow = document.getElementById('tradeWaitCdRow');
+    if(cdRow) cdRow.style.display = 'none';
+    toast('⏳ Trade Wait complete — schedule window closed, deferring to schedule', 'info');
+    return;
+  }
+
+  _twSetPhase('resuming');
   setTradeWaitStatus('✅ Timer elapsed — re-enabling auto-trade…', 'resuming');
   toast('⏳ Trade Wait complete — resuming auto-trade', 'info');
 
@@ -3893,6 +3980,19 @@ function tradeWaitHandleLimit(reason){
   if(!tradeWaitEnabled) return false;          // not our job
   if(tradeWaitPhase === 'waiting') return true; // already in wait — don't double-trigger
 
+  // ── SCHEDULE PRIORITY CHECK ─────────────────────────────────────
+  // If the schedule window is already closed when TP/SL fires,
+  // Trade Wait must NOT interfere — let the normal halt path run,
+  // which defers to the schedule engine for the next cycle.
+  if(_twScheduleBlocksResume()){
+    setTradeWaitStatus(
+      '⏸ TP/SL hit but schedule window is closed.\n' +
+      '  Trade Wait inactive — schedule engine controls restart.',
+      'waiting'
+    );
+    return false;  // let normal halt proceed; schedule engine handles restart
+  }
+
   // 1) Show what triggered
   setTradeWaitStatus('🔁 ' + reason + ' — resetting session…', 'triggered');
   toast('🔁 Trade Wait: ' + reason + ' — auto-resetting', 'info');
@@ -3910,7 +4010,7 @@ function tradeWaitHandleLimit(reason){
   // 3) Reset session stats (with a tiny delay so final trade settles in UI)
   setTimeout(()=>{
     resetSession();
-    // 4) Immediately start the wait countdown
+    // 4) Start the wait countdown (schedule guard is re-checked inside)
     _twStartCountdown();
   }, 400);
 
