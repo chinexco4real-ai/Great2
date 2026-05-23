@@ -912,18 +912,19 @@
 
             <div id="counterFilterBody" style="display:none;">
 
-              <!-- ── Wait Time ── -->
+              <!-- ── Post-Close Delay ── -->
               <div class="counter-sub-section">
-                <div class="counter-sub-lbl">⏳ Wait Time (before P/L check)</div>
+                <div class="counter-sub-lbl">⏳ Post-Close Delay (optional)</div>
                 <div class="counter-unit-pills">
                   <div class="counter-unit-pill active" id="cwUnitMin" onclick="setCounterWaitUnit('minutes')">MINUTES</div>
                   <div class="counter-unit-pill" id="cwUnitSec" onclick="setCounterWaitUnit('seconds')">SECONDS</div>
                 </div>
                 <div class="ctrl-row" style="margin-bottom:4px;">
-                  <input type="number" id="cfgCounterWaitVal" value="3" min="1" max="3600" step="1"
+                  <input type="number" id="cfgCounterWaitVal" value="0" min="0" max="3600" step="1"
                          style="font-size:12px;padding:6px 9px;width:80px;"/>
-                  <span class="hint" id="cwUnitHint">minutes after trade opens</span>
+                  <span class="hint" id="cwUnitHint">minutes delay after close before counter fires</span>
                 </div>
+                <div style="font-size:10px;color:#8ba4cc;font-family:'Share Tech Mono',monospace;margin-bottom:2px;">Set to 0 for immediate counter on close.</div>
               </div>
 
               <!-- ── Counter Trade Duration ── -->
@@ -941,8 +942,9 @@
               </div>
 
               <div style="font-size:10px;color:#8ba4cc;line-height:1.6;margin-bottom:8px;font-family:'Share Tech Mono',monospace;">
-                ▸ <span style="color:var(--green);">Profit</span> → no counter trade placed.<br>
-                ▸ <span style="color:#ff7090;">Loss</span> → counter trade fires with its own duration above.<br>
+                ▸ <span style="color:var(--green);">WIN</span> → counter trade is never placed.<br>
+                ▸ <span style="color:#ff7090;">LOSS</span> → counter fires after the trade <em>fully closes</em>.<br>
+                ▸ Optional post-close delay before counter fires.<br>
                 <span style="color:#ff8c00;">Counter trades are never themselves countered.</span>
               </div>
               <div class="counter-status-box" id="counterStatusBox">Waiting for next trade…</div>
@@ -2651,6 +2653,13 @@ function _settleLogEntry(le, finalProfit){
   updateStats();
   toast((won ? '✅ WIN' : '❌ LOSS') + ' ' + fmtAmount(Math.abs(finalProfit)), 'info');
   saveState();
+
+  // ── Smart Counter Filter: notify on confirmed close ──
+  // Pass the contractId (from le) so the counter watch map can be looked up.
+  if(!won && le.contractId){
+    notifyCounterOnClose(String(le.contractId), finalProfit, le);
+  }
+
   checkSessionLimits();
 }
 
@@ -3598,11 +3607,11 @@ function setCounterWaitUnit(unit){
   if(unit === 'minutes'){
     minPill.classList.add('active');
     secPill.classList.remove('active');
-    if(hint) hint.textContent = 'minutes after trade opens';
+    if(hint) hint.textContent = 'minutes delay after close before counter fires';
   } else {
     secPill.classList.add('active');
     minPill.classList.remove('active');
-    if(hint) hint.textContent = 'seconds after trade opens';
+    if(hint) hint.textContent = 'seconds delay after close before counter fires';
   }
 }
 
@@ -3638,6 +3647,8 @@ function onCounterFilterToggle(enabled){
 }
 
 // Called by handleBuyResponse immediately after position is stored.
+// Registers the trade in the pending watch map — no timer is started here.
+// The counter will only fire AFTER the trade fully closes with a confirmed LOSS.
 function scheduleCounterCheck(cid){
   cid = String(cid);
   if(!counterFilterEnabled) return;
@@ -3645,90 +3656,109 @@ function scheduleCounterCheck(cid){
   const pos = openPositions[cid];
   if(!pos) return;
 
-  // Never schedule a counter check for a counter trade itself
+  // Never watch a counter trade — it can never itself be countered
   if(pos.isCounter){
     setCounterStatus('Counter trade active — no re-counter.', 'ok');
     return;
   }
 
-  // Read wait time using the active unit toggle
-  const waitVal  = parseInt(document.getElementById('cfgCounterWaitVal').value) || 3;
-  const waitUnit = document.getElementById('cwUnitMin').classList.contains('active') ? 'minutes' : 'seconds';
-  const waitMs   = waitUnit === 'minutes' ? waitVal * 60 * 1000 : waitVal * 1000;
-  const waitLabel = waitUnit === 'minutes' ? `${waitVal}m` : `${waitVal}s`;
-  const dir = pos.dir; // 'call' or 'put'
+  // Snapshot the trade details now (position will be deleted on close)
+  counterPendingMap[cid] = {
+    dir:    pos.dir,
+    symbol: pos.symbol || v('cfgSymbol'),
+    stake:  parseFloat(v('cfgStake')) || pos.stake || 1,
+    sl:     parseFloat(v('cfgSL'))    || 0,
+    tp:     parseFloat(v('cfgTP'))    || 0,
+  };
 
-  setCounterStatus(`⏳ Watching ${dir.toUpperCase()} #${cid} — checking in ${waitLabel}…`, 'watching');
-
-  const handle = setTimeout(()=>{
-    delete counterPendingMap[cid];
-    runCounterCheck(cid);
-  }, waitMs);
-
-  counterPendingMap[cid] = handle;
+  setCounterStatus(`👁 Watching ${pos.dir.toUpperCase()} #${cid} — counter fires on confirmed close LOSS…`, 'watching');
 }
 
-// Cancel a pending counter check (e.g. position closed before wait time)
+// Cancel a pending counter watch (e.g. disabled mid-session)
 function cancelCounterCheck(cid){
   cid = String(cid);
   if(counterPendingMap[cid]){
-    clearTimeout(counterPendingMap[cid]);
+    // If it's a setTimeout handle (legacy / stale), clear it
+    if(typeof counterPendingMap[cid] === 'number'){
+      clearTimeout(counterPendingMap[cid]);
+    }
     delete counterPendingMap[cid];
   }
 }
 
-// Runs at the end of the wait period. Checks P/L; fires counter if in loss.
-function runCounterCheck(cid){
+// Called by _settleLogEntry after a trade closes with a confirmed result.
+// Only fires the counter if the result is a LOSS.
+function notifyCounterOnClose(cid, finalProfit, logEntry){
   cid = String(cid);
-  const pos = openPositions[cid];
+  if(!counterFilterEnabled) return;
 
-  // Position may have already closed — nothing to counter
-  if(!pos){
-    setCounterStatus('Position closed before counter check — skipped.', 'ok');
+  const snapshot = counterPendingMap[cid];
+  if(!snapshot || typeof snapshot !== 'object') return; // not watched or already handled
+  delete counterPendingMap[cid];
+
+  // Only counter on confirmed loss
+  if(finalProfit >= 0){
+    setCounterStatus(`✅ #${cid} closed WIN (${fmtAmount(finalProfit)}) — no counter trade.`, 'ok');
     return;
   }
 
-  const pnl = pos.currentPnl;  // live floating P/L streamed by Deriv POC
-
-  if(pnl >= 0){
-    // Profitable — do nothing
-    setCounterStatus(`✅ #${cid} in profit (${pnl >= 0 ? '+' : ''}${fmtAmount(Math.abs(pnl))}) — no counter trade.`, 'ok');
+  // Skip if autoBot is off — user disabled trading, don't fire ghost counters
+  if(!autoBot){
+    setCounterStatus(`⏸ #${cid} closed LOSS but auto-trade is OFF — counter skipped.`, '');
     return;
   }
 
-  // In loss — place immediate counter trade in the opposite direction
-  const counterType = (pos.dir === 'call') ? 'PUT' : 'CALL';
-  const symbol  = pos.symbol || v('cfgSymbol');
-  const stake   = parseFloat(v('cfgStake')) || pos.stake || 1;
-  const sl      = parseFloat(v('cfgSL'))    || 0;
-  const tp      = parseFloat(v('cfgTP'))    || 0;
+  runCounterCheck(cid, snapshot, finalProfit);
+}
 
-  setCounterStatus(`🔴 #${cid} in loss (${fmtAmount(Math.abs(pnl))}) — firing ${counterType} counter…`, 'fired');
+// Fires the counter trade after a confirmed close LOSS.
+// Uses the snapshot taken at open — position is already deleted.
+function runCounterCheck(cid, snapshot, finalProfit){
+  const { dir, symbol, stake, sl, tp } = snapshot;
+  const counterType = (dir === 'call') ? 'PUT' : 'CALL';
+  const lossAmt = Math.abs(finalProfit);
 
-  // Build a log entry for the counter trade
-  const logEntry = {
-    id:         Date.now() + '_ct',
-    time:       new Date().toLocaleTimeString(),
-    signal:     counterType === 'CALL' ? '▲ COUNTER RISE' : '▼ COUNTER FALL',
-    entry:      '—',
-    market:     symbol,
-    result:     'OPEN',
-    pnl:        '—',
-    contractId: null,
-    _isCounter: true
+  // Read optional post-close delay from the wait time inputs
+  const waitVal  = parseInt(document.getElementById('cfgCounterWaitVal').value) || 0;
+  const waitUnit = document.getElementById('cwUnitMin').classList.contains('active') ? 'minutes' : 'seconds';
+  const waitMs   = waitUnit === 'minutes' ? waitVal * 60 * 1000 : waitVal * 1000;
+
+  const fire = () => {
+    if(!counterFilterEnabled) return; // may have been disabled during the delay
+    if(!autoBot) return;              // auto-trade turned off during delay
+
+    setCounterStatus(`🔴 #${cid} closed LOSS (−${fmtAmount(lossAmt)}) — firing ${counterType} counter…`, 'fired');
+
+    const logEntry = {
+      id:         Date.now() + '_ct',
+      time:       new Date().toLocaleTimeString(),
+      signal:     counterType === 'CALL' ? '▲ COUNTER RISE' : '▼ COUNTER FALL',
+      entry:      '—',
+      market:     symbol,
+      result:     'OPEN',
+      pnl:        '—',
+      contractId: null,
+      _isCounter: true
+    };
+    stats.totalSignals++;
+    if(counterType === 'CALL') stats.buySigs++; else stats.sellSigs++;
+    stats.lastSignal = counterType === 'CALL' ? 'COUNTER BUY' : 'COUNTER SELL';
+    stats.lastTime   = logEntry.time;
+    tradeLog.unshift(logEntry);
+    rebuildLog();
+    updateStats();
+
+    placeCounterTrade(counterType, symbol, stake, sl, tp, logEntry.id);
+    toast(`⚡ Counter ${counterType} placed after confirmed LOSS`, 'info');
   };
-  stats.totalSignals++;
-  if(counterType === 'CALL') stats.buySigs++; else stats.sellSigs++;
-  stats.lastSignal = counterType === 'CALL' ? 'COUNTER BUY' : 'COUNTER SELL';
-  stats.lastTime   = logEntry.time;
-  tradeLog.unshift(logEntry);
-  rebuildLog();
-  updateStats();
 
-  // Place the counter trade — mark it so it can never itself be countered
-  placeCounterTrade(counterType, symbol, stake, sl, tp, logEntry.id);
-
-  toast(`⚡ Counter ${counterType} placed`, 'info');
+  if(waitMs > 0){
+    const waitLabel = waitUnit === 'minutes' ? `${waitVal}m` : `${waitVal}s`;
+    setCounterStatus(`🔴 #${cid} LOSS confirmed — counter fires in ${waitLabel}…`, 'fired');
+    setTimeout(fire, waitMs);
+  } else {
+    fire();
+  }
 }
 
 // Like placeTrade but stamps isCounter=true on the resulting position.
