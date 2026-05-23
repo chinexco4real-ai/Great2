@@ -819,9 +819,31 @@
               </div>
             </div>
 
-          </div>
+            <!-- Filter 5: Body Rejection Ratio -->
+            <div class="filter-item" id="fi5">
+              <div class="filter-toggle-row" onclick="toggleFilter(5)">
+                <span class="f-name">
+                  <span class="f-badge">F5</span>
+                  Body Rejection Ratio
+                </span>
+                <label class="filter-switch" onclick="event.stopPropagation()">
+                  <input type="checkbox" id="fBodyRejectEnabled" onchange="onFilterChange(5,this.checked)"/>
+                  <span class="filter-slider"></span>
+                </label>
+              </div>
+              <div class="filter-desc">
+                <div class="ctrl-row" style="margin-bottom:7px;">
+                  <label style="font-size:11px;letter-spacing:1px;">MIN BODY % OF CANDLE RANGE</label>
+                  <input type="number" id="cfgBodyRejectPct" value="50" min="1" max="100" style="font-size:12px;padding:6px 9px;"/>
+                </div>
+                <div class="f-rule">
+                  |close − open| ≥ N% × (high − low) — filters doji candles.<br>
+                  <span style="color:var(--gold);font-size:11px;">Recommended: 40–50%</span>
+                </div>
+              </div>
+            </div>
 
-          <!-- ── TRADE SCHEDULE TIMER ── -->
+          </div>
           <div class="schedule-section">
             <div class="section-lbl">⏰ Trade Schedule Timer</div>
 
@@ -1239,6 +1261,7 @@ let filterEmaEnabled     = false;   // Filter 1: EMA Wick-Cross
 let filterMinSweep       = false;   // Filter 2: Min Sweep Depth
 let filterWickDom        = false;   // Filter 3: Wick Dominance
 let filterEmaTrend       = false;   // Filter 4: EMA Trend (price vs EMA)
+let filterBodyReject     = false;   // Filter 5: Body Rejection Ratio
 
 // Running EMA value — recalculated on every new closed candle
 let emaValue = null;
@@ -1264,7 +1287,7 @@ function calcEMA(candleArr, period){
 
 // ─── FILTER UI HELPERS ────────────────────────────
 function toggleFilter(n){
-  const ids = {1:'fEmaEnabled', 2:'fMinSweepEnabled', 3:'fWickDomEnabled', 4:'fEmaTrendEnabled'};
+  const ids = {1:'fEmaEnabled', 2:'fMinSweepEnabled', 3:'fWickDomEnabled', 4:'fEmaTrendEnabled', 5:'fBodyRejectEnabled'};
   const chk = document.getElementById(ids[n]);
   chk.checked = !chk.checked;
   onFilterChange(n, chk.checked);
@@ -1274,11 +1297,12 @@ function onFilterChange(n, enabled){
   const el = document.getElementById('fi'+n);
   if(enabled) el.classList.add('enabled');
   else         el.classList.remove('enabled');
-  if(n===1) filterEmaEnabled = enabled;
-  if(n===2) filterMinSweep   = enabled;
-  if(n===3) filterWickDom    = enabled;
-  if(n===4) filterEmaTrend   = enabled;
-  const names = {1:'EMA Wick-Cross', 2:'Min Sweep Depth', 3:'Wick Dominance', 4:'EMA Trend Filter'};
+  if(n===1) filterEmaEnabled  = enabled;
+  if(n===2) filterMinSweep    = enabled;
+  if(n===3) filterWickDom     = enabled;
+  if(n===4) filterEmaTrend    = enabled;
+  if(n===5) filterBodyReject  = enabled;
+  const names = {1:'EMA Wick-Cross', 2:'Min Sweep Depth', 3:'Wick Dominance', 4:'EMA Trend Filter', 5:'Body Rejection Ratio'};
   toast('Filter '+(enabled?'ON':'OFF')+' — '+names[n], 'info');
   saveState();
 }
@@ -1297,7 +1321,7 @@ function saveState(){
       _version: STATE_VERSION,
       tradeMode, durType, tradeLog, stats, candles: candles.slice(-100),
       analysisCandleMode, analysisCandleTF,
-      filters: { ema: filterEmaEnabled, minSweep: filterMinSweep, wickDom: filterWickDom, emaTrend: filterEmaTrend, emaPeriod: v('cfgEmaPeriod'), minSweepPct: v('cfgMinSweepPct'), wickRatio: v('cfgWickRatio'), emaTrendPeriod: v('cfgEmaTrendPeriod') },
+      filters: { ema: filterEmaEnabled, minSweep: filterMinSweep, wickDom: filterWickDom, emaTrend: filterEmaTrend, bodyReject: filterBodyReject, emaPeriod: v('cfgEmaPeriod'), minSweepPct: v('cfgMinSweepPct'), wickRatio: v('cfgWickRatio'), emaTrendPeriod: v('cfgEmaTrendPeriod'), bodyRejectPct: v('cfgBodyRejectPct') },
       cfg: {
         symbol: v('cfgSymbol'), minRange: v('cfgMinRange'), maxPos: v('cfgMaxPos'),
         stake: v('cfgStake'), sl: v('cfgSL'), tp: v('cfgTP'),
@@ -1394,6 +1418,12 @@ function loadState(){
         if(chk4){ chk4.checked = filterEmaTrend; onFilterChange(4, filterEmaTrend); }
       }
       if(s.filters.emaTrendPeriod !== undefined) setVal('cfgEmaTrendPeriod', s.filters.emaTrendPeriod);
+      if(s.filters.bodyReject !== undefined){
+        filterBodyReject = !!s.filters.bodyReject;
+        const chk5 = document.getElementById('fBodyRejectEnabled');
+        if(chk5){ chk5.checked = filterBodyReject; onFilterChange(5, filterBodyReject); }
+      }
+      if(s.filters.bodyRejectPct !== undefined) setVal('cfgBodyRejectPct', s.filters.bodyRejectPct);
     }
 
     // Restore schedule settings
@@ -2170,6 +2200,25 @@ function onNewCandle(){
     } else {
       if(isBullish) isBullish = (currentPrice > trendEma);   // price above EMA → bullish trend only
       if(isBearish) isBearish = (currentPrice < trendEma);   // price below EMA → bearish trend only
+    }
+  }
+
+  // ── LAYER 6: FILTER 5 — BODY REJECTION RATIO ────────────
+  // Ensures the signal candle has a real body — filters out doji candles
+  // where indecision is high and the rejection is ambiguous.
+  // |close − open| ≥ N% × (high − low)
+  if(filterBodyReject){
+    const minBodyPct = (parseFloat(v('cfgBodyRejectPct')) || 50) / 100;
+    const candleRange = signal.high - signal.low;
+    const bodySize    = Math.abs(signal.close - signal.open);
+    if(candleRange > 0){
+      const bodyRatio = bodySize / candleRange;
+      if(isBullish) isBullish = bodyRatio >= minBodyPct;
+      if(isBearish) isBearish = bodyRatio >= minBodyPct;
+    } else {
+      // Zero-range candle (flat) — no body at all, block signal
+      isBullish = false;
+      isBearish = false;
     }
   }
 
