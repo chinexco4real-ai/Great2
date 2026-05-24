@@ -2623,8 +2623,10 @@ function closePosition(cid, finalProfit, status){
 
   // Cancel this position's countdown timer (other positions keep their own timers)
   stopPositionTimer(cid);
-  // Cancel any pending counter check for this position
-  cancelCounterCheck(cid);
+  // NOTE: do NOT cancel the counter watch here — _settleLogEntry →
+  // notifyCounterOnClose needs the snapshot to still be in counterPendingMap.
+  // cancelCounterCheck is called inside notifyCounterOnClose after it reads it,
+  // or via the explicit disable path.
 
   renderPositions();
 
@@ -2655,8 +2657,9 @@ function _settleLogEntry(le, finalProfit){
   saveState();
 
   // ── Smart Counter Filter: notify on confirmed close ──
-  // Pass the contractId (from le) so the counter watch map can be looked up.
-  if(!won && le.contractId){
+  // Called for both WIN and LOSS — notifyCounterOnClose handles the WIN case
+  // by cleaning up the map and doing nothing else.
+  if(le.contractId){
     notifyCounterOnClose(String(le.contractId), finalProfit, le);
   }
 
@@ -3690,11 +3693,20 @@ function cancelCounterCheck(cid){
 // Only fires the counter if the result is a LOSS.
 function notifyCounterOnClose(cid, finalProfit, logEntry){
   cid = String(cid);
-  if(!counterFilterEnabled) return;
+  if(!counterFilterEnabled){
+    // Still clean up the map even if disabled mid-session
+    delete counterPendingMap[cid];
+    return;
+  }
 
   const snapshot = counterPendingMap[cid];
-  if(!snapshot || typeof snapshot !== 'object') return; // not watched or already handled
+  // Always remove from map regardless of outcome — prevents stale entries
   delete counterPendingMap[cid];
+
+  if(!snapshot || typeof snapshot !== 'object'){
+    // Not watched (e.g. was a counter trade itself, or filter was off at open)
+    return;
+  }
 
   // Only counter on confirmed loss
   if(finalProfit >= 0){
@@ -3732,6 +3744,7 @@ function runCounterCheck(cid, snapshot, finalProfit){
     const logEntry = {
       id:         Date.now() + '_ct',
       time:       new Date().toLocaleTimeString(),
+      dir:        counterType === 'CALL' ? 'BUY' : 'SELL',
       signal:     counterType === 'CALL' ? '▲ COUNTER RISE' : '▼ COUNTER FALL',
       entry:      '—',
       market:     symbol,
