@@ -225,6 +225,8 @@
   tr:hover td{background:rgba(45,139,255,.06);}
   .tag-buy{color:#6ab5ff;background:rgba(45,139,255,.15);padding:2px 8px;border-radius:3px;font-size:11px;letter-spacing:.5px;font-weight:700;}
   .tag-sell{color:#ff7090;background:rgba(255,61,90,.14);padding:2px 8px;border-radius:3px;font-size:11px;letter-spacing:.5px;font-weight:700;}
+  .tag-cbuy{color:#ff8c00;background:rgba(255,140,0,.15);padding:2px 8px;border-radius:3px;font-size:11px;letter-spacing:.5px;font-weight:700;}
+  .tag-csell{color:#ff8c00;background:rgba(255,140,0,.15);padding:2px 8px;border-radius:3px;font-size:11px;letter-spacing:.5px;font-weight:700;}
   .tag-win{color:var(--green);font-weight:700;}
   .tag-loss{color:#ff7090;font-weight:700;}
   .tag-open{color:var(--gold);font-weight:700;}
@@ -394,10 +396,6 @@
   .counter-unit-pill{flex:1;padding:7px 4px;background:var(--bg3);border:1px solid var(--border2);color:#7a8fae;border-radius:6px;font-size:11px;letter-spacing:.5px;cursor:pointer;text-align:center;transition:all .2s;font-family:'Rajdhani',sans-serif;font-weight:700;}
   .counter-unit-pill:hover{color:var(--text);border-color:#3a5580;}
   .counter-unit-pill.active{background:rgba(255,140,0,.18);border-color:#ff8c00;color:#ff8c00;}
-  .counter-dur-pills{display:flex;gap:7px;margin-bottom:7px;}
-  .counter-dur-pill{flex:1;padding:7px 4px;background:var(--bg3);border:1px solid var(--border2);color:#7a8fae;border-radius:6px;font-size:11px;letter-spacing:.5px;cursor:pointer;text-align:center;transition:all .2s;font-family:'Rajdhani',sans-serif;font-weight:700;}
-  .counter-dur-pill:hover{color:var(--text);border-color:#3a5580;}
-  .counter-dur-pill.active{background:rgba(255,140,0,.18);border-color:#ff8c00;color:#ff8c00;}
   .counter-sub-section{background:rgba(255,140,0,.04);border:1px solid rgba(255,140,0,.18);border-radius:7px;padding:10px 12px;margin-bottom:9px;}
   .counter-sub-lbl{font-size:10px;letter-spacing:1.5px;color:#ff8c00;text-transform:uppercase;font-weight:700;margin-bottom:8px;}
 
@@ -925,20 +923,6 @@
                   <span class="hint" id="cwUnitHint">minutes delay after close before counter fires</span>
                 </div>
                 <div style="font-size:10px;color:#8ba4cc;font-family:'Share Tech Mono',monospace;margin-bottom:2px;">Set to 0 for immediate counter on close.</div>
-              </div>
-
-              <!-- ── Counter Trade Duration ── -->
-              <div class="counter-sub-section">
-                <div class="counter-sub-lbl">⚡ Counter Trade Duration</div>
-                <div class="counter-dur-pills">
-                  <div class="counter-dur-pill active" id="cdUnitMin" onclick="setCounterDurUnit('minutes')">MINUTES</div>
-                  <div class="counter-dur-pill" id="cdUnitSec" onclick="setCounterDurUnit('seconds')">SECONDS</div>
-                </div>
-                <div class="ctrl-row" style="margin-bottom:4px;">
-                  <input type="number" id="cfgCounterDurVal" value="2" min="1" max="3600" step="1"
-                         style="font-size:12px;padding:6px 9px;width:80px;"/>
-                  <span class="hint" id="cdUnitHint">minutes · independent of main EA duration</span>
-                </div>
               </div>
 
               <div style="font-size:10px;color:#8ba4cc;line-height:1.6;margin-bottom:8px;font-family:'Share Tech Mono',monospace;">
@@ -2431,25 +2415,12 @@ function handleBuyResponse(buy){
   }
 
   // Calculate expiry for countdown timer.
-  // IMPORTANT: counter trades use their OWN duration config (cfgCounterDurVal +
-  // cdUnitMin/Sec), NOT the main EA duration (cfgDuration + durType). Using the
-  // main EA duration for a counter trade gives a completely wrong expiryMs and
-  // durType on the position, breaking the countdown display and timer for seconds.
-  let _posDurType, _dur, _durMs;
-  if(isCounter && durType !== 'ticks'){
-    // Counter trade: read from counter duration controls
-    _dur         = parseInt(document.getElementById('cfgCounterDurVal').value) || 2;
-    const _isMins = document.getElementById('cdUnitMin').classList.contains('active');
-    _posDurType  = _isMins ? 'minutes' : 'seconds';
-    _durMs       = _isMins ? _dur * 60 * 1000 : _dur * 1000;
-  } else {
-    // Normal trade (or tick counter): use main EA duration
-    _dur         = parseInt(v('cfgDuration')) || 5;
-    _posDurType  = durType;
-    _durMs       = durType === 'ticks'   ? null
-                 : durType === 'seconds' ? _dur * 1000
-                 : _dur * 60 * 1000;
-  }
+  // Counter trades now use the same duration as the main EA (cfgDuration + durType).
+  const _dur      = parseInt(v('cfgDuration')) || 5;
+  const _posDurType = durType;
+  const _durMs    = durType === 'ticks'   ? null
+                  : durType === 'seconds' ? _dur * 1000
+                  : _dur * 60 * 1000;
 
   openPositions[String(contractId)] = {
     contractId: String(contractId), dir: buy.contract_type==='CALL'?'call':'put',
@@ -2480,8 +2451,7 @@ function handleBuyResponse(buy){
   }
 
   // Safety fallback poll — fires after max expected contract lifetime + 5 s.
-  // Use _posDurType / _dur which are already correctly resolved above for both
-  // normal and counter trades (counter uses cfgCounterDurVal, not cfgDuration).
+  // Both normal and counter trades use the same _dur / _posDurType (main EA duration).
   const maxMs = _posDurType==='ticks'   ? (_dur * 1500 + 5000)   // ~1.5 s/tick + buffer
               : _posDurType==='seconds' ? (_dur * 1000 + 5000)
               : (_dur * 60000 + 5000);
@@ -2955,11 +2925,15 @@ function rebuildLog(){
   tbody.innerHTML = tradeLog.map((l, idx)=>{
     const sn = idx + 1;
     const isGhost = !!l._ghost;
-    const dirTag = l.dir==='BUY'
-      ? '<span class="tag-buy">BUY</span>'
-      : l.dir==='SELL'
-        ? '<span class="tag-sell">SELL</span>'
-        : '<span style="color:#8ba4cc;font-size:10px;letter-spacing:1px;">GHOST</span>';
+    const dirTag = l._isCounter
+      ? (l.dir==='BUY'
+          ? '<span class="tag-cbuy">CBUY</span>'
+          : '<span class="tag-csell">CSELL</span>')
+      : (l.dir==='BUY'
+          ? '<span class="tag-buy">BUY</span>'
+          : l.dir==='SELL'
+            ? '<span class="tag-sell">SELL</span>'
+            : '<span style="color:#8ba4cc;font-size:10px;letter-spacing:1px;">GHOST</span>');
     const resCls = l.result==='WIN'?'tag-win':l.result==='LOSS'?'tag-loss':l.result==='OPEN'?'tag-open':l.result==='?'?'tag-open':l.result==='FAILED'?'tag-failed':'';
     const resDisplay = l.result === '?' ? '?' : l.result;
     const pnlCls = l.pnl&&l.pnl.startsWith('+')?'tag-win':l.pnl&&l.pnl!=='—'?'tag-loss':'';
@@ -3642,21 +3616,6 @@ function setCounterWaitUnit(unit){
   }
 }
 
-// Toggle counter duration unit — only one can be active
-function setCounterDurUnit(unit){
-  const minPill = document.getElementById('cdUnitMin');
-  const secPill = document.getElementById('cdUnitSec');
-  const hint    = document.getElementById('cdUnitHint');
-  if(unit === 'minutes'){
-    minPill.classList.add('active');
-    secPill.classList.remove('active');
-    if(hint) hint.textContent = 'minutes · independent of main EA duration';
-  } else {
-    secPill.classList.add('active');
-    minPill.classList.remove('active');
-    if(hint) hint.textContent = 'seconds · independent of main EA duration';
-  }
-}
 
 function onCounterFilterToggle(enabled){
   counterFilterEnabled = enabled;
@@ -3799,22 +3758,12 @@ function runCounterCheck(cid, snapshot, finalProfit){
 }
 
 // Like placeTrade but stamps isCounter=true on the resulting position.
-// Uses its own independently-configured duration — does NOT sync to original trade expiry.
+// Always uses the main EA duration (cfgDuration + durType) — no separate counter duration.
 function placeCounterTrade(contractType, symbol, stake, slAmt, tpAmt, logId){
   stats.totalTrades++;
 
-  let dur, durUnit;
-  if(durType === 'ticks'){
-    // Tick contracts: use configured main duration
-    dur     = parseInt(v('cfgDuration')) || 5;
-    durUnit = 't';
-  } else {
-    // Use counter-specific duration from the toggle + input
-    const counterDurVal  = parseInt(document.getElementById('cfgCounterDurVal').value) || 2;
-    const isCounterMins  = document.getElementById('cdUnitMin').classList.contains('active');
-    dur     = counterDurVal;
-    durUnit = isCounterMins ? 'm' : 's';
-  }
+  const dur     = parseInt(v('cfgDuration')) || 5;
+  const durUnit = durType === 'ticks' ? 't' : durType === 'seconds' ? 's' : 'm';
 
   // Use payoutCurrency confirmed by payout_currencies — same as placeTrade
   const tradeAmount = parseFloat(parseFloat(stake).toFixed(2));
