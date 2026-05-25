@@ -225,8 +225,6 @@
   tr:hover td{background:rgba(45,139,255,.06);}
   .tag-buy{color:#6ab5ff;background:rgba(45,139,255,.15);padding:2px 8px;border-radius:3px;font-size:11px;letter-spacing:.5px;font-weight:700;}
   .tag-sell{color:#ff7090;background:rgba(255,61,90,.14);padding:2px 8px;border-radius:3px;font-size:11px;letter-spacing:.5px;font-weight:700;}
-  .tag-cbuy{color:#ff8c00;background:rgba(255,140,0,.15);padding:2px 8px;border-radius:3px;font-size:11px;letter-spacing:.5px;font-weight:700;}
-  .tag-csell{color:#ff8c00;background:rgba(255,140,0,.15);padding:2px 8px;border-radius:3px;font-size:11px;letter-spacing:.5px;font-weight:700;}
   .tag-win{color:var(--green);font-weight:700;}
   .tag-loss{color:#ff7090;font-weight:700;}
   .tag-open{color:var(--gold);font-weight:700;}
@@ -390,47 +388,6 @@
   .counter-status-box.watching{border-color:rgba(255,140,0,.4);color:#ff8c00;}
   .counter-status-box.fired   {border-color:rgba(255,61,90,.4);color:#ff7090;}
   .counter-status-box.ok      {border-color:rgba(0,230,118,.4);color:var(--green);}
-
-  /* ─── COUNTER UNIT TOGGLES ─── */
-  .counter-unit-pills{display:flex;gap:7px;margin-bottom:7px;}
-  .counter-unit-pill{flex:1;padding:7px 4px;background:var(--bg3);border:1px solid var(--border2);color:#7a8fae;border-radius:6px;font-size:11px;letter-spacing:.5px;cursor:pointer;text-align:center;transition:all .2s;font-family:'Rajdhani',sans-serif;font-weight:700;}
-  .counter-unit-pill:hover{color:var(--text);border-color:#3a5580;}
-  .counter-unit-pill.active{background:rgba(255,140,0,.18);border-color:#ff8c00;color:#ff8c00;}
-  .counter-sub-section{background:rgba(255,140,0,.04);border:1px solid rgba(255,140,0,.18);border-radius:7px;padding:10px 12px;margin-bottom:9px;}
-  .counter-sub-lbl{font-size:10px;letter-spacing:1.5px;color:#ff8c00;text-transform:uppercase;font-weight:700;margin-bottom:8px;}
-
-  /* ─── TRADE WAIT FUNCTION ─── */
-  .tradewait-section{background:rgba(138,43,226,.06);border:1px solid rgba(138,43,226,.35);border-radius:9px;padding:13px 15px;margin-top:9px;}
-  .tradewait-section .section-lbl{color:#bf7fff;font-size:11px;letter-spacing:2px;margin-bottom:10px;font-weight:700;}
-  .tradewait-toggle-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
-  .tradewait-toggle-row .tw-lbl{font-size:12px;letter-spacing:1px;color:var(--text);font-weight:700;text-transform:uppercase;}
-  .tradewait-switch{position:relative;width:44px;height:22px;flex-shrink:0;}
-  .tradewait-switch input{opacity:0;width:0;height:0;}
-  .tradewait-slider{position:absolute;inset:0;background:#1e2a42;border:1px solid var(--border2);border-radius:20px;cursor:pointer;transition:all .25s;}
-  .tradewait-slider::before{content:'';position:absolute;height:16px;width:16px;left:2px;top:2px;background:#4a5a78;border-radius:50%;transition:all .25s;}
-  .tradewait-switch input:checked + .tradewait-slider{background:rgba(138,43,226,.25);border-color:#a855f7;}
-  .tradewait-switch input:checked + .tradewait-slider::before{transform:translateX(22px);background:#a855f7;box-shadow:0 0 6px rgba(168,85,247,.6);}
-  .tradewait-body{display:none;}
-  .tradewait-body.visible{display:block;}
-  .tradewait-timer-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
-  .tradewait-time-field{display:flex;flex-direction:column;gap:4px;}
-  .tradewait-time-field label{font-size:10px;letter-spacing:1.5px;color:#8ba4cc;text-transform:uppercase;font-weight:700;}
-  .tradewait-time-field input{background:var(--bg3);border:1px solid var(--border2);color:var(--white);padding:8px 10px;border-radius:6px;font-family:'Share Tech Mono',monospace;font-size:14px;font-weight:700;outline:none;width:100%;text-align:center;transition:border .2s,box-shadow .2s;}
-  .tradewait-time-field input:focus{border-color:#a855f7;box-shadow:0 0 0 2px rgba(168,85,247,.2);}
-  .tradewait-status-box{background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:9px 12px;font-family:'Share Tech Mono',monospace;font-size:11px;color:#8ba4cc;font-weight:600;line-height:1.7;min-height:38px;margin-top:6px;transition:border-color .3s,color .3s;}
-  .tradewait-status-box.waiting{border-color:rgba(168,85,247,.4);color:#bf7fff;}
-  .tradewait-status-box.counting{border-color:rgba(245,197,24,.4);color:var(--gold);}
-  .tradewait-status-box.resuming{border-color:rgba(0,230,118,.4);color:var(--green);}
-  .tradewait-status-box.triggered{border-color:rgba(255,61,90,.4);color:#ff7090;}
-  .tradewait-countdown-row{display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding:9px 12px;background:rgba(138,43,226,.08);border:1px solid rgba(138,43,226,.22);border-radius:7px;}
-  .tw-cd-label{font-size:10px;color:#8ba4cc;letter-spacing:1.5px;text-transform:uppercase;font-weight:700;}
-  .tw-cd-val{font-family:'Orbitron',sans-serif;font-size:17px;font-weight:700;color:#a855f7;letter-spacing:2px;text-shadow:0 0 10px rgba(168,85,247,.4);}
-  .tw-cd-val.active{color:var(--gold);text-shadow:0 0 10px rgba(245,197,24,.5);animation:pulse 1s infinite;}
-  .tw-phase-badge{display:inline-block;font-size:9px;letter-spacing:1.5px;padding:3px 8px;border-radius:4px;font-family:'Orbitron',sans-serif;font-weight:700;text-transform:uppercase;margin-left:6px;}
-  .tw-phase-badge.idle{background:rgba(122,143,174,.12);color:#7a8fae;border:1px solid rgba(122,143,174,.2);}
-  .tw-phase-badge.monitoring{background:rgba(45,139,255,.12);color:#6ab5ff;border:1px solid rgba(45,139,255,.3);}
-  .tw-phase-badge.waiting{background:rgba(168,85,247,.15);color:#bf7fff;border:1px solid rgba(168,85,247,.3);}
-  .tw-phase-badge.resuming{background:rgba(0,230,118,.12);color:var(--green);border:1px solid rgba(0,230,118,.3);}
 
   /* ─── TRADE SCHEDULE TIMER ─── */
   .schedule-section{background:rgba(0,240,255,.04);border:1px solid rgba(0,240,255,.22);border-radius:9px;padding:13px 15px;margin-top:9px;}
@@ -742,53 +699,50 @@
               </div>
             </div>
 
-            <!-- Filter 2: Min Sweep Depth -->
+            <!-- Filter 2: Order Block -->
             <div class="filter-item" id="fi2">
               <div class="filter-toggle-row" onclick="toggleFilter(2)">
                 <span class="f-name">
                   <span class="f-badge">F2</span>
-                  Min Sweep Depth
+                  Order Block
                 </span>
                 <label class="filter-switch" onclick="event.stopPropagation()">
-                  <input type="checkbox" id="fMinSweepEnabled" onchange="onFilterChange(2,this.checked)"/>
+                  <input type="checkbox" id="fOBEnabled" onchange="onFilterChange(2,this.checked)"/>
                   <span class="filter-slider"></span>
                 </label>
               </div>
               <div class="filter-desc">
                 <div class="ctrl-row" style="margin-bottom:7px;">
-                  <label style="font-size:11px;letter-spacing:1px;">MIN SWEEP % OF RANGE</label>
-                  <input type="number" id="cfgMinSweepPct" value="20" min="1" max="100" style="font-size:12px;padding:6px 9px;"/>
+                  <label style="font-size:11px;letter-spacing:1px;">OB Lookback (candles)</label>
+                  <input type="number" id="cfgOBLookback" value="10" min="3" max="50" style="font-size:12px;padding:6px 9px;"/>
                 </div>
                 <div class="f-rule">
-                  Sweep must exceed N% of the range candle size.<br>
-                  <span class="buy-txt">▲ BUY:</span> (rangeL − signal.low) ≥ N% × rangeSize<br>
-                  <span class="sell-txt">▼ SELL:</span> (signal.high − rangeH) ≥ N% × rangeSize
+                  <span class="buy-txt">▲ BUY:</span> Signal sweeps below a recent bearish OB (last down-close before a bullish impulse) — price returning into institutional demand<br>
+                  <span class="sell-txt">▼ SELL:</span> Signal sweeps above a recent bullish OB (last up-close before a bearish impulse) — price returning into institutional supply
                 </div>
               </div>
             </div>
 
-            <!-- Filter 3: Wick Dominance -->
+            <!-- Filter 3: Fair Value Gap (FVG) -->
             <div class="filter-item" id="fi3">
               <div class="filter-toggle-row" onclick="toggleFilter(3)">
                 <span class="f-name">
                   <span class="f-badge">F3</span>
-                  Wick Dominance
+                  Fair Value Gap
                 </span>
                 <label class="filter-switch" onclick="event.stopPropagation()">
-                  <input type="checkbox" id="fWickDomEnabled" onchange="onFilterChange(3,this.checked)"/>
+                  <input type="checkbox" id="fFVGEnabled" onchange="onFilterChange(3,this.checked)"/>
                   <span class="filter-slider"></span>
                 </label>
               </div>
               <div class="filter-desc">
                 <div class="ctrl-row" style="margin-bottom:7px;">
-                  <label style="font-size:11px;letter-spacing:1px;">SWEEP WICK RATIO (×)</label>
-                  <input type="number" id="cfgWickRatio" value="2.0" min="0.1" max="20" step="0.1" style="font-size:12px;padding:6px 9px;"/>
+                  <label style="font-size:11px;letter-spacing:1px;">FVG Lookback (candles)</label>
+                  <input type="number" id="cfgFVGLookback" value="15" min="3" max="50" style="font-size:12px;padding:6px 9px;"/>
                 </div>
                 <div class="f-rule">
-                  Sweep wick must be ≥ N× the opposite wick.<br>
-                  <span class="buy-txt">▲ BUY:</span> lowerWick ≥ ratio × upperWick<br>
-                  <span class="sell-txt">▼ SELL:</span> upperWick ≥ ratio × lowerWick<br>
-                  <span style="color:var(--gold);font-size:11px;">Confirms strong rejection, not a weak tap.</span>
+                  <span class="buy-txt">▲ BUY:</span> Signal candle's low enters an unfilled bullish FVG (gap between candle[i-2].high and candle[i].low pointing up) — price pulling back into imbalance<br>
+                  <span class="sell-txt">▼ SELL:</span> Signal candle's high enters an unfilled bearish FVG (gap between candle[i-2].low and candle[i].high pointing down) — price retracing into imbalance
                 </div>
               </div>
             </div>
@@ -817,31 +771,9 @@
               </div>
             </div>
 
-            <!-- Filter 5: Body Rejection Ratio -->
-            <div class="filter-item" id="fi5">
-              <div class="filter-toggle-row" onclick="toggleFilter(5)">
-                <span class="f-name">
-                  <span class="f-badge">F5</span>
-                  Body Rejection Ratio
-                </span>
-                <label class="filter-switch" onclick="event.stopPropagation()">
-                  <input type="checkbox" id="fBodyRejectEnabled" onchange="onFilterChange(5,this.checked)"/>
-                  <span class="filter-slider"></span>
-                </label>
-              </div>
-              <div class="filter-desc">
-                <div class="ctrl-row" style="margin-bottom:7px;">
-                  <label style="font-size:11px;letter-spacing:1px;">MIN BODY % OF CANDLE RANGE</label>
-                  <input type="number" id="cfgBodyRejectPct" value="50" min="1" max="100" style="font-size:12px;padding:6px 9px;"/>
-                </div>
-                <div class="f-rule">
-                  |close − open| ≥ N% × (high − low) — filters doji candles.<br>
-                  <span style="color:var(--gold);font-size:11px;">Recommended: 40–50%</span>
-                </div>
-              </div>
-            </div>
-
           </div>
+
+          <!-- ── TRADE SCHEDULE TIMER ── -->
           <div class="schedule-section">
             <div class="section-lbl">⏰ Trade Schedule Timer</div>
 
@@ -909,75 +841,19 @@
             </div>
 
             <div id="counterFilterBody" style="display:none;">
-
-              <!-- ── Post-Close Delay ── -->
-              <div class="counter-sub-section">
-                <div class="counter-sub-lbl">⏳ Post-Close Delay (optional)</div>
-                <div class="counter-unit-pills">
-                  <div class="counter-unit-pill active" id="cwUnitMin" onclick="setCounterWaitUnit('minutes')">MINUTES</div>
-                  <div class="counter-unit-pill" id="cwUnitSec" onclick="setCounterWaitUnit('seconds')">SECONDS</div>
-                </div>
-                <div class="ctrl-row" style="margin-bottom:4px;">
-                  <input type="number" id="cfgCounterWaitVal" value="0" min="0" max="3600" step="1"
-                         style="font-size:12px;padding:6px 9px;width:80px;"/>
-                  <span class="hint" id="cwUnitHint">minutes delay after close before counter fires</span>
-                </div>
-                <div style="font-size:10px;color:#8ba4cc;font-family:'Share Tech Mono',monospace;margin-bottom:2px;">Set to 0 for immediate counter on close.</div>
+              <div class="ctrl-row" style="margin-bottom:8px;" title="How long after a trade opens before the counter check runs. Supports decimals: 1.5 = 1 min 30 sec, 0.5 = 30 sec, 2.3 = 2 min 18 sec.">
+                <label style="font-size:11px;letter-spacing:1px;">Wait Time (min.sec)</label>
+                <input type="number" id="cfgCounterWait" value="3" min="0.1" max="60" step="0.1"
+                       style="font-size:12px;padding:6px 9px;width:70px;"/>
               </div>
-
               <div style="font-size:10px;color:#8ba4cc;line-height:1.6;margin-bottom:8px;font-family:'Share Tech Mono',monospace;">
-                ▸ <span style="color:var(--green);">WIN</span> → counter trade is never placed.<br>
-                ▸ <span style="color:#ff7090;">LOSS</span> → counter fires after the trade <em>fully closes</em>.<br>
-                ▸ Optional post-close delay before counter fires.<br>
+                After a trade opens, the counter filter waits the set time then checks P/L.<br>
+                ▸ Decimals = fraction of a minute: <span style="color:#ff8c00;">1.5 = 1m 30s · 2.3 = 2m 18s · 0.5 = 30s</span><br>
+                ▸ <span style="color:var(--green);">Profit</span> → ignored, no counter trade.<br>
+                ▸ <span style="color:#ff7090;">Loss</span> → counter trade placed immediately at remaining expiry of original trade.<br>
                 <span style="color:#ff8c00;">Counter trades are never themselves countered.</span>
               </div>
               <div class="counter-status-box" id="counterStatusBox">Waiting for next trade…</div>
-            </div>
-          </div>
-
-          <!-- ── TRADE WAIT FUNCTION ── -->
-          <div class="tradewait-section">
-            <div class="section-lbl">⏳ Trade Wait Function</div>
-
-            <div class="tradewait-toggle-row">
-              <span class="tw-lbl">Enable Trade Wait</span>
-              <label class="tradewait-switch">
-                <input type="checkbox" id="tradeWaitEnabled" onchange="onTradeWaitToggle(this.checked)"/>
-                <span class="tradewait-slider"></span>
-              </label>
-            </div>
-
-            <div class="tradewait-body" id="tradeWaitBody">
-              <div style="font-size:10px;color:#8ba4cc;line-height:1.6;margin-bottom:10px;font-family:'Share Tech Mono',monospace;">
-                ▸ Monitors Net P/L each time a trade closes.<br>
-                ▸ When <span style="color:var(--green);">Target Profit</span> or <span style="color:#ff7090;">Max Loss</span> is hit:<br>
-                &nbsp;&nbsp;→ Session resets automatically.<br>
-                &nbsp;&nbsp;→ Auto-trade pauses for the wait timer.<br>
-                &nbsp;&nbsp;→ Auto-trade resumes when timer elapses.<br>
-                ▸ Cycle repeats endlessly while enabled.<br>
-                <span style="color:rgba(168,85,247,.8);">▸ Schedule Timer has priority — Trade Wait</span><br>
-                <span style="color:rgba(168,85,247,.8);">&nbsp;&nbsp;cannot resume outside schedule window.</span>
-              </div>
-
-              <div class="tradewait-timer-row">
-                <div class="tradewait-time-field">
-                  <label>Hours</label>
-                  <input type="number" id="twWaitHours" value="0" min="0" max="23" step="1" placeholder="0" oninput="onTradeWaitParamChange()"/>
-                </div>
-                <div class="tradewait-time-field">
-                  <label>Minutes</label>
-                  <input type="number" id="twWaitMinutes" value="5" min="0" max="59" step="1" placeholder="5" oninput="onTradeWaitParamChange()"/>
-                </div>
-              </div>
-              <div style="font-size:10px;color:#8ba4cc;font-family:'Share Tech Mono',monospace;margin-bottom:8px;" id="twTotalDisplay">Wait duration: <span style="color:#bf7fff;">5 min 0 sec</span></div>
-
-              <div class="tradewait-status-box" id="tradeWaitStatusBox">Trade Wait idle — monitoring disabled.</div>
-
-              <div class="tradewait-countdown-row" id="tradeWaitCdRow" style="display:none;">
-                <span class="tw-cd-label">Resume in</span>
-                <span class="tw-cd-val" id="tradeWaitCdVal">--:--:--</span>
-                <span class="tw-phase-badge idle" id="twPhaseBadge">IDLE</span>
-              </div>
             </div>
           </div>
 
@@ -1244,10 +1120,9 @@ let subscriptionId = null;
 
 // ─── SIGNAL FILTER STATE ──────────────────────────
 let filterEmaEnabled     = false;   // Filter 1: EMA Wick-Cross
-let filterMinSweep       = false;   // Filter 2: Min Sweep Depth
-let filterWickDom        = false;   // Filter 3: Wick Dominance
+let filterOBEnabled      = false;   // Filter 2: Order Block
+let filterFVGEnabled     = false;   // Filter 3: Fair Value Gap
 let filterEmaTrend       = false;   // Filter 4: EMA Trend (price vs EMA)
-let filterBodyReject     = false;   // Filter 5: Body Rejection Ratio
 
 // Running EMA value — recalculated on every new closed candle
 let emaValue = null;
@@ -1273,7 +1148,7 @@ function calcEMA(candleArr, period){
 
 // ─── FILTER UI HELPERS ────────────────────────────
 function toggleFilter(n){
-  const ids = {1:'fEmaEnabled', 2:'fMinSweepEnabled', 3:'fWickDomEnabled', 4:'fEmaTrendEnabled', 5:'fBodyRejectEnabled'};
+  const ids = {1:'fEmaEnabled', 2:'fOBEnabled', 3:'fFVGEnabled', 4:'fEmaTrendEnabled'};
   const chk = document.getElementById(ids[n]);
   chk.checked = !chk.checked;
   onFilterChange(n, chk.checked);
@@ -1283,14 +1158,100 @@ function onFilterChange(n, enabled){
   const el = document.getElementById('fi'+n);
   if(enabled) el.classList.add('enabled');
   else         el.classList.remove('enabled');
-  if(n===1) filterEmaEnabled  = enabled;
-  if(n===2) filterMinSweep    = enabled;
-  if(n===3) filterWickDom     = enabled;
-  if(n===4) filterEmaTrend    = enabled;
-  if(n===5) filterBodyReject  = enabled;
-  const names = {1:'EMA Wick-Cross', 2:'Min Sweep Depth', 3:'Wick Dominance', 4:'EMA Trend Filter', 5:'Body Rejection Ratio'};
+  if(n===1) filterEmaEnabled = enabled;
+  if(n===2) filterOBEnabled  = enabled;
+  if(n===3) filterFVGEnabled = enabled;
+  if(n===4) filterEmaTrend   = enabled;
+  const names = {1:'EMA Wick-Cross', 2:'Order Block', 3:'Fair Value Gap', 4:'EMA Trend Filter'};
   toast('Filter '+(enabled?'ON':'OFF')+' — '+names[n], 'info');
   saveState();
+}
+
+
+// ─── ORDER BLOCK DETECTION ────────────────────────
+// An Order Block (OB) is the last candle in the opposite direction
+// before a strong impulsive move.
+//
+// Bearish OB (demand / bullish OB):
+//   Find the last bearish (close < open) candle in the lookback window
+//   that was immediately followed by a bullish expansion (next close > its high).
+//   Its range [low, high] = demand zone.
+//
+// Bullish OB (supply / bearish OB):
+//   Find the last bullish (close > open) candle in the lookback window
+//   that was immediately followed by a bearish expansion (next close < its low).
+//   Its range [low, high] = supply zone.
+//
+// Returns { demandOB, supplyOB } — each is {low, high} or null.
+function detectOrderBlocks(candleArr, lookback){
+  const len = candleArr.length;
+  if(len < lookback + 2) return { demandOB: null, supplyOB: null };
+
+  let demandOB = null;   // last bearish OB → bullish zone (buy signal must reach into it)
+  let supplyOB = null;   // last bullish OB → bearish zone (sell signal must reach into it)
+
+  // Scan from most-recent backward (skip the very last candle = current signal)
+  const start = len - 2;       // [n-1] is the just-closed signal candle — don't use it as OB seed
+  const end   = Math.max(0, start - lookback);
+
+  for(let i = start; i > end; i--){
+    const c    = candleArr[i];
+    const next = candleArr[i + 1];
+    if(!c || !next) continue;
+
+    // Bearish candle (last down-close before bullish impulse) → demand OB
+    if(!demandOB && c.close < c.open && next.close > c.high){
+      demandOB = { low: c.low, high: c.high };
+    }
+    // Bullish candle (last up-close before bearish impulse) → supply OB
+    if(!supplyOB && c.close > c.open && next.close < c.low){
+      supplyOB = { low: c.low, high: c.high };
+    }
+    if(demandOB && supplyOB) break;
+  }
+  return { demandOB, supplyOB };
+}
+
+
+// ─── FAIR VALUE GAP DETECTION ─────────────────────
+// A Fair Value Gap (FVG / imbalance) is a 3-candle pattern where
+// candle[i-2] and candle[i] do NOT overlap — creating a price gap.
+//
+// Bullish FVG: candle[i-2].high < candle[i].low
+//   → gap between top of first candle and bottom of third (buy-side imbalance)
+//
+// Bearish FVG: candle[i-2].low > candle[i].high
+//   → gap between bottom of first candle and top of third (sell-side imbalance)
+//
+// Returns { bullishFVG, bearishFVG } — each is {low, high} or null.
+function detectFVGs(candleArr, lookback){
+  const len = candleArr.length;
+  if(len < 3) return { bullishFVG: null, bearishFVG: null };
+
+  let bullishFVG = null;
+  let bearishFVG = null;
+
+  // Start from the most-recent complete 3-candle window (excluding current signal candle)
+  const start = len - 2;        // candle[n-1] is the just-closed signal candle
+  const end   = Math.max(2, start - lookback);
+
+  for(let i = start; i >= end; i--){
+    const c0 = candleArr[i - 2];
+    // c1 = middle candle (candle[i-1]) — we don't need its values
+    const c2 = candleArr[i];
+    if(!c0 || !c2) continue;
+
+    // Bullish FVG: gap between c0.high and c2.low (no overlap, c2 above c0)
+    if(!bullishFVG && c0.high < c2.low){
+      bullishFVG = { low: c0.high, high: c2.low };
+    }
+    // Bearish FVG: gap between c0.low and c2.high (no overlap, c2 below c0)
+    if(!bearishFVG && c0.low > c2.high){
+      bearishFVG = { low: c2.high, high: c0.low };
+    }
+    if(bullishFVG && bearishFVG) break;
+  }
+  return { bullishFVG, bearishFVG };
 }
 
 
@@ -1307,7 +1268,7 @@ function saveState(){
       _version: STATE_VERSION,
       tradeMode, durType, tradeLog, stats, candles: candles.slice(-100),
       analysisCandleMode, analysisCandleTF,
-      filters: { ema: filterEmaEnabled, minSweep: filterMinSweep, wickDom: filterWickDom, emaTrend: filterEmaTrend, bodyReject: filterBodyReject, emaPeriod: v('cfgEmaPeriod'), minSweepPct: v('cfgMinSweepPct'), wickRatio: v('cfgWickRatio'), emaTrendPeriod: v('cfgEmaTrendPeriod'), bodyRejectPct: v('cfgBodyRejectPct') },
+      filters: { ema: filterEmaEnabled, ob: filterOBEnabled, fvg: filterFVGEnabled, emaTrend: filterEmaTrend, emaPeriod: v('cfgEmaPeriod'), emaTrendPeriod: v('cfgEmaTrendPeriod'), obLookback: v('cfgOBLookback'), fvgLookback: v('cfgFVGLookback') },
       cfg: {
         symbol: v('cfgSymbol'), minRange: v('cfgMinRange'), maxPos: v('cfgMaxPos'),
         stake: v('cfgStake'), sl: v('cfgSL'), tp: v('cfgTP'),
@@ -1317,11 +1278,6 @@ function saveState(){
         enabled: scheduleEnabled,
         start: v('scheduleStart'),
         end:   v('scheduleEnd')
-      },
-      tradeWait: {
-        enabled:      tradeWaitEnabled,
-        waitHours:    v('twWaitHours'),
-        waitMinutes:  v('twWaitMinutes')
       }
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
@@ -1385,18 +1341,16 @@ function loadState(){
         const chk1 = document.getElementById('fEmaEnabled');
         if(chk1){ chk1.checked = filterEmaEnabled; onFilterChange(1, filterEmaEnabled); }
       }
-      if(s.filters.minSweep !== undefined){
-        filterMinSweep = !!s.filters.minSweep;
-        const chk2 = document.getElementById('fMinSweepEnabled');
-        if(chk2){ chk2.checked = filterMinSweep; onFilterChange(2, filterMinSweep); }
+      if(s.filters.ob !== undefined){
+        filterOBEnabled = !!s.filters.ob;
+        const chk2 = document.getElementById('fOBEnabled');
+        if(chk2){ chk2.checked = filterOBEnabled; onFilterChange(2, filterOBEnabled); }
       }
-      if(s.filters.minSweepPct !== undefined) setVal('cfgMinSweepPct', s.filters.minSweepPct);
-      if(s.filters.wickDom !== undefined){
-        filterWickDom = !!s.filters.wickDom;
-        const chk3 = document.getElementById('fWickDomEnabled');
-        if(chk3){ chk3.checked = filterWickDom; onFilterChange(3, filterWickDom); }
+      if(s.filters.fvg !== undefined){
+        filterFVGEnabled = !!s.filters.fvg;
+        const chk3 = document.getElementById('fFVGEnabled');
+        if(chk3){ chk3.checked = filterFVGEnabled; onFilterChange(3, filterFVGEnabled); }
       }
-      if(s.filters.wickRatio !== undefined) setVal('cfgWickRatio', s.filters.wickRatio);
       if(s.filters.emaPeriod !== undefined) setVal('cfgEmaPeriod', s.filters.emaPeriod);
       if(s.filters.emaTrend !== undefined){
         filterEmaTrend = !!s.filters.emaTrend;
@@ -1404,12 +1358,8 @@ function loadState(){
         if(chk4){ chk4.checked = filterEmaTrend; onFilterChange(4, filterEmaTrend); }
       }
       if(s.filters.emaTrendPeriod !== undefined) setVal('cfgEmaTrendPeriod', s.filters.emaTrendPeriod);
-      if(s.filters.bodyReject !== undefined){
-        filterBodyReject = !!s.filters.bodyReject;
-        const chk5 = document.getElementById('fBodyRejectEnabled');
-        if(chk5){ chk5.checked = filterBodyReject; onFilterChange(5, filterBodyReject); }
-      }
-      if(s.filters.bodyRejectPct !== undefined) setVal('cfgBodyRejectPct', s.filters.bodyRejectPct);
+      if(s.filters.obLookback  !== undefined) setVal('cfgOBLookback',  s.filters.obLookback);
+      if(s.filters.fvgLookback !== undefined) setVal('cfgFVGLookback', s.filters.fvgLookback);
     }
 
     // Restore schedule settings
@@ -1433,16 +1383,6 @@ function loadState(){
 
     rebuildLog();
     updateStats();
-    // Restore Trade Wait settings
-    if(s.tradeWait){
-      if(s.tradeWait.waitHours   !== undefined) setVal('twWaitHours',   s.tradeWait.waitHours);
-      if(s.tradeWait.waitMinutes !== undefined) setVal('twWaitMinutes', s.tradeWait.waitMinutes);
-      if(s.tradeWait.enabled){
-        const twChk = document.getElementById('tradeWaitEnabled');
-        if(twChk){ twChk.checked = true; onTradeWaitToggle(true); }
-      }
-      onTradeWaitParamChange();
-    }
   } catch(e){}
 }
 
@@ -2139,36 +2079,39 @@ function onNewCandle(){
     }
   }
 
-  // ── LAYER 3: FILTER 2 — MIN SWEEP DEPTH ─────────
-  // BUY:  (range.low − signal.low)   ≥ N% × rangeSize
-  // SELL: (signal.high − range.high) ≥ N% × rangeSize
-  if(filterMinSweep){
-    const pct = (parseFloat(v('cfgMinSweepPct')) || 20) / 100;
-    const rangeSize2 = range.high - range.low;
+  // ── LAYER 3: FILTER 2 — ORDER BLOCK ─────────────
+  // BUY:  signal candle's low swept into a bearish OB (demand zone) — price
+  //       returning to institutional buy interest below the range low
+  // SELL: signal candle's high swept into a bullish OB (supply zone) — price
+  //       returning to institutional sell interest above the range high
+  if(filterOBEnabled){
+    const obLookback = parseInt(v('cfgOBLookback')) || 10;
+    const { demandOB, supplyOB } = detectOrderBlocks(candles, obLookback);
     if(isBullish){
-      const sweepDepth = range.low - signal.low;
-      isBullish = sweepDepth >= pct * rangeSize2;
+      // Signal low must touch or enter the demand OB zone
+      isBullish = !!(demandOB && signal.low <= demandOB.high && signal.low >= demandOB.low - (demandOB.high - demandOB.low));
     }
     if(isBearish){
-      const sweepDepth = signal.high - range.high;
-      isBearish = sweepDepth >= pct * rangeSize2;
+      // Signal high must touch or enter the supply OB zone
+      isBearish = !!(supplyOB && signal.high >= supplyOB.low && signal.high <= supplyOB.high + (supplyOB.high - supplyOB.low));
     }
   }
 
-  // ── LAYER 4: FILTER 3 — WICK DOMINANCE ──────────
-  // BUY:  lowerWick ≥ ratio × upperWick  (strong downward rejection)
-  // SELL: upperWick ≥ ratio × lowerWick  (strong upward rejection)
-  if(filterWickDom){
-    const ratio = parseFloat(v('cfgWickRatio')) || 2.0;
-    const sigBody  = Math.abs(signal.close - signal.open);
-    const sigBodyMid = (signal.open + signal.close) / 2;
-    const lowerWick = Math.min(signal.open, signal.close) - signal.low;
-    const upperWick = signal.high - Math.max(signal.open, signal.close);
+  // ── LAYER 4: FILTER 3 — FAIR VALUE GAP ──────────
+  // BUY:  signal candle's low trades into an unfilled bullish FVG — price
+  //       filling the buy-side imbalance and signaling continuation up
+  // SELL: signal candle's high trades into an unfilled bearish FVG — price
+  //       filling the sell-side imbalance and signaling continuation down
+  if(filterFVGEnabled){
+    const fvgLookback = parseInt(v('cfgFVGLookback')) || 15;
+    const { bullishFVG, bearishFVG } = detectFVGs(candles, fvgLookback);
     if(isBullish){
-      isBullish = lowerWick >= ratio * Math.max(upperWick, 0.000001);
+      // Signal low must reach into the bullish FVG zone
+      isBullish = !!(bullishFVG && signal.low <= bullishFVG.high && signal.close >= bullishFVG.low);
     }
     if(isBearish){
-      isBearish = upperWick >= ratio * Math.max(lowerWick, 0.000001);
+      // Signal high must reach into the bearish FVG zone
+      isBearish = !!(bearishFVG && signal.high >= bearishFVG.low && signal.close <= bearishFVG.high);
     }
   }
 
@@ -2186,25 +2129,6 @@ function onNewCandle(){
     } else {
       if(isBullish) isBullish = (currentPrice > trendEma);   // price above EMA → bullish trend only
       if(isBearish) isBearish = (currentPrice < trendEma);   // price below EMA → bearish trend only
-    }
-  }
-
-  // ── LAYER 6: FILTER 5 — BODY REJECTION RATIO ────────────
-  // Ensures the signal candle has a real body — filters out doji candles
-  // where indecision is high and the rejection is ambiguous.
-  // |close − open| ≥ N% × (high − low)
-  if(filterBodyReject){
-    const minBodyPct = (parseFloat(v('cfgBodyRejectPct')) || 50) / 100;
-    const candleRange = signal.high - signal.low;
-    const bodySize    = Math.abs(signal.close - signal.open);
-    if(candleRange > 0){
-      const bodyRatio = bodySize / candleRange;
-      if(isBullish) isBullish = bodyRatio >= minBodyPct;
-      if(isBearish) isBearish = bodyRatio >= minBodyPct;
-    } else {
-      // Zero-range candle (flat) — no body at all, block signal
-      isBullish = false;
-      isBearish = false;
     }
   }
 
@@ -2275,8 +2199,8 @@ function processBuySignal(candle, symbol){
 
   const entry = candle.close;
   const stake = parseFloat(v('cfgStake'))||1;
-  // cfgSL / cfgTP are SESSION-level Net P/L limits — do NOT pass them as
-  // per-trade amounts. Pass 0,0 so no mid-contract force-sell ever fires.
+  const sl    = parseFloat(v('cfgSL'))||0;
+  const tp    = parseFloat(v('cfgTP'))||0;
   const mktLabel = getMarketLabel(symbol);
 
   const logEntry = {
@@ -2292,7 +2216,7 @@ function processBuySignal(candle, symbol){
   const toastDir = finalType==='CALL' ? '🔵 CRT RISE Signal' : '🔴 CRT FALL Signal (REVERSED)';
   toast(toastDir+' @ '+entry.toFixed(5), finalType==='CALL'?'buy':'sell');
 
-  placeTrade(finalType, symbol, stake, 0, 0, logEntry.id);
+  placeTrade(finalType, symbol, stake, sl, tp, logEntry.id);
   startCooldown();
 
   updateStats(); saveState();
@@ -2326,8 +2250,8 @@ function processSellSignal(candle, symbol){
 
   const entry = candle.close;
   const stake = parseFloat(v('cfgStake'))||1;
-  // cfgSL / cfgTP are SESSION-level Net P/L limits — do NOT pass them as
-  // per-trade amounts. Pass 0,0 so no mid-contract force-sell ever fires.
+  const sl    = parseFloat(v('cfgSL'))||0;
+  const tp    = parseFloat(v('cfgTP'))||0;
   const mktLabel = getMarketLabel(symbol);
 
   const logEntry = {
@@ -2343,7 +2267,7 @@ function processSellSignal(candle, symbol){
   const toastDir = finalType==='PUT' ? '🔴 CRT FALL Signal' : '🔵 CRT RISE Signal (REVERSED)';
   toast(toastDir+' @ '+entry.toFixed(5), finalType==='PUT'?'sell':'buy');
 
-  placeTrade(finalType, symbol, stake, 0, 0, logEntry.id);
+  placeTrade(finalType, symbol, stake, sl, tp, logEntry.id);
   startCooldown();
 
   updateStats(); saveState();
@@ -2414,13 +2338,11 @@ function handleBuyResponse(buy){
     }
   }
 
-  // Calculate expiry for countdown timer.
-  // Counter trades now use the same duration as the main EA (cfgDuration + durType).
-  const _dur      = parseInt(v('cfgDuration')) || 5;
-  const _posDurType = durType;
-  const _durMs    = durType === 'ticks'   ? null
-                  : durType === 'seconds' ? _dur * 1000
-                  : _dur * 60 * 1000;
+  // Calculate expiry for countdown timer
+  const _dur   = parseInt(v('cfgDuration')) || 5;
+  const _durMs = durType === 'ticks'   ? null
+               : durType === 'seconds' ? _dur * 1000
+               : _dur * 60 * 1000;
 
   openPositions[String(contractId)] = {
     contractId: String(contractId), dir: buy.contract_type==='CALL'?'call':'put',
@@ -2433,7 +2355,7 @@ function handleBuyResponse(buy){
     openTime:   new Date().toLocaleTimeString(),
     openTimeMs: Date.now(),
     expiryMs:   _durMs ? Date.now() + _durMs : null,
-    durType:    _posDurType,
+    durType:    durType,
     durValue:   _dur,
     isCounter:  isCounter   // true for counter trades → never re-countered
   };
@@ -2446,15 +2368,15 @@ function handleBuyResponse(buy){
   // NOT stream — the buy+subscribe pattern is the only reliable method.
   // We still send a direct POC subscription as belt-and-braces for longer
   // duration contracts (seconds/minutes) that DO stream normally.
-  if(_posDurType !== 'ticks'){
+  if(durType !== 'ticks'){
     send({ proposal_open_contract:1, contract_id:contractId, subscribe:1 });
   }
 
-  // Safety fallback poll — fires after max expected contract lifetime + 5 s.
-  // Both normal and counter trades use the same _dur / _posDurType (main EA duration).
-  const maxMs = _posDurType==='ticks'   ? (_dur * 1500 + 5000)   // ~1.5 s/tick + buffer
-              : _posDurType==='seconds' ? (_dur * 1000 + 5000)
-              : (_dur * 60000 + 5000);
+  // Safety fallback poll — fires after max expected contract lifetime + 5 s
+  const dur = parseInt(v('cfgDuration'))||5;
+  const maxMs = durType==='ticks' ? (dur * 1500 + 5000)   // ~1.5 s/tick + buffer
+              : durType==='seconds' ? (dur * 1000 + 5000)
+              : (dur * 60000 + 5000);
   setTimeout(()=>{ pollContractIfOpen(contractId); }, maxMs);
 
   renderPositions();
@@ -2492,12 +2414,9 @@ function handleContractUpdate(poc){
   if(isDefinitivelySettled && poc.profit_loss !== undefined && poc.profit_loss !== null && poc.profit_loss !== ''){
     // profit_loss from Deriv is the true net P&L — use it only on final settlement
     finalProfit = parseFloat(poc.profit_loss);
-  } else if(isDefinitivelySettled && poc.sell_price !== undefined){
+  } else if(poc.sell_price !== undefined){
     // sell_price is the final payout; subtract the ORIGINAL stake (not live poc.buy_price
-    // which is a mark-to-market value and gives shallower losses than the true amount).
-    // GUARD: only use sell_price when definitively settled — Deriv includes sell_price
-    // on every live POC tick as a mark-to-market buyback value, which would give a
-    // falsely negative finalProfit mid-contract and trigger premature force-close.
+    // which is a mark-to-market value and gives shallower losses than the true amount)
     const pos = openPositions[String(poc.contract_id)];
     const originalStake = pos ? pos.buyPrice : (parseFloat(poc.buy_price) || 0);
     finalProfit = parseFloat(poc.sell_price) - originalStake;
@@ -2538,11 +2457,8 @@ function handleContractUpdate(poc){
   if(poc.ticks_remaining !== undefined && poc.ticks_remaining !== null){
     pos.ticksRemaining = parseInt(poc.ticks_remaining);
   }
-  // Always trust the server-authoritative expiry_time — overwrite any
-  // client-side estimate computed at buy time (Date.now() + durMs) which
-  // can drift if there is network latency between placing the trade and
-  // receiving the buy confirmation.
-  if(poc.expiry_time){
+  // Also update expiryMs if Deriv gives us an expiry time
+  if(poc.expiry_time && !pos.expiryMs){
     pos.expiryMs = poc.expiry_time * 1000; // epoch seconds → ms
   }
 
@@ -2553,13 +2469,11 @@ function handleContractUpdate(poc){
     }
   }
 
-  // NOTE: Per-trade mid-contract force-close removed.
-  // cfgSL / cfgTP are SESSION-LEVEL Net P/L limits, not per-trade dollar stops.
-  // Applying them against live mark-to-market finalProfit caused trades to be
-  // sold early (e.g. at 30-40s on a 1-minute contract) because Deriv streams
-  // a low sell_price on every live tick which temporarily looks like a large loss.
-  // Session limits are correctly enforced by checkSessionLimits() after each
-  // trade settles — no mid-contract sell is needed or correct here.
+  const slAmt = pos.slAmt, tpAmt = pos.tpAmt;
+  if((slAmt > 0 && finalProfit <= -slAmt) || (tpAmt > 0 && finalProfit >= tpAmt)){
+    closePosition(cid, finalProfit, 'force');
+    return;
+  }
 
   renderPositions();
   rebuildLog();
@@ -2617,10 +2531,8 @@ function closePosition(cid, finalProfit, status){
 
   // Cancel this position's countdown timer (other positions keep their own timers)
   stopPositionTimer(cid);
-  // NOTE: do NOT cancel the counter watch here — _settleLogEntry →
-  // notifyCounterOnClose needs the snapshot to still be in counterPendingMap.
-  // cancelCounterCheck is called inside notifyCounterOnClose after it reads it,
-  // or via the explicit disable path.
+  // Cancel any pending counter check for this position
+  cancelCounterCheck(cid);
 
   renderPositions();
 
@@ -2649,14 +2561,6 @@ function _settleLogEntry(le, finalProfit){
   updateStats();
   toast((won ? '✅ WIN' : '❌ LOSS') + ' ' + fmtAmount(Math.abs(finalProfit)), 'info');
   saveState();
-
-  // ── Smart Counter Filter: notify on confirmed close ──
-  // Called for both WIN and LOSS — notifyCounterOnClose handles the WIN case
-  // by cleaning up the map and doing nothing else.
-  if(le.contractId){
-    notifyCounterOnClose(String(le.contractId), finalProfit, le);
-  }
-
   checkSessionLimits();
 }
 
@@ -2678,14 +2582,6 @@ function checkSessionLimits(){
   }
 
   if(haltReason && !eaHalted){
-    // ── Trade Wait intercept ──────────────────────────────────────────
-    // If Trade Wait is enabled, hand off to it instead of a hard halt.
-    // It will reset the session, wait, then resume auto-trade on its own.
-    const reasonShort = tpAmt > 0 && netProfit >= tpAmt
-      ? '🎯 TARGET PROFIT +'+fmtAmount(tpAmt)+' REACHED'
-      : '🛑 MAX LOSS −'+fmtAmount(slAmt)+' REACHED';
-    if(tradeWaitHandleLimit(reasonShort)) return;
-    // ── Normal halt (Trade Wait disabled) ────────────────────────────
     eaHalted = true;
     autoBot = false;
     botRunning = false;
@@ -2925,15 +2821,11 @@ function rebuildLog(){
   tbody.innerHTML = tradeLog.map((l, idx)=>{
     const sn = idx + 1;
     const isGhost = !!l._ghost;
-    const dirTag = l._isCounter
-      ? (l.dir==='BUY'
-          ? '<span class="tag-cbuy">CBUY</span>'
-          : '<span class="tag-csell">CSELL</span>')
-      : (l.dir==='BUY'
-          ? '<span class="tag-buy">BUY</span>'
-          : l.dir==='SELL'
-            ? '<span class="tag-sell">SELL</span>'
-            : '<span style="color:#8ba4cc;font-size:10px;letter-spacing:1px;">GHOST</span>');
+    const dirTag = l.dir==='BUY'
+      ? '<span class="tag-buy">BUY</span>'
+      : l.dir==='SELL'
+        ? '<span class="tag-sell">SELL</span>'
+        : '<span style="color:#8ba4cc;font-size:10px;letter-spacing:1px;">GHOST</span>';
     const resCls = l.result==='WIN'?'tag-win':l.result==='LOSS'?'tag-loss':l.result==='OPEN'?'tag-open':l.result==='?'?'tag-open':l.result==='FAILED'?'tag-failed':'';
     const resDisplay = l.result === '?' ? '?' : l.result;
     const pnlCls = l.pnl&&l.pnl.startsWith('+')?'tag-win':l.pnl&&l.pnl!=='—'?'tag-loss':'';
@@ -2974,8 +2866,8 @@ function manualTrade(contractType){
 
   const symbol = v('cfgSymbol');
   const stake  = parseFloat(v('cfgStake'))||1;
-  // cfgSL / cfgTP are SESSION-level Net P/L limits — do NOT pass them as
-  // per-trade amounts. Pass 0,0 so no mid-contract force-sell ever fires.
+  const sl     = parseFloat(v('cfgSL'))||0;
+  const tp     = parseFloat(v('cfgTP'))||0;
   const mktLabel = getMarketLabel(symbol);
 
   // Apply reverse mode at the final execution point
@@ -3005,7 +2897,7 @@ function manualTrade(contractType){
 
   const reversed = finalType !== originalType;
   const label = finalType==='CALL' ? '▲ RISE (BUY)' : '▼ FALL (SELL)';
-  placeTrade(finalType, symbol, stake, 0, 0, logEntry.id);
+  placeTrade(finalType, symbol, stake, sl, tp, logEntry.id);
   toast(label+(reversed?' [REVERSED]':'')+' sent · '+symbol, finalType==='CALL'?'buy':'sell');
   startCooldown();
   updateStats(); saveState();
@@ -3398,18 +3290,6 @@ function _scheduleTickUI(){
       // Window just closed — Mode 2: always turn off autoBot at end time,
       // no matter who turned it on.
       _forceAutoBotOff();
-      // If Trade Wait is mid-countdown, abort it — the schedule has authority.
-      if(tradeWaitEnabled && (tradeWaitPhase === 'waiting' || tradeWaitPhase === 'resuming')){
-        _twCancelTimers();
-        _twSetPhase('monitoring');
-        setTradeWaitStatus(
-          '⏸ Schedule window closed — Trade Wait countdown aborted.\n' +
-          '  Auto-trade will resume at next scheduled start time.',
-          'waiting'
-        );
-        const twCdRow = document.getElementById('tradeWaitCdRow');
-        if(twCdRow) twCdRow.style.display = 'none';
-      }
       toast('\u23f0 Trade end time reached \u2014 Auto CRT disabled','info');
       setBotStatus('\u23f0 Trade window ended \u2014 waiting for next cycle at ' + v('scheduleStart'), 'error');
       schedulePhase = 'waiting_start';
@@ -3600,23 +3480,6 @@ function clearSavedToken(){
 //   SMART COUNTER FILTER
 // ═══════════════════════════════════════════════════
 
-// Toggle wait-time unit — only one can be active
-function setCounterWaitUnit(unit){
-  const minPill = document.getElementById('cwUnitMin');
-  const secPill = document.getElementById('cwUnitSec');
-  const hint    = document.getElementById('cwUnitHint');
-  if(unit === 'minutes'){
-    minPill.classList.add('active');
-    secPill.classList.remove('active');
-    if(hint) hint.textContent = 'minutes delay after close before counter fires';
-  } else {
-    secPill.classList.add('active');
-    minPill.classList.remove('active');
-    if(hint) hint.textContent = 'seconds delay after close before counter fires';
-  }
-}
-
-
 function onCounterFilterToggle(enabled){
   counterFilterEnabled = enabled;
   const body = document.getElementById('counterFilterBody');
@@ -3633,8 +3496,6 @@ function onCounterFilterToggle(enabled){
 }
 
 // Called by handleBuyResponse immediately after position is stored.
-// Registers the trade in the pending watch map — no timer is started here.
-// The counter will only fire AFTER the trade fully closes with a confirmed LOSS.
 function scheduleCounterCheck(cid){
   cid = String(cid);
   if(!counterFilterEnabled) return;
@@ -3642,128 +3503,125 @@ function scheduleCounterCheck(cid){
   const pos = openPositions[cid];
   if(!pos) return;
 
-  // Never watch a counter trade — it can never itself be countered
+  // Never schedule a counter check for a counter trade itself
   if(pos.isCounter){
     setCounterStatus('Counter trade active — no re-counter.', 'ok');
     return;
   }
 
-  // Snapshot the trade details now (position will be deleted on close)
-  counterPendingMap[cid] = {
-    dir:    pos.dir,
-    symbol: pos.symbol || v('cfgSymbol'),
-    stake:  parseFloat(v('cfgStake')) || pos.stake || 1,
-    sl:     parseFloat(v('cfgSL'))    || 0,
-    tp:     parseFloat(v('cfgTP'))    || 0,
-  };
+  // Parse decimal wait time: int part = minutes, decimal part treated as seconds (x100)
+  // e.g. 1.5 → 1 min 30 sec | 2.3 → 2 min 30 sec | 0.5 → 0 min 50 sec
+  // Decimal treated as true fraction of a minute: 1.5 = 1m 30s, 2.3 = 2m 18s, 0.5 = 30s
+  const rawWait  = parseFloat(document.getElementById('cfgCounterWait').value) || 3;
+  const waitMins = Math.floor(rawWait);
+  const waitSecs = Math.round((rawWait - waitMins) * 60); // fraction of a minute → seconds
+  const waitMs   = (waitMins * 60 + waitSecs) * 1000;
+  const waitLabel = waitMins > 0
+    ? (waitSecs > 0 ? `${waitMins}m ${waitSecs}s` : `${waitMins}m`)
+    : `${waitSecs}s`;
+  const dir = pos.dir; // 'call' or 'put'
 
-  setCounterStatus(`👁 Watching ${pos.dir.toUpperCase()} #${cid} — counter fires on confirmed close LOSS…`, 'watching');
+  setCounterStatus(`⏳ Watching ${dir.toUpperCase()} #${cid} — checking in ${waitLabel}…`, 'watching');
+
+  const handle = setTimeout(()=>{
+    delete counterPendingMap[cid];
+    runCounterCheck(cid);
+  }, waitMs);
+
+  counterPendingMap[cid] = handle;
 }
 
-// Cancel a pending counter watch (e.g. disabled mid-session)
+// Cancel a pending counter check (e.g. position closed before wait time)
 function cancelCounterCheck(cid){
   cid = String(cid);
   if(counterPendingMap[cid]){
-    // If it's a setTimeout handle (legacy / stale), clear it
-    if(typeof counterPendingMap[cid] === 'number'){
-      clearTimeout(counterPendingMap[cid]);
-    }
+    clearTimeout(counterPendingMap[cid]);
     delete counterPendingMap[cid];
   }
 }
 
-// Called by _settleLogEntry after a trade closes with a confirmed result.
-// Only fires the counter if the result is a LOSS.
-function notifyCounterOnClose(cid, finalProfit, logEntry){
+// Runs at the end of the wait period. Checks P/L; fires counter if in loss.
+function runCounterCheck(cid){
   cid = String(cid);
-  if(!counterFilterEnabled){
-    // Still clean up the map even if disabled mid-session
-    delete counterPendingMap[cid];
+  const pos = openPositions[cid];
+
+  // Position may have already closed — nothing to counter
+  if(!pos){
+    setCounterStatus('Position closed before counter check — skipped.', 'ok');
     return;
   }
 
-  const snapshot = counterPendingMap[cid];
-  // Always remove from map regardless of outcome — prevents stale entries
-  delete counterPendingMap[cid];
+  const pnl = pos.currentPnl;  // live floating P/L streamed by Deriv POC
 
-  if(!snapshot || typeof snapshot !== 'object'){
-    // Not watched (e.g. was a counter trade itself, or filter was off at open)
+  if(pnl >= 0){
+    // Profitable — do nothing
+    setCounterStatus(`✅ #${cid} in profit (${pnl >= 0 ? '+' : ''}${fmtAmount(Math.abs(pnl))}) — no counter trade.`, 'ok');
     return;
   }
 
-  // Only counter on confirmed loss
-  if(finalProfit >= 0){
-    setCounterStatus(`✅ #${cid} closed WIN (${fmtAmount(finalProfit)}) — no counter trade.`, 'ok');
-    return;
-  }
+  // In loss — place immediate counter trade in the opposite direction
+  const counterType = (pos.dir === 'call') ? 'PUT' : 'CALL';
+  const symbol  = pos.symbol || v('cfgSymbol');
+  const stake   = parseFloat(v('cfgStake')) || pos.stake || 1;
+  const sl      = parseFloat(v('cfgSL'))    || 0;
+  const tp      = parseFloat(v('cfgTP'))    || 0;
 
-  // Skip if autoBot is off — user disabled trading, don't fire ghost counters
-  if(!autoBot){
-    setCounterStatus(`⏸ #${cid} closed LOSS but auto-trade is OFF — counter skipped.`, '');
-    return;
-  }
+  setCounterStatus(`🔴 #${cid} in loss (${fmtAmount(Math.abs(pnl))}) — firing ${counterType} counter…`, 'fired');
+  const remSec  = pos.expiryMs ? Math.max(5, Math.round((pos.expiryMs - Date.now()) / 1000)) : null;
+  const remLabel = remSec
+    ? ` (syncing to remaining ${remSec >= 60 ? Math.floor(remSec/60)+'m '+(remSec%60)+'s' : remSec+'s'})`
+    : '';
+  // remLabel is stored for the toast — counter duration is synced in placeCounterTrade
 
-  runCounterCheck(cid, snapshot, finalProfit);
-}
-
-// Fires the counter trade after a confirmed close LOSS.
-// Uses the snapshot taken at open — position is already deleted.
-function runCounterCheck(cid, snapshot, finalProfit){
-  const { dir, symbol, stake, sl, tp } = snapshot;
-  const counterType = (dir === 'call') ? 'PUT' : 'CALL';
-  const lossAmt = Math.abs(finalProfit);
-
-  // Read optional post-close delay from the wait time inputs
-  const waitVal  = parseInt(document.getElementById('cfgCounterWaitVal').value) || 0;
-  const waitUnit = document.getElementById('cwUnitMin').classList.contains('active') ? 'minutes' : 'seconds';
-  const waitMs   = waitUnit === 'minutes' ? waitVal * 60 * 1000 : waitVal * 1000;
-
-  const fire = () => {
-    if(!counterFilterEnabled) return; // may have been disabled during the delay
-    if(!autoBot) return;              // auto-trade turned off during delay
-
-    setCounterStatus(`🔴 #${cid} closed LOSS (−${fmtAmount(lossAmt)}) — firing ${counterType} counter…`, 'fired');
-
-    const logEntry = {
-      id:         Date.now() + '_ct',
-      time:       new Date().toLocaleTimeString(),
-      dir:        counterType === 'CALL' ? 'BUY' : 'SELL',
-      signal:     counterType === 'CALL' ? '▲ COUNTER RISE' : '▼ COUNTER FALL',
-      entry:      '—',
-      market:     symbol,
-      result:     'OPEN',
-      pnl:        '—',
-      contractId: null,
-      _isCounter: true
-    };
-    stats.totalSignals++;
-    if(counterType === 'CALL') stats.buySigs++; else stats.sellSigs++;
-    stats.lastSignal = counterType === 'CALL' ? 'COUNTER BUY' : 'COUNTER SELL';
-    stats.lastTime   = logEntry.time;
-    tradeLog.unshift(logEntry);
-    rebuildLog();
-    updateStats();
-
-    placeCounterTrade(counterType, symbol, stake, sl, tp, logEntry.id);
-    toast(`⚡ Counter ${counterType} placed after confirmed LOSS`, 'info');
+  // Build a log entry for the counter trade
+  const logEntry = {
+    id:         Date.now() + '_ct',
+    time:       new Date().toLocaleTimeString(),
+    signal:     counterType === 'CALL' ? '▲ COUNTER RISE' : '▼ COUNTER FALL',
+    entry:      '—',
+    market:     symbol,
+    result:     'OPEN',
+    pnl:        '—',
+    contractId: null,
+    _isCounter: true
   };
+  stats.totalSignals++;
+  if(counterType === 'CALL') stats.buySigs++; else stats.sellSigs++;
+  stats.lastSignal = counterType === 'CALL' ? 'COUNTER BUY' : 'COUNTER SELL';
+  stats.lastTime   = logEntry.time;
+  tradeLog.unshift(logEntry);
+  rebuildLog();
+  updateStats();
 
-  if(waitMs > 0){
-    const waitLabel = waitUnit === 'minutes' ? `${waitVal}m` : `${waitVal}s`;
-    setCounterStatus(`🔴 #${cid} LOSS confirmed — counter fires in ${waitLabel}…`, 'fired');
-    setTimeout(fire, waitMs);
-  } else {
-    fire();
-  }
+  // Place the counter trade — mark it so it can never itself be countered
+  placeCounterTrade(counterType, symbol, stake, sl, tp, logEntry.id, pos.expiryMs);
+
+  toast(`⚡ Counter ${counterType} placed vs open loss${remLabel}`, 'info');
 }
 
 // Like placeTrade but stamps isCounter=true on the resulting position.
-// Always uses the main EA duration (cfgDuration + durType) — no separate counter duration.
-function placeCounterTrade(contractType, symbol, stake, slAmt, tpAmt, logId){
+// originExpiryMs: the expiryMs of the original trade — counter closes at the same time.
+function placeCounterTrade(contractType, symbol, stake, slAmt, tpAmt, logId, originExpiryMs){
   stats.totalTrades++;
 
-  const dur     = parseInt(v('cfgDuration')) || 5;
-  const durUnit = durType === 'ticks' ? 't' : durType === 'seconds' ? 's' : 'm';
+  let dur, durUnit;
+  if(durType === 'ticks'){
+    // Tick contracts: can't sync to wall-clock expiry, use configured duration
+    dur     = parseInt(v('cfgDuration')) || 5;
+    durUnit = 't';
+  } else {
+    // Calculate remaining seconds until the original trade expires
+    const remMs = originExpiryMs ? Math.max(5000, originExpiryMs - Date.now()) : null;
+    if(remMs && durType !== 'ticks'){
+      // Always send in seconds so Deriv accepts fractional time accurately
+      dur     = Math.round(remMs / 1000);
+      durUnit = 's';
+    } else {
+      // Fallback: use configured duration
+      dur     = parseInt(v('cfgDuration')) || 5;
+      durUnit = durType === 'seconds' ? 's' : 'm';
+    }
+  }
 
   // Use payoutCurrency confirmed by payout_currencies — same as placeTrade
   const tradeAmount = parseFloat(parseFloat(stake).toFixed(2));
@@ -3801,286 +3659,6 @@ function setCounterStatus(msg, cls){
 // (The actual integration is already inline via the openPositions block above
 //  and the `isCounter` flag set from passthrough — see handleBuyResponse.)
 
-
-// ═══════════════════════════════════════════════════
-//  TRADE WAIT FUNCTION
-//  Monitors TP/SL → auto-resets session → waits timer
-//  → re-enables auto-trade → repeats endlessly.
-//
-//  SCHEDULE PRIORITY RULE:
-//  Trade Wait NEVER overrides the Schedule Timer.
-//  If the schedule window has ended (or was never open),
-//  Trade Wait will NOT re-enable auto-trade. It simply
-//  cancels quietly and lets the Schedule engine re-enable
-//  auto-trade at the next scheduled start time.
-// ═══════════════════════════════════════════════════
-
-let tradeWaitEnabled   = false;    // master toggle
-let tradeWaitPhase     = 'idle';   // idle | monitoring | waiting | resuming
-let _twCountdownTimer  = null;     // setInterval for countdown display
-let _twResumeTimer     = null;     // setTimeout for actual resume
-let _twWaitMs          = 0;        // computed wait in milliseconds
-
-// ── Schedule guard: returns true if the Schedule Timer is enabled
-//    AND the current time is OUTSIDE the trade window (window closed/ended).
-//    In that case Trade Wait must NOT re-enable auto-trade.
-function _twScheduleBlocksResume(){
-  if(!scheduleEnabled) return false;                // schedule not in use — no block
-  // If the schedule phase is anything other than 'trading', the window is not open.
-  // 'stopped_day' means SL/TP fired and the window is still nominally open but
-  // the schedule engine has stopped the bot — we should also not override that.
-  if(schedulePhase === 'trading') return false;     // window is open — Trade Wait may resume
-  return true;                                      // window closed / waiting — block resume
-}
-
-// Called when the toggle is switched
-function onTradeWaitToggle(enabled){
-  tradeWaitEnabled = enabled;
-  const body = document.getElementById('tradeWaitBody');
-  if(body) body.classList.toggle('visible', enabled);
-
-  if(!enabled){
-    _twCancelTimers();
-    _twSetPhase('idle');
-    setTradeWaitStatus('Trade Wait disabled.', '');
-    const cdRow = document.getElementById('tradeWaitCdRow');
-    if(cdRow) cdRow.style.display = 'none';
-  } else {
-    _twComputeWait();
-    _twSetPhase('monitoring');
-    setTradeWaitStatus('⏳ Monitoring — waiting for TP/SL to trigger…', 'waiting');
-    toast('⏳ Trade Wait enabled — monitoring P/L', 'info');
-  }
-  saveState();
-}
-
-// Recompute wait ms from inputs
-function _twComputeWait(){
-  const hrs  = parseInt(document.getElementById('twWaitHours').value)   || 0;
-  const mins = parseInt(document.getElementById('twWaitMinutes').value) || 0;
-  _twWaitMs = (hrs * 3600 + mins * 60) * 1000;
-  if(_twWaitMs <= 0) _twWaitMs = 60000; // minimum 1 minute safety floor
-  return _twWaitMs;
-}
-
-// Called when timer inputs change — update display label
-function onTradeWaitParamChange(){
-  const hrs  = parseInt(document.getElementById('twWaitHours').value)   || 0;
-  const mins = parseInt(document.getElementById('twWaitMinutes').value) || 0;
-  const disp = document.getElementById('twTotalDisplay');
-  if(disp){
-    const h = hrs > 0 ? hrs + ' hr ' : '';
-    const m = mins + ' min';
-    disp.innerHTML = 'Wait duration: <span style="color:#bf7fff;">' + h + m + ' 0 sec</span>';
-  }
-  _twComputeWait();
-}
-
-// Set the visual phase badge
-function _twSetPhase(phase){
-  tradeWaitPhase = phase;
-  const badge = document.getElementById('twPhaseBadge');
-  if(!badge) return;
-  badge.className = 'tw-phase-badge ' + phase;
-  const labels = { idle:'IDLE', monitoring:'WATCHING', waiting:'WAITING', resuming:'RESUMING' };
-  badge.textContent = labels[phase] || phase.toUpperCase();
-}
-
-// Update the status box
-function setTradeWaitStatus(msg, cls){
-  const box = document.getElementById('tradeWaitStatusBox');
-  if(!box) return;
-  box.textContent = msg;
-  box.className = 'tradewait-status-box' + (cls ? ' ' + cls : '');
-}
-
-// Cancel all running TW timers
-function _twCancelTimers(){
-  if(_twCountdownTimer){ clearInterval(_twCountdownTimer); _twCountdownTimer = null; }
-  if(_twResumeTimer)   { clearTimeout(_twResumeTimer);    _twResumeTimer    = null; }
-}
-
-// START the wait countdown — called right after session is auto-reset.
-// If the schedule window is already closed, we skip the countdown entirely
-// and hand control back to the schedule engine.
-function _twStartCountdown(){
-  _twCancelTimers();
-  _twComputeWait();
-
-  // ── SCHEDULE PRIORITY CHECK ─────────────────────────────────────
-  // If the Schedule Timer is enabled and the window is already closed,
-  // Trade Wait must NOT start a countdown or re-enable auto-trade.
-  // The Schedule engine will handle re-enabling at the next start time.
-  if(_twScheduleBlocksResume()){
-    _twSetPhase('monitoring');
-    setTradeWaitStatus(
-      '⏸ Schedule window closed — Trade Wait deferred.\n' +
-      '  Auto-trade will resume at next scheduled start time.',
-      'waiting'
-    );
-    const cdRow = document.getElementById('tradeWaitCdRow');
-    if(cdRow) cdRow.style.display = 'none';
-    toast('⏳ Trade Wait deferred — schedule window closed', 'info');
-    return;  // do not start countdown; schedule engine takes over
-  }
-
-  _twSetPhase('waiting');
-
-  const cdRow = document.getElementById('tradeWaitCdRow');
-  if(cdRow) cdRow.style.display = 'flex';
-
-  const endMs = Date.now() + _twWaitMs;
-
-  // Live countdown display (updates every second)
-  _twCountdownTimer = setInterval(()=>{
-    // ── Mid-countdown schedule check ────────────────────────────────
-    // If the schedule window closes WHILE the countdown is running,
-    // abort the countdown immediately — schedule takes priority.
-    if(_twScheduleBlocksResume()){
-      _twCancelTimers();
-      _twSetPhase('monitoring');
-      setTradeWaitStatus(
-        '⏸ Schedule window closed mid-wait — Trade Wait aborted.\n' +
-        '  Auto-trade will resume at next scheduled start time.',
-        'waiting'
-      );
-      const cdRowMid = document.getElementById('tradeWaitCdRow');
-      if(cdRowMid) cdRowMid.style.display = 'none';
-      toast('⏳ Trade Wait aborted — schedule window closed', 'info');
-      return;
-    }
-
-    const remaining = Math.max(0, endMs - Date.now());
-    const totalSec  = Math.floor(remaining / 1000);
-    const h = String(Math.floor(totalSec / 3600)).padStart(2,'0');
-    const m = String(Math.floor((totalSec % 3600) / 60)).padStart(2,'0');
-    const s = String(totalSec % 60).padStart(2,'0');
-    const cdVal = document.getElementById('tradeWaitCdVal');
-    if(cdVal){
-      cdVal.textContent = h + ':' + m + ':' + s;
-      cdVal.className   = 'tw-cd-val' + (totalSec <= 30 ? ' active' : '');
-    }
-    setTradeWaitStatus(
-      '⏸ Auto-trade paused · Resumes in ' + h + ':' + m + ':' + s,
-      'counting'
-    );
-    if(remaining <= 0){
-      clearInterval(_twCountdownTimer);
-      _twCountdownTimer = null;
-    }
-  }, 1000);
-
-  // Actual resume trigger
-  _twResumeTimer = setTimeout(()=>{
-    _twResumeTimer = null;
-    _twResumeAutoTrade();
-  }, _twWaitMs);
-}
-
-// Called when the wait timer elapses — re-enable auto-trade and resume.
-// Respects the Schedule Timer: if the window is now closed, do NOT resume.
-function _twResumeAutoTrade(){
-  if(!tradeWaitEnabled) return;   // user disabled while waiting — do nothing
-
-  _twCancelTimers();
-
-  const cdVal = document.getElementById('tradeWaitCdVal');
-  if(cdVal){ cdVal.textContent = '00:00:00'; cdVal.className = 'tw-cd-val'; }
-
-  // ── SCHEDULE PRIORITY CHECK ─────────────────────────────────────
-  // Timer elapsed but the schedule window may have since closed.
-  // If it has, do NOT re-enable auto-trade — let the schedule engine
-  // handle it at the next start time.
-  if(_twScheduleBlocksResume()){
-    _twSetPhase('monitoring');
-    setTradeWaitStatus(
-      '⏸ Wait complete, but schedule window is closed.\n' +
-      '  Auto-trade will resume at next scheduled start time.',
-      'waiting'
-    );
-    const cdRow = document.getElementById('tradeWaitCdRow');
-    if(cdRow) cdRow.style.display = 'none';
-    toast('⏳ Trade Wait complete — schedule window closed, deferring to schedule', 'info');
-    return;
-  }
-
-  _twSetPhase('resuming');
-  setTradeWaitStatus('✅ Timer elapsed — re-enabling auto-trade…', 'resuming');
-  toast('⏳ Trade Wait complete — resuming auto-trade', 'info');
-
-  // Re-enable the auto-trade bot
-  if(!autoBot){
-    autoBot     = true;
-    botRunning  = true;
-    eaHalted    = false; // ensure halt flag is cleared too
-
-    // Clear halt banner if visible
-    const banner = document.getElementById('eaHaltBanner');
-    if(banner) banner.style.display = 'none';
-
-    // Flip toggle UI to ON
-    const tog = document.getElementById('autoToggle');
-    if(tog){
-      tog.className = 'auto-toggle on';
-      document.getElementById('autoState').textContent = 'ON';
-    }
-    // Re-enable trade buttons
-    enableTradeButtons(true);
-    setBotStatus('⏳ Trade Wait resumed — CRT Auto-Trade ON', 'running');
-  }
-
-  // Back to monitoring phase — ready for next TP/SL cycle
-  _twSetPhase('monitoring');
-  setTradeWaitStatus('⏳ Monitoring — waiting for TP/SL to trigger…', 'waiting');
-
-  // Hide countdown row
-  const cdRow = document.getElementById('tradeWaitCdRow');
-  if(cdRow) cdRow.style.display = 'none';
-}
-
-// ─── MAIN HOOK — called by checkSessionLimits() after TP or SL fires ──────
-// Replaces the normal halt path when Trade Wait is enabled.
-// Returns true if Trade Wait handled the event (so checkSessionLimits skips normal halt).
-function tradeWaitHandleLimit(reason){
-  if(!tradeWaitEnabled) return false;          // not our job
-  if(tradeWaitPhase === 'waiting') return true; // already in wait — don't double-trigger
-
-  // ── SCHEDULE PRIORITY CHECK ─────────────────────────────────────
-  // If the schedule window is already closed when TP/SL fires,
-  // Trade Wait must NOT interfere — let the normal halt path run,
-  // which defers to the schedule engine for the next cycle.
-  if(_twScheduleBlocksResume()){
-    setTradeWaitStatus(
-      '⏸ TP/SL hit but schedule window is closed.\n' +
-      '  Trade Wait inactive — schedule engine controls restart.',
-      'waiting'
-    );
-    return false;  // let normal halt proceed; schedule engine handles restart
-  }
-
-  // 1) Show what triggered
-  setTradeWaitStatus('🔁 ' + reason + ' — resetting session…', 'triggered');
-  toast('🔁 Trade Wait: ' + reason + ' — auto-resetting', 'info');
-
-  // 2) Pause auto-trade immediately (don't fully halt — we'll resume)
-  autoBot    = false;
-  botRunning = false;
-  const tog  = document.getElementById('autoToggle');
-  if(tog){ tog.className = 'auto-toggle off'; document.getElementById('autoState').textContent = 'OFF'; }
-
-  // Clear halt banner (we handle our own UX)
-  const banner = document.getElementById('eaHaltBanner');
-  if(banner) banner.style.display = 'none';
-
-  // 3) Reset session stats (with a tiny delay so final trade settles in UI)
-  setTimeout(()=>{
-    resetSession();
-    // 4) Start the wait countdown (schedule guard is re-checked inside)
-    _twStartCountdown();
-  }, 400);
-
-  return true;  // handled — skip normal eaHalted path
-}
 
 window.addEventListener('load', ()=>{
   const saved = loadSavedToken();
