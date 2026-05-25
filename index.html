@@ -1786,12 +1786,22 @@ function connectWS(isLoginFlow=false){
       return;
     }
 
-    // ── Token still in storage → always try to reconnect ──
+    // ── Cycle mode: reconnect using the correct phase token ──
+    if(dlcycleEnabled){
+      const cycleTokens = loadCycleTokens();
+      const phaseToken  = dlcyclePhase === 'demo' ? cycleTokens.demo : cycleTokens.live;
+      if(phaseToken){
+        if(!apiToken) apiToken = phaseToken;
+        _scheduleReconnect();
+        return;
+      }
+    }
+
+    // ── Single mode: reconnect using saved token ──
     const savedToken = loadSavedToken();
     const hasToken   = !!apiToken || !!(savedToken && savedToken.token);
 
     if(hasToken){
-      // Restore apiToken from storage if it was cleared somehow
       if(!apiToken && savedToken) apiToken = savedToken.token;
       _scheduleReconnect();
     } else {
@@ -3600,18 +3610,28 @@ function toast(msg, type){
 window.addEventListener('beforeunload', saveState);
 
 // ─── TOKEN PERSISTENCE HELPERS ────────────────────
-// Tokens saved with "Remember Me" go to localStorage (survives browser close).
-// Tokens saved without go to sessionStorage (survives refresh only).
-const TOKEN_KEY  = 'crt_token';
-const SERVER_KEY = 'crt_server';
-const REMEMBER_KEY = 'crt_remember';
+// Single-mode tokens:
+//   "Remember Me" checked   → localStorage  (survives browser close + reload)
+//   "Remember Me" unchecked → sessionStorage (survives network-drop reload only)
+//
+// Cycle-mode tokens:
+//   Always sessionStorage only — never localStorage (security: live token risk).
+//   Survives network drops and page reloads within the same browser session.
+//   Cleared on explicit logout or when cycle mode is turned OFF.
+const TOKEN_KEY       = 'crt_token';
+const SERVER_KEY      = 'crt_server';
+const REMEMBER_KEY    = 'crt_remember';
+const CYCLE_DEMO_KEY  = 'crt_cycle_demo_token';
+const CYCLE_LIVE_KEY  = 'crt_cycle_live_token';
+const CYCLE_STATE_KEY = 'crt_cycle_state';  // active phase + setting + num for reload resume
 
+// ── Single-mode token save/load ───────────────────
 function saveToken(token, server, remember){
   if(remember){
     localStorage.setItem(TOKEN_KEY,  token);
     localStorage.setItem(SERVER_KEY, server);
     localStorage.setItem(REMEMBER_KEY, '1');
-    // Clear session copy so there's no duplicate
+    // Clear session copy so there is no duplicate
     sessionStorage.removeItem(TOKEN_KEY);
     sessionStorage.removeItem(SERVER_KEY);
   } else {
@@ -3628,14 +3648,10 @@ function loadSavedToken(){
   // Prefer localStorage (persistent remember-me) over sessionStorage
   const lsToken  = localStorage.getItem(TOKEN_KEY);
   const lsServer = localStorage.getItem(SERVER_KEY);
-  if(lsToken){
-    return { token: lsToken, server: lsServer, remember: true };
-  }
+  if(lsToken) return { token: lsToken, server: lsServer, remember: true };
   const ssToken  = sessionStorage.getItem(TOKEN_KEY);
   const ssServer = sessionStorage.getItem(SERVER_KEY);
-  if(ssToken){
-    return { token: ssToken, server: ssServer, remember: false };
-  }
+  if(ssToken) return { token: ssToken, server: ssServer, remember: false };
   return null;
 }
 
@@ -3645,6 +3661,52 @@ function clearSavedToken(){
   localStorage.removeItem(REMEMBER_KEY);
   sessionStorage.removeItem(TOKEN_KEY);
   sessionStorage.removeItem(SERVER_KEY);
+}
+
+// ── Cycle-mode token save/load ────────────────────
+// Saves both cycle tokens to sessionStorage whenever they are entered or cycle starts.
+function saveCycleTokens(){
+  const demoEl = document.getElementById('cfgDemoToken');
+  const liveEl = document.getElementById('cfgLiveToken');
+  const demo   = demoEl ? demoEl.value.trim() : '';
+  const live   = liveEl ? liveEl.value.trim() : '';
+  if(demo) sessionStorage.setItem(CYCLE_DEMO_KEY, demo);
+  else     sessionStorage.removeItem(CYCLE_DEMO_KEY);
+  if(live) sessionStorage.setItem(CYCLE_LIVE_KEY, live);
+  else     sessionStorage.removeItem(CYCLE_LIVE_KEY);
+}
+
+// Saves the active cycle runtime state so a reload can resume the correct phase.
+function saveCycleRuntimeState(){
+  if(!dlcycleEnabled) return;
+  try {
+    sessionStorage.setItem(CYCLE_STATE_KEY, JSON.stringify({
+      enabled: true,
+      phase:   dlcyclePhase,
+      setting: dlcycleSetting,
+      num:     dlcycleNum
+    }));
+  } catch(e){}
+}
+
+function loadCycleTokens(){
+  return {
+    demo: sessionStorage.getItem(CYCLE_DEMO_KEY) || '',
+    live: sessionStorage.getItem(CYCLE_LIVE_KEY) || ''
+  };
+}
+
+function loadCycleRuntimeState(){
+  try {
+    const raw = sessionStorage.getItem(CYCLE_STATE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch(e){ return null; }
+}
+
+function clearCycleTokens(){
+  sessionStorage.removeItem(CYCLE_DEMO_KEY);
+  sessionStorage.removeItem(CYCLE_LIVE_KEY);
+  sessionStorage.removeItem(CYCLE_STATE_KEY);
 }
 
 // ═══════════════════════════════════════════════════
@@ -3832,16 +3894,71 @@ function setCounterStatus(msg, cls){
 
 
 window.addEventListener('load', ()=>{
+  // ── Priority 1: Resume an active cycle session ────────────────
+  // Check if cycle was running before the reload (network drop, tab refresh, etc.)
+  const cycleState = loadCycleRuntimeState();
+  const cycleTokens = loadCycleTokens();
+
+  if(cycleState && cycleState.enabled && cycleTokens.demo && cycleTokens.live){
+    // Restore cycle tokens into the UI fields
+    const demoEl = document.getElementById('cfgDemoToken');
+    const liveEl = document.getElementById('cfgLiveToken');
+    if(demoEl) demoEl.value = cycleTokens.demo;
+    if(liveEl) liveEl.value = cycleTokens.live;
+
+    // Restore cycle setting + phase + cycle number
+    dlcycleSetting = cycleState.setting || 1;
+    dlcyclePhase   = cycleState.phase   || 'demo';
+    dlcycleNum     = cycleState.num     || 1;
+    dlcycleEnabled = true;
+    _dlSwitching   = false;
+
+    // Switch UI to CYCLE mode in the top bar
+    setConnMode('cycle');
+    setDLCycleSetting(dlcycleSetting);
+
+    // Show cycle body
+    const tog   = document.getElementById('dlcycleToggle');
+    const state = document.getElementById('dlcycleState');
+    const body  = document.getElementById('dlcycleBody');
+    if(tog)   tog.className    = 'dlcycle-toggle on';
+    if(state) state.textContent = 'ON';
+    if(body)  body.style.display = 'block';
+
+    // If Setting 2 and we are in live phase, restore reverse mode ON
+    if(dlcycleSetting === 2 && dlcyclePhase === 'live'){
+      reverseMode = true;
+      const revTog   = document.getElementById('reverseToggle');
+      const revState = document.getElementById('reverseState');
+      if(revTog)   revTog.className   = 'reverse-toggle on';
+      if(revState) revState.textContent = 'ON';
+    }
+
+    // Connect the correct phase token
+    const activeToken = dlcyclePhase === 'demo' ? cycleTokens.demo : cycleTokens.live;
+    apiToken  = activeToken;
+    serverUrl = 'wss://ws.derivws.com/websockets/v3?app_id=116948';
+    document.getElementById('apiTokenInput').value = activeToken;
+
+    setLoginStatus('Resuming CYCLE · ' + dlcyclePhase.toUpperCase() + '…', '');
+    document.getElementById('btnLogin').disabled = true;
+
+    _dlApplyPhaseUI();
+    connectWS(true);
+
+    toast('🔄 Cycle resumed — reconnecting ' + dlcyclePhase.toUpperCase() + ' account (Cycle #' + dlcycleNum + ')', 'info');
+    return;
+  }
+
+  // ── Priority 2: Resume a single-mode session ──────────────────
   const saved = loadSavedToken();
   if(saved){
     apiToken  = saved.token;
     serverUrl = 'wss://ws.derivws.com/websockets/v3?app_id=116948';
     document.getElementById('apiTokenInput').value = saved.token;
-    // Pre-tick "Remember Me" if token came from localStorage
     const rememberChk = document.getElementById('rememberMe');
     if(rememberChk) rememberChk.checked = saved.remember;
-    // Auto-reconnect
-    setLoginStatus('Reconnecting…','');
+    setLoginStatus('Reconnecting…', '');
     document.getElementById('btnLogin').disabled = true;
     connectWS(true);
   }
@@ -3861,6 +3978,7 @@ const origDoLogout = doLogout;
 window.doLogout = function(){
   origDoLogout();
   clearSavedToken();
+  clearCycleTokens();
 };
 
 // ── CONNECTION BAR MODE SWITCHER ──────────────────
@@ -3926,6 +4044,8 @@ function startCycleFromBar(){
 
   _dlApplyPhaseUI();
   _dlConnectPhase('demo');
+  saveCycleTokens();
+  saveCycleRuntimeState();
   toast('🔄 Cycle started [S'+dlcycleSetting+'] — connecting DEMO account', 'info');
   _dlSaveState();
 }
@@ -4031,6 +4151,7 @@ function toggleDLCycle(){
   const state = document.getElementById('dlcycleState');
   if(tog)   tog.className    = 'dlcycle-toggle off';
   if(state) state.textContent = 'OFF';
+  clearCycleTokens();
   _dlClearPhaseUI();
   toast('🔄 Cycle Mode OFF — staying on current account', 'info');
   _dlSaveState();
@@ -4051,6 +4172,10 @@ function _dlConnectPhase(phase){
   _intentionalDisconnect = true;
   if(_reconnectTimer){ clearTimeout(_reconnectTimer); _reconnectTimer = null; }
   if(ws){ try{ ws.close(); }catch(e){} ws = null; }
+
+  // Persist the phase switch immediately so a reload during the 600ms gap
+  // reconnects to the correct (new) phase token, not the old one.
+  saveCycleRuntimeState();
 
   // Small delay so WS fully closes before reopening
   setTimeout(()=>{
@@ -4335,6 +4460,9 @@ function _settleLogEntry(le, finalProfit){
 
 // ── PERSIST STATE ─────────────────────────────────
 function _dlSaveState(){
+  // Always persist cycle runtime state (phase, setting, num) to sessionStorage
+  // so a network-drop page reload can resume the correct phase automatically.
+  if(dlcycleEnabled) saveCycleRuntimeState();
   try{
     const raw = localStorage.getItem(STORAGE_KEY);
     if(raw){
@@ -4344,10 +4472,10 @@ function _dlSaveState(){
         setting:  dlcycleSetting,
         phase:    dlcyclePhase,
         num:      dlcycleNum,
-        demoTP:   document.getElementById('cfgDemoTP')   ? document.getElementById('cfgDemoTP').value   : '10',
-        liveTP:   document.getElementById('cfgLiveTP')   ? document.getElementById('cfgLiveTP').value   : '10',
-        demoLoss: document.getElementById('cfgDemoLoss') ? document.getElementById('cfgDemoLoss').value : '5',
-        liveTPv1: document.getElementById('cfgLiveTP_S1')? document.getElementById('cfgLiveTP_S1').value: '10'
+        demoTP:   document.getElementById('cfgDemoTP')    ? document.getElementById('cfgDemoTP').value    : '10',
+        liveTP:   document.getElementById('cfgLiveTP')    ? document.getElementById('cfgLiveTP').value    : '10',
+        demoLoss: document.getElementById('cfgDemoLoss')  ? document.getElementById('cfgDemoLoss').value  : '5',
+        liveTPv1: document.getElementById('cfgLiveTP_S1') ? document.getElementById('cfgLiveTP_S1').value : '10'
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
     }
