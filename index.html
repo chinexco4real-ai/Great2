@@ -2291,8 +2291,8 @@ function processBuySignal(candle, symbol){
 
   const entry = candle.close;
   const stake = parseFloat(v('cfgStake'))||1;
-  const sl    = parseFloat(v('cfgSL'))||0;
-  const tp    = parseFloat(v('cfgTP'))||0;
+  // cfgSL / cfgTP are SESSION-level Net P/L limits — do NOT pass them as
+  // per-trade amounts. Pass 0,0 so no mid-contract force-sell ever fires.
   const mktLabel = getMarketLabel(symbol);
 
   const logEntry = {
@@ -2308,7 +2308,7 @@ function processBuySignal(candle, symbol){
   const toastDir = finalType==='CALL' ? '🔵 CRT RISE Signal' : '🔴 CRT FALL Signal (REVERSED)';
   toast(toastDir+' @ '+entry.toFixed(5), finalType==='CALL'?'buy':'sell');
 
-  placeTrade(finalType, symbol, stake, sl, tp, logEntry.id);
+  placeTrade(finalType, symbol, stake, 0, 0, logEntry.id);
   startCooldown();
 
   updateStats(); saveState();
@@ -2342,8 +2342,8 @@ function processSellSignal(candle, symbol){
 
   const entry = candle.close;
   const stake = parseFloat(v('cfgStake'))||1;
-  const sl    = parseFloat(v('cfgSL'))||0;
-  const tp    = parseFloat(v('cfgTP'))||0;
+  // cfgSL / cfgTP are SESSION-level Net P/L limits — do NOT pass them as
+  // per-trade amounts. Pass 0,0 so no mid-contract force-sell ever fires.
   const mktLabel = getMarketLabel(symbol);
 
   const logEntry = {
@@ -2359,7 +2359,7 @@ function processSellSignal(candle, symbol){
   const toastDir = finalType==='PUT' ? '🔴 CRT FALL Signal' : '🔵 CRT RISE Signal (REVERSED)';
   toast(toastDir+' @ '+entry.toFixed(5), finalType==='PUT'?'sell':'buy');
 
-  placeTrade(finalType, symbol, stake, sl, tp, logEntry.id);
+  placeTrade(finalType, symbol, stake, 0, 0, logEntry.id);
   startCooldown();
 
   updateStats(); saveState();
@@ -2430,11 +2430,26 @@ function handleBuyResponse(buy){
     }
   }
 
-  // Calculate expiry for countdown timer
-  const _dur   = parseInt(v('cfgDuration')) || 5;
-  const _durMs = durType === 'ticks'   ? null
-               : durType === 'seconds' ? _dur * 1000
-               : _dur * 60 * 1000;
+  // Calculate expiry for countdown timer.
+  // IMPORTANT: counter trades use their OWN duration config (cfgCounterDurVal +
+  // cdUnitMin/Sec), NOT the main EA duration (cfgDuration + durType). Using the
+  // main EA duration for a counter trade gives a completely wrong expiryMs and
+  // durType on the position, breaking the countdown display and timer for seconds.
+  let _posDurType, _dur, _durMs;
+  if(isCounter && durType !== 'ticks'){
+    // Counter trade: read from counter duration controls
+    _dur         = parseInt(document.getElementById('cfgCounterDurVal').value) || 2;
+    const _isMins = document.getElementById('cdUnitMin').classList.contains('active');
+    _posDurType  = _isMins ? 'minutes' : 'seconds';
+    _durMs       = _isMins ? _dur * 60 * 1000 : _dur * 1000;
+  } else {
+    // Normal trade (or tick counter): use main EA duration
+    _dur         = parseInt(v('cfgDuration')) || 5;
+    _posDurType  = durType;
+    _durMs       = durType === 'ticks'   ? null
+                 : durType === 'seconds' ? _dur * 1000
+                 : _dur * 60 * 1000;
+  }
 
   openPositions[String(contractId)] = {
     contractId: String(contractId), dir: buy.contract_type==='CALL'?'call':'put',
@@ -2447,7 +2462,7 @@ function handleBuyResponse(buy){
     openTime:   new Date().toLocaleTimeString(),
     openTimeMs: Date.now(),
     expiryMs:   _durMs ? Date.now() + _durMs : null,
-    durType:    durType,
+    durType:    _posDurType,
     durValue:   _dur,
     isCounter:  isCounter   // true for counter trades → never re-countered
   };
@@ -2460,15 +2475,16 @@ function handleBuyResponse(buy){
   // NOT stream — the buy+subscribe pattern is the only reliable method.
   // We still send a direct POC subscription as belt-and-braces for longer
   // duration contracts (seconds/minutes) that DO stream normally.
-  if(durType !== 'ticks'){
+  if(_posDurType !== 'ticks'){
     send({ proposal_open_contract:1, contract_id:contractId, subscribe:1 });
   }
 
-  // Safety fallback poll — fires after max expected contract lifetime + 5 s
-  const dur = parseInt(v('cfgDuration'))||5;
-  const maxMs = durType==='ticks' ? (dur * 1500 + 5000)   // ~1.5 s/tick + buffer
-              : durType==='seconds' ? (dur * 1000 + 5000)
-              : (dur * 60000 + 5000);
+  // Safety fallback poll — fires after max expected contract lifetime + 5 s.
+  // Use _posDurType / _dur which are already correctly resolved above for both
+  // normal and counter trades (counter uses cfgCounterDurVal, not cfgDuration).
+  const maxMs = _posDurType==='ticks'   ? (_dur * 1500 + 5000)   // ~1.5 s/tick + buffer
+              : _posDurType==='seconds' ? (_dur * 1000 + 5000)
+              : (_dur * 60000 + 5000);
   setTimeout(()=>{ pollContractIfOpen(contractId); }, maxMs);
 
   renderPositions();
@@ -2506,9 +2522,12 @@ function handleContractUpdate(poc){
   if(isDefinitivelySettled && poc.profit_loss !== undefined && poc.profit_loss !== null && poc.profit_loss !== ''){
     // profit_loss from Deriv is the true net P&L — use it only on final settlement
     finalProfit = parseFloat(poc.profit_loss);
-  } else if(poc.sell_price !== undefined){
+  } else if(isDefinitivelySettled && poc.sell_price !== undefined){
     // sell_price is the final payout; subtract the ORIGINAL stake (not live poc.buy_price
-    // which is a mark-to-market value and gives shallower losses than the true amount)
+    // which is a mark-to-market value and gives shallower losses than the true amount).
+    // GUARD: only use sell_price when definitively settled — Deriv includes sell_price
+    // on every live POC tick as a mark-to-market buyback value, which would give a
+    // falsely negative finalProfit mid-contract and trigger premature force-close.
     const pos = openPositions[String(poc.contract_id)];
     const originalStake = pos ? pos.buyPrice : (parseFloat(poc.buy_price) || 0);
     finalProfit = parseFloat(poc.sell_price) - originalStake;
@@ -2549,8 +2568,11 @@ function handleContractUpdate(poc){
   if(poc.ticks_remaining !== undefined && poc.ticks_remaining !== null){
     pos.ticksRemaining = parseInt(poc.ticks_remaining);
   }
-  // Also update expiryMs if Deriv gives us an expiry time
-  if(poc.expiry_time && !pos.expiryMs){
+  // Always trust the server-authoritative expiry_time — overwrite any
+  // client-side estimate computed at buy time (Date.now() + durMs) which
+  // can drift if there is network latency between placing the trade and
+  // receiving the buy confirmation.
+  if(poc.expiry_time){
     pos.expiryMs = poc.expiry_time * 1000; // epoch seconds → ms
   }
 
@@ -2561,11 +2583,13 @@ function handleContractUpdate(poc){
     }
   }
 
-  const slAmt = pos.slAmt, tpAmt = pos.tpAmt;
-  if((slAmt > 0 && finalProfit <= -slAmt) || (tpAmt > 0 && finalProfit >= tpAmt)){
-    closePosition(cid, finalProfit, 'force');
-    return;
-  }
+  // NOTE: Per-trade mid-contract force-close removed.
+  // cfgSL / cfgTP are SESSION-LEVEL Net P/L limits, not per-trade dollar stops.
+  // Applying them against live mark-to-market finalProfit caused trades to be
+  // sold early (e.g. at 30-40s on a 1-minute contract) because Deriv streams
+  // a low sell_price on every live tick which temporarily looks like a large loss.
+  // Session limits are correctly enforced by checkSessionLimits() after each
+  // trade settles — no mid-contract sell is needed or correct here.
 
   renderPositions();
   rebuildLog();
@@ -2976,8 +3000,8 @@ function manualTrade(contractType){
 
   const symbol = v('cfgSymbol');
   const stake  = parseFloat(v('cfgStake'))||1;
-  const sl     = parseFloat(v('cfgSL'))||0;
-  const tp     = parseFloat(v('cfgTP'))||0;
+  // cfgSL / cfgTP are SESSION-level Net P/L limits — do NOT pass them as
+  // per-trade amounts. Pass 0,0 so no mid-contract force-sell ever fires.
   const mktLabel = getMarketLabel(symbol);
 
   // Apply reverse mode at the final execution point
@@ -3007,7 +3031,7 @@ function manualTrade(contractType){
 
   const reversed = finalType !== originalType;
   const label = finalType==='CALL' ? '▲ RISE (BUY)' : '▼ FALL (SELL)';
-  placeTrade(finalType, symbol, stake, sl, tp, logEntry.id);
+  placeTrade(finalType, symbol, stake, 0, 0, logEntry.id);
   toast(label+(reversed?' [REVERSED]':'')+' sent · '+symbol, finalType==='CALL'?'buy':'sell');
   startCooldown();
   updateStats(); saveState();
