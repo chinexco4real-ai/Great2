@@ -132,46 +132,6 @@
   .acct-type-badge.is-demo{background:rgba(255,193,7,.12);border-color:rgba(255,193,7,.5);color:#ffc107;}
   .acct-type-badge.is-live{background:rgba(0,230,118,.12);border-color:rgba(0,230,118,.5);color:#00e676;box-shadow:0 0 10px rgba(0,230,118,.15);}
 
-  /* ─── DEMO/LIVE CYCLE MODE ─── */
-  .dlcycle-toggle{display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,rgba(245,197,24,.07),rgba(45,139,255,.05));border:2px solid rgba(245,197,24,.3);border-radius:10px;padding:13px 16px;margin-top:4px;cursor:pointer;transition:all .3s;}
-  .dlcycle-toggle:hover{border-color:rgba(245,197,24,.55);box-shadow:0 0 18px rgba(245,197,24,.15);}
-  .dlcycle-toggle.on{border-color:var(--gold);background:linear-gradient(135deg,rgba(245,197,24,.14),rgba(45,139,255,.08));box-shadow:0 0 26px rgba(245,197,24,.3);}
-  .dlcycle-toggle .dl-lbl{font-size:13px;letter-spacing:1.5px;color:#b89400;text-transform:uppercase;font-weight:700;}
-  .dlcycle-toggle.on .dl-lbl{color:var(--gold);text-shadow:0 0 8px rgba(245,197,24,.5);}
-  .dlcycle-toggle .dl-state{font-family:'Orbitron',sans-serif;font-size:14px;font-weight:900;}
-  .dlcycle-toggle.on .dl-state{color:var(--gold);}
-  .dlcycle-toggle.off .dl-state{color:#555;}
-
-  /* Phase banner at top */
-  #dlPhaseBanner{display:none;position:fixed;top:0;left:0;right:0;z-index:9998;padding:7px 20px;text-align:center;font-family:'Orbitron',sans-serif;font-size:11px;font-weight:700;letter-spacing:2.5px;pointer-events:none;}
-  #dlPhaseBanner.demo-phase{background:linear-gradient(90deg,rgba(255,193,7,.2),rgba(255,140,0,.15),rgba(255,193,7,.2));border-bottom:2px solid rgba(255,193,7,.55);color:#ffc107;animation:dlDemoPulse 2.5s ease-in-out infinite;}
-  #dlPhaseBanner.live-phase{background:linear-gradient(90deg,rgba(0,230,118,.16),rgba(45,139,255,.12),rgba(0,230,118,.16));border-bottom:2px solid rgba(0,230,118,.45);color:#00e676;animation:dlLivePulse 2.5s ease-in-out infinite;}
-  @keyframes dlDemoPulse{0%,100%{opacity:.8}50%{opacity:1}}
-  @keyframes dlLivePulse{0%,100%{opacity:.85}50%{opacity:1;color:#00ff88;}}
-
-  /* Phase card in right stats panel */
-  .dlcycle-stats{background:rgba(245,197,24,.05);border:1px solid rgba(245,197,24,.2);border-radius:8px;padding:12px 14px;margin-top:8px;}
-  .dlcycle-stats.live-active{background:rgba(0,230,118,.05);border-color:rgba(0,230,118,.25);}
-  .dlcycle-stats .dls-title{font-size:10px;letter-spacing:2px;color:#a88000;text-transform:uppercase;font-weight:700;margin-bottom:8px;}
-  .dlcycle-stats.live-active .dls-title{color:#00a060;}
-  .dlcycle-stats .dls-row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(245,197,24,.08);font-size:12px;}
-  .dlcycle-stats.live-active .dls-row{border-bottom-color:rgba(0,230,118,.08);}
-  .dlcycle-stats .dls-row:last-child{border-bottom:none;}
-  .dlcycle-stats .dls-k{color:#8ba4cc;font-weight:700;}
-  .dlcycle-stats .dls-v{font-family:'Share Tech Mono',monospace;font-weight:700;color:var(--white);}
-  .dlcycle-stats .dls-pnl{font-family:'Orbitron',sans-serif;font-size:17px;font-weight:900;text-align:center;padding:8px 6px;margin-top:6px;border-radius:6px;}
-  .dlcycle-stats .dls-pnl.pos{color:var(--green);background:rgba(0,230,118,.08);}
-  .dlcycle-stats .dls-pnl.neg{color:#ff7090;background:rgba(255,61,90,.07);}
-  .dlcycle-stats .dls-pnl.zero{color:var(--muted);background:rgba(255,255,255,.03);}
-
-  /* Mode-switch full-screen flash */
-  @keyframes phaseFlashIn{0%{opacity:0;transform:scale(.94)}100%{opacity:1;transform:scale(1)}}
-
-  /* Session timer phase badge */
-  .st-phase-badge{display:none;font-size:9px;letter-spacing:2px;font-weight:800;padding:2px 8px;border-radius:10px;margin-top:2px;}
-  .st-phase-badge.demo{background:rgba(255,193,7,.15);color:var(--gold);}
-  .st-phase-badge.live{background:rgba(0,230,118,.15);color:var(--green);}
-
   /* ─── MAIN LAYOUT — desktop-first ─── */
   .main-grid{display:grid;grid-template-columns:var(--panel-w) 1fr var(--panel-w);gap:18px;padding:18px 20px;flex:1;align-items:start;max-width:1800px;margin:0 auto;width:100%;}
 
@@ -429,6 +389,52 @@
   .counter-status-box.fired   {border-color:rgba(255,61,90,.4);color:#ff7090;}
   .counter-status-box.ok      {border-color:rgba(0,230,118,.4);color:var(--green);}
 
+  /* ─── DEMO↔LIVE AUTO SWITCH PANEL ─── */
+  .dls-panel{background:linear-gradient(135deg,rgba(0,240,255,.04),rgba(45,139,255,.03));border:1px solid rgba(0,240,255,.28);border-radius:10px;padding:14px 15px;margin-top:10px;}
+  .dls-panel .section-lbl{color:var(--accent2);font-size:11px;letter-spacing:2px;margin-bottom:10px;font-weight:700;}
+  /* Master toggle row */
+  .dls-toggle-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  .dls-toggle-row .dls-lbl{font-size:12px;letter-spacing:1px;color:var(--text);font-weight:700;text-transform:uppercase;}
+  .dls-switch{position:relative;width:44px;height:22px;flex-shrink:0;}
+  .dls-switch input{opacity:0;width:0;height:0;}
+  .dls-slider{position:absolute;inset:0;background:#1e2a42;border:1px solid var(--border2);border-radius:20px;cursor:pointer;transition:all .25s;}
+  .dls-slider::before{content:'';position:absolute;height:16px;width:16px;left:2px;top:2px;background:#4a5a78;border-radius:50%;transition:all .25s;}
+  .dls-switch input:checked + .dls-slider{background:rgba(0,240,255,.18);border-color:var(--accent2);}
+  .dls-switch input:checked + .dls-slider::before{transform:translateX(22px);background:var(--accent2);box-shadow:0 0 6px rgba(0,240,255,.5);}
+  /* Setting selector */
+  .dls-setting-tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px;}
+  .dls-tab{padding:9px 4px;background:var(--bg3);border:1px solid var(--border2);color:#7a8fae;border-radius:6px;font-size:12px;letter-spacing:.5px;cursor:pointer;text-align:center;transition:all .2s;font-family:'Rajdhani',sans-serif;font-weight:700;}
+  .dls-tab:hover{color:var(--text);border-color:#3a5580;}
+  .dls-tab.active.s1{background:rgba(255,61,90,.15);border-color:var(--red);color:#ff7090;}
+  .dls-tab.active.s2{background:rgba(0,230,118,.12);border-color:var(--green);color:var(--green);}
+  /* Token fields */
+  .dls-token-row{display:flex;flex-direction:column;gap:4px;margin-bottom:9px;}
+  .dls-token-row label{font-size:11px;letter-spacing:1px;color:#8ba4cc;text-transform:uppercase;font-weight:700;}
+  .dls-token-row input{background:var(--bg3);border:1px solid var(--border2);color:var(--white);padding:8px 11px;border-radius:6px;font-family:'Share Tech Mono',monospace;font-size:12px;font-weight:600;outline:none;width:100%;transition:border .2s,box-shadow .2s;}
+  .dls-token-row input:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(45,139,255,.15);}
+  /* Status display */
+  .dls-status{background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:10px 12px;font-family:'Share Tech Mono',monospace;font-size:11px;color:#8ba4cc;font-weight:600;line-height:1.7;min-height:42px;margin-top:8px;transition:border-color .3s,color .3s;}
+  .dls-status.demo{border-color:rgba(255,193,7,.4);color:#ffc107;}
+  .dls-status.live{border-color:rgba(0,230,118,.4);color:var(--green);}
+  .dls-status.switching{border-color:rgba(0,240,255,.4);color:var(--accent2);animation:dlsPulse 1s infinite;}
+  @keyframes dlsPulse{0%,100%{opacity:1}50%{opacity:.5}}
+  /* Current mode indicator */
+  .dls-mode-indicator{display:flex;align-items:center;justify-content:space-between;padding:9px 13px;border-radius:7px;margin-top:8px;border:1px solid transparent;transition:all .4s;}
+  .dls-mode-indicator.demo{background:rgba(255,193,7,.1);border-color:rgba(255,193,7,.35);}
+  .dls-mode-indicator.live{background:rgba(0,230,118,.1);border-color:rgba(0,230,118,.35);}
+  .dls-mode-indicator.idle{background:rgba(122,143,174,.06);border-color:rgba(122,143,174,.2);}
+  .dls-mode-lbl{font-family:'Orbitron',sans-serif;font-size:11px;letter-spacing:2px;font-weight:700;}
+  .dls-mode-indicator.demo .dls-mode-lbl{color:#ffc107;}
+  .dls-mode-indicator.live .dls-mode-lbl{color:var(--green);}
+  .dls-mode-indicator.idle .dls-mode-lbl{color:#7a8fae;}
+  .dls-pnl-display{font-family:'Share Tech Mono',monospace;font-size:13px;font-weight:700;}
+  /* Setting-specific hint */
+  .dls-hint{font-size:10px;color:#7a8fae;font-family:'Share Tech Mono',monospace;font-weight:600;line-height:1.5;margin-top:5px;padding:6px 9px;background:rgba(0,0,0,.2);border-radius:5px;}
+  /* Switch cycle counter */
+  .dls-cycle-row{display:flex;align-items:center;justify-content:space-between;margin-top:7px;padding:5px 9px;background:rgba(0,0,0,.15);border-radius:5px;}
+  .dls-cycle-lbl{font-size:10px;color:#8ba4cc;letter-spacing:1px;font-weight:700;text-transform:uppercase;}
+  .dls-cycle-val{font-family:'Orbitron',sans-serif;font-size:13px;color:var(--accent2);font-weight:700;}
+
   /* ─── TRADE SCHEDULE TIMER ─── */
   .schedule-section{background:rgba(0,240,255,.04);border:1px solid rgba(0,240,255,.22);border-radius:9px;padding:13px 15px;margin-top:9px;}
   .schedule-section .section-lbl{color:var(--accent2);font-size:11px;letter-spacing:2px;margin-bottom:10px;font-weight:700;}
@@ -527,54 +533,20 @@
       <div class="sub">CANDLE RANGE THEORY · DERIV EDITION</div>
     </div>
     <div class="conn-fields">
-
-      <!-- ── MODE SELECTOR (Single / Cycle) ── -->
-      <div style="display:flex;gap:7px;flex-shrink:0;align-items:center;">
-        <button id="connModeSingle" onclick="setConnMode('single')"
-          style="padding:7px 14px;font-family:'Orbitron',sans-serif;font-size:10px;font-weight:700;letter-spacing:1.5px;border-radius:6px;border:1px solid var(--accent);background:rgba(45,139,255,.2);color:#6ab5ff;cursor:pointer;transition:all .2s;">
-          SINGLE
-        </button>
-        <button id="connModeCycle" onclick="setConnMode('cycle')"
-          style="padding:7px 14px;font-family:'Orbitron',sans-serif;font-size:10px;font-weight:700;letter-spacing:1.5px;border-radius:6px;border:1px solid rgba(245,197,24,.4);background:transparent;color:#8ba4cc;cursor:pointer;transition:all .2s;">
-          CYCLE
-        </button>
-        <span style="font-size:9px;color:#7a8fae;letter-spacing:1px;white-space:nowrap;">CONNECT MODE</span>
+      <div class="conn-field">
+        <label>Demo API Token</label>
+        <input type="password" id="apiTokenInput" placeholder="Demo account API token…" autocomplete="off"/>
+      </div>
+      <div class="conn-field" id="liveTokenField">
+        <label>Live API Token <span style="font-size:9px;color:#ffc107;letter-spacing:1px;">(for auto-switch)</span></label>
+        <input type="password" id="liveTokenInput" placeholder="Live account token (optional)…" autocomplete="off"/>
       </div>
 
-      <!-- ── SINGLE TOKEN (default) ── -->
-      <div id="singleTokenFields" style="display:flex;align-items:center;gap:10px;flex:1;flex-wrap:wrap;">
-        <div class="conn-field" style="flex:1;min-width:180px;">
-          <label>Deriv API Token</label>
-          <input type="password" id="apiTokenInput" placeholder="Enter your API token…" autocomplete="off"/>
-        </div>
-        <div class="conn-remember">
-          <input type="checkbox" id="rememberMe"/>
-          <label for="rememberMe">Remember</label>
-        </div>
-        <button class="btn-login" id="btnLogin" onclick="doLogin()">⚡ CONNECT</button>
+      <div class="conn-remember">
+        <input type="checkbox" id="rememberMe"/>
+        <label for="rememberMe">Remember tokens</label>
       </div>
-
-      <!-- ── CYCLE TOKEN FIELDS (hidden by default) ── -->
-      <div id="cycleTokenFields" style="display:none;flex:1;flex-wrap:wrap;gap:10px;align-items:flex-end;">
-        <div class="conn-field" style="flex:1;min-width:160px;">
-          <label style="color:#ffc107;">⚠ Demo Token</label>
-          <input type="password" id="cfgDemoToken" placeholder="Demo account token…" autocomplete="off"
-            style="border-color:rgba(255,193,7,.45);"/>
-        </div>
-        <div class="conn-field" style="flex:1;min-width:160px;">
-          <label style="color:#00e676;">⚡ Live Token</label>
-          <input type="password" id="cfgLiveToken" placeholder="Live account token…" autocomplete="off"
-            style="border-color:rgba(0,230,118,.45);"/>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;">
-          <button class="btn-login" id="btnCycleStart" onclick="startCycleFromBar()"
-            style="background:linear-gradient(135deg,#b89400,#7a5c00);box-shadow:0 4px 18px rgba(245,197,24,.3);">
-            🔄 START CYCLE
-          </button>
-          <div style="font-size:9px;color:#8ba4cc;letter-spacing:1px;text-align:center;">Demo first</div>
-        </div>
-      </div>
-
+      <button class="btn-login" id="btnLogin" onclick="doLogin()">⚡ CONNECT</button>
       <div class="login-status" id="loginStatus"></div>
     </div>
     <!-- After login, show account info + logout here -->
@@ -585,7 +557,6 @@
           <span class="st-lbl">Session</span>
           <span class="st-val" id="sessionTimerVal">00:00:00</span>
           <span class="st-sub" id="sessionTimerSub">LIVE</span>
-          <span class="st-phase-badge" id="dlPhaseBadge"></span>
         </div>
         <div class="acct-info" style="flex:1;min-width:0;">
           <div class="name" id="hdrName" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">—</div>
@@ -778,50 +749,42 @@
               </div>
             </div>
 
-            <!-- Filter 2: Order Block -->
+            <!-- Filter 2: Candle Close Direction -->
             <div class="filter-item" id="fi2">
               <div class="filter-toggle-row" onclick="toggleFilter(2)">
                 <span class="f-name">
                   <span class="f-badge">F2</span>
-                  Order Block
+                  Candle Close
                 </span>
                 <label class="filter-switch" onclick="event.stopPropagation()">
-                  <input type="checkbox" id="fOBEnabled" onchange="onFilterChange(2,this.checked)"/>
+                  <input type="checkbox" id="fCandleCloseEnabled" onchange="onFilterChange(2,this.checked)"/>
                   <span class="filter-slider"></span>
                 </label>
               </div>
               <div class="filter-desc">
-                <div class="ctrl-row" style="margin-bottom:7px;">
-                  <label style="font-size:11px;letter-spacing:1px;">OB Lookback (candles)</label>
-                  <input type="number" id="cfgOBLookback" value="10" min="3" max="50" style="font-size:12px;padding:6px 9px;"/>
-                </div>
                 <div class="f-rule">
-                  <span class="buy-txt">▲ BUY:</span> Signal sweeps below a recent bearish OB (last down-close before a bullish impulse) — price returning into institutional demand<br>
-                  <span class="sell-txt">▼ SELL:</span> Signal sweeps above a recent bullish OB (last up-close before a bearish impulse) — price returning into institutional supply
+                  <span class="buy-txt">▲ BUY:</span> Signal candle closes bullish (close &gt; open)<br>
+                  <span class="sell-txt">▼ SELL:</span> Signal candle closes bearish (close &lt; open)
                 </div>
               </div>
             </div>
 
-            <!-- Filter 3: Fair Value Gap (FVG) -->
+            <!-- Filter 3: Range Candle Direction -->
             <div class="filter-item" id="fi3">
               <div class="filter-toggle-row" onclick="toggleFilter(3)">
                 <span class="f-name">
                   <span class="f-badge">F3</span>
-                  Fair Value Gap
+                  Candle 2 (Range)
                 </span>
                 <label class="filter-switch" onclick="event.stopPropagation()">
-                  <input type="checkbox" id="fFVGEnabled" onchange="onFilterChange(3,this.checked)"/>
+                  <input type="checkbox" id="fCandle2Enabled" onchange="onFilterChange(3,this.checked)"/>
                   <span class="filter-slider"></span>
                 </label>
               </div>
               <div class="filter-desc">
-                <div class="ctrl-row" style="margin-bottom:7px;">
-                  <label style="font-size:11px;letter-spacing:1px;">FVG Lookback (candles)</label>
-                  <input type="number" id="cfgFVGLookback" value="15" min="3" max="50" style="font-size:12px;padding:6px 9px;"/>
-                </div>
                 <div class="f-rule">
-                  <span class="buy-txt">▲ BUY:</span> Signal candle's low enters an unfilled bullish FVG (gap between candle[i-2].high and candle[i].low pointing up) — price pulling back into imbalance<br>
-                  <span class="sell-txt">▼ SELL:</span> Signal candle's high enters an unfilled bearish FVG (gap between candle[i-2].low and candle[i].high pointing down) — price retracing into imbalance
+                  <span class="buy-txt">▲ BUY:</span> Range candle closes bullish (close &gt; open)<br>
+                  <span class="sell-txt">▼ SELL:</span> Range candle closes bearish (close &lt; open)
                 </div>
               </div>
             </div>
@@ -936,84 +899,6 @@
             </div>
           </div>
 
-          <!-- ── DEMO/LIVE CYCLE MODE ── -->
-          <div style="margin-top:0;padding:14px 0 4px 0;">
-            <div class="section-lbl">🔄 Demo / Live Cycle Mode</div>
-
-            <div class="dlcycle-toggle off" id="dlcycleToggle" onclick="toggleDLCycle()">
-              <div style="display:flex;flex-direction:column;gap:3px;">
-                <span class="dl-lbl">🔄 Cycle Mode</span>
-                <span style="font-size:10px;color:#8ba4cc;letter-spacing:.5px;font-family:'Share Tech Mono',monospace;font-weight:600;">Demo→Live→Demo auto-switch</span>
-              </div>
-              <span class="dl-state" id="dlcycleState">OFF</span>
-            </div>
-
-            <div id="dlcycleBody" style="display:none;margin-top:10px;">
-
-              <!-- Setting Selector -->
-              <div style="display:flex;gap:7px;margin-bottom:10px;">
-                <div id="dlSettingBtn1" onclick="setDLCycleSetting(1)"
-                  style="flex:1;padding:9px 4px;background:rgba(255,61,90,.18);border:2px solid var(--red);color:#ff7090;border-radius:7px;font-family:'Orbitron',sans-serif;font-size:10px;font-weight:700;letter-spacing:1px;cursor:pointer;text-align:center;transition:all .2s;">
-                  SETTING 1<br><span style="font-size:9px;letter-spacing:.5px;font-family:'Share Tech Mono',monospace;font-weight:600;opacity:.85;">LOSS TRIGGER</span>
-                </div>
-                <div id="dlSettingBtn2" onclick="setDLCycleSetting(2)"
-                  style="flex:1;padding:9px 4px;background:transparent;border:1px solid rgba(0,230,118,.3);color:#8ba4cc;border-radius:7px;font-family:'Orbitron',sans-serif;font-size:10px;font-weight:700;letter-spacing:1px;cursor:pointer;text-align:center;transition:all .2s;">
-                  SETTING 2<br><span style="font-size:9px;letter-spacing:.5px;font-family:'Share Tech Mono',monospace;font-weight:600;opacity:.85;">PROFIT TRIGGER</span>
-                </div>
-              </div>
-
-              <!-- SETTING 1 fields -->
-              <div id="dlSetting1Fields">
-                <div class="ctrl-row" style="margin-bottom:6px;">
-                  <label style="font-size:10px;letter-spacing:1px;color:#ff7090;">Demo Loss Trigger ($)</label>
-                  <input type="number" id="cfgDemoLoss" value="5.00" min="0.01" step="0.01" style="font-size:12px;padding:6px 9px;border-color:rgba(255,61,90,.45);"/>
-                  <span class="hint" style="font-size:10px;">Switch to LIVE when Net P/L loss reaches this amount</span>
-                </div>
-                <div class="ctrl-row" style="margin-bottom:6px;">
-                  <label style="font-size:10px;letter-spacing:1px;color:#00e676;">Live TP ($)</label>
-                  <input type="number" id="cfgLiveTP_S1" value="10.00" min="0.01" step="0.01" style="font-size:12px;padding:6px 9px;border-color:rgba(0,230,118,.45);"/>
-                  <span class="hint" style="font-size:10px;">Switch back to DEMO at ±this Net P/L</span>
-                </div>
-                <div style="font-size:10px;color:#8ba4cc;line-height:1.7;margin-bottom:8px;font-family:'Share Tech Mono',monospace;padding:7px 9px;background:rgba(255,61,90,.04);border-radius:5px;border:1px solid rgba(255,61,90,.15);">
-                  <span style="color:#ff7090;">⚠ DEMO</span>: trades until Net P/L loss = −trigger.<br>
-                  → Switch to <span style="color:var(--green);">LIVE</span> (original logic preserved).<br>
-                  <span style="color:var(--green);">⚡ LIVE</span>: trades until ±Live TP hit.<br>
-                  → Switch back to <span style="color:#ff7090;">DEMO</span>. Cycle continues.
-                </div>
-              </div>
-
-              <!-- SETTING 2 fields -->
-              <div id="dlSetting2Fields" style="display:none;">
-                <div class="ctrl-row" style="margin-bottom:6px;">
-                  <label style="font-size:10px;letter-spacing:1px;color:#00e676;">Demo Profit Trigger ($)</label>
-                  <input type="number" id="cfgDemoTP" value="10.00" min="0.01" step="0.01" style="font-size:12px;padding:6px 9px;border-color:rgba(0,230,118,.45);"/>
-                  <span class="hint" style="font-size:10px;">Switch to LIVE when Net P/L profit reaches this amount</span>
-                </div>
-                <div class="ctrl-row" style="margin-bottom:6px;">
-                  <label style="font-size:10px;letter-spacing:1px;color:#00e676;">Live Profit Trigger ($)</label>
-                  <input type="number" id="cfgLiveTP" value="10.00" min="0.01" step="0.01" style="font-size:12px;padding:6px 9px;border-color:rgba(0,230,118,.45);"/>
-                  <span class="hint" style="font-size:10px;">Disable Reverse Mode &amp; switch back to DEMO at this profit</span>
-                </div>
-                <div style="font-size:10px;color:#8ba4cc;line-height:1.7;margin-bottom:8px;font-family:'Share Tech Mono',monospace;padding:7px 9px;background:rgba(0,230,118,.04);border-radius:5px;border:1px solid rgba(0,230,118,.15);">
-                  <span style="color:var(--green);">⚡ DEMO</span>: trades until Net P/L profit = +trigger.<br>
-                  → <span style="color:#ff8c00;">⇄ Reverse Mode ENABLED</span> automatically.<br>
-                  → Switch to <span style="color:var(--green);">LIVE</span>.<br>
-                  <span style="color:var(--green);">⚡ LIVE</span>: trades (reversed) until profit trigger hit.<br>
-                  → <span style="color:#ff8c00;">⇄ Reverse Mode DISABLED</span> automatically.<br>
-                  → Switch back to <span style="color:var(--green);">DEMO</span>. Cycle continues.
-                </div>
-              </div>
-
-              <div style="font-size:10px;color:#8ba4cc;line-height:1.6;margin-bottom:8px;font-family:'Share Tech Mono',monospace;padding:5px 8px;background:rgba(245,197,24,.04);border-radius:5px;border:1px solid rgba(245,197,24,.1);">
-                Enter both tokens in the <span style="color:var(--gold);">top bar → CYCLE mode</span>, then click START CYCLE.
-              </div>
-
-              <div id="dlcycleStatus" style="padding:8px 10px;background:var(--bg3);border-radius:6px;border-left:3px solid var(--gold);font-size:11px;color:var(--gold);font-family:'Share Tech Mono',monospace;font-weight:700;">
-                Phase: Not started
-              </div>
-            </div>
-          </div>
-
           <div class="bot-status" id="botStatus">Connect wallet — then BUY / SELL or enable Auto CRT.</div>
         </div>
       </div>
@@ -1094,16 +979,75 @@
           <div id="eaHaltBanner" style="display:none;margin-top:10px;padding:11px 14px;background:rgba(255,61,90,.12);border:1px solid var(--red);border-radius:7px;font-family:'Share Tech Mono',monospace;font-size:12px;color:#ff7090;text-align:center;letter-spacing:1px;font-weight:700;"></div>
           <button id="btnResetSession" onclick="resetSessionClick()" style="width:100%;margin-top:9px;padding:10px;background:rgba(245,197,24,.08);border:1px solid rgba(245,197,24,.4);color:var(--gold);border-radius:7px;font-family:'Orbitron',sans-serif;font-size:11px;letter-spacing:1.5px;cursor:pointer;transition:all .3s;font-weight:700;">↺ RESET SESSION</button>
 
-          <!-- DEMO/LIVE CYCLE STATS (hidden until cycle mode enabled) -->
-          <div class="dlcycle-stats" id="dlcycleStatsCard" style="display:none;">
-            <div class="dls-title" id="dlcycleStatsTitle">🔄 Cycle — Demo Phase</div>
-            <div class="dls-row"><span class="dls-k">Phase</span><span class="dls-v" id="dlsPhase" style="color:var(--gold);">DEMO</span></div>
-            <div class="dls-row"><span class="dls-k">Cycle #</span><span class="dls-v" id="dlsCycleNum">1</span></div>
-            <div class="dls-row"><span class="dls-k">Phase Trades</span><span class="dls-v" id="dlsTrades">0</span></div>
-            <div class="dls-row"><span class="dls-k">Wins / Losses</span><span class="dls-v" id="dlsWL">0 / 0</span></div>
-            <div class="dls-row"><span class="dls-k">Trigger</span><span class="dls-v" id="dlsTarget" style="color:var(--gold);">+$10.00</span></div>
-            <div class="dls-pnl zero" id="dlsNetPnL">$0.00</div>
+          <div class="section-div"></div>
+
+          <!-- ══ DEMO ↔ LIVE AUTO SWITCH ══ -->
+          <div class="dls-panel">
+            <div class="section-lbl">🔄 DEMO ↔ LIVE AUTO SWITCH</div>
+
+            <!-- Master enable toggle -->
+            <div class="dls-toggle-row">
+              <span class="dls-lbl">Enable Switch Mode</span>
+              <label class="dls-switch">
+                <input type="checkbox" id="dlsEnabled" onchange="onDlsToggle(this.checked)"/>
+                <span class="dls-slider"></span>
+              </label>
+            </div>
+
+            <div id="dlsBody" style="display:none;">
+              <!-- Setting selector — only one can be active -->
+              <div style="font-size:10px;color:#8ba4cc;margin-bottom:6px;font-family:'Share Tech Mono',monospace;font-weight:600;">
+                Select ONE setting (they are mutually exclusive):
+              </div>
+              <div class="dls-setting-tabs">
+                <div class="dls-tab s1 active" id="dlsTab1" onclick="dlsSelectSetting(1)">
+                  ① LOSS<br><span style="font-size:10px;opacity:.75;">switch on loss</span>
+                </div>
+                <div class="dls-tab s2" id="dlsTab2" onclick="dlsSelectSetting(2)">
+                  ② PROFIT<br><span style="font-size:10px;opacity:.75;">switch on profit</span>
+                </div>
+              </div>
+
+              <!-- PNL threshold -->
+              <div class="dls-token-row">
+                <label id="dlsThresholdLabel">PNL Loss Threshold ($) — demo→live</label>
+                <input type="number" id="dlsThreshold" value="5" min="0.01" step="0.01"/>
+              </div>
+
+              <!-- Live PNL threshold (same concept, demo and live each have independent targets) -->
+              <div class="dls-token-row">
+                <label id="dlsLiveThresholdLabel">PNL Threshold ($) — live→demo</label>
+                <input type="number" id="dlsLiveThreshold" value="10" min="0.01" step="0.01"/>
+              </div>
+
+              <!-- Hint per setting -->
+              <div class="dls-hint" id="dlsHint1">
+                <b>Setting 1 — Loss:</b> When Net P/L on DEMO reaches −threshold, reset session &amp; switch to LIVE. When LIVE Net P/L reaches +live-threshold, reset &amp; switch back to DEMO. Cycle repeats while switch is ON.
+              </div>
+              <div class="dls-hint" id="dlsHint2" style="display:none;">
+                <b>Setting 2 — Profit:</b> When Net P/L on DEMO reaches +threshold, EA enables Reverse Mode, resets session &amp; switches to LIVE. When LIVE Net P/L reaches +live-threshold, EA disables Reverse Mode, resets &amp; switches back to DEMO. Cycle repeats.
+              </div>
+
+              <!-- Current mode indicator -->
+              <div class="dls-mode-indicator idle" id="dlsModeIndicator" style="margin-top:9px;">
+                <div>
+                  <div class="dls-mode-lbl" id="dlsModeLbl">IDLE</div>
+                  <div style="font-size:10px;color:#7a8fae;margin-top:2px;font-family:'Share Tech Mono',monospace;">Current switch state</div>
+                </div>
+                <div class="dls-pnl-display" id="dlsPnlDisplay" style="color:#7a8fae;">—</div>
+              </div>
+
+              <!-- Switch status log -->
+              <div class="dls-status" id="dlsStatus">Switch mode inactive — enable to start cycle.</div>
+
+              <!-- Cycle counter -->
+              <div class="dls-cycle-row">
+                <span class="dls-cycle-lbl">Switch Cycles</span>
+                <span class="dls-cycle-val" id="dlsCycleCount">0</span>
+              </div>
+            </div>
           </div>
+          <!-- ══ END DEMO ↔ LIVE AUTO SWITCH ══ -->
 
           <div class="section-div"></div>
           <div class="section-lbl">Last Signal</div>
@@ -1126,9 +1070,6 @@
 
   </div><!-- /main-grid -->
 </div><!-- /app -->
-
-<!-- DEMO/LIVE CYCLE PHASE BANNER -->
-<div id="dlPhaseBanner"></div>
 
 <!-- TOAST CONTAINER -->
 <div id="toast"></div>
@@ -1291,8 +1232,8 @@ let subscriptionId = null;
 
 // ─── SIGNAL FILTER STATE ──────────────────────────
 let filterEmaEnabled     = false;   // Filter 1: EMA Wick-Cross
-let filterOBEnabled      = false;   // Filter 2: Order Block
-let filterFVGEnabled     = false;   // Filter 3: Fair Value Gap
+let filterCandleClose    = false;   // Filter 2: Signal candle direction
+let filterCandle2        = false;   // Filter 3: Range candle direction
 let filterEmaTrend       = false;   // Filter 4: EMA Trend (price vs EMA)
 
 // Running EMA value — recalculated on every new closed candle
@@ -1319,7 +1260,7 @@ function calcEMA(candleArr, period){
 
 // ─── FILTER UI HELPERS ────────────────────────────
 function toggleFilter(n){
-  const ids = {1:'fEmaEnabled', 2:'fOBEnabled', 3:'fFVGEnabled', 4:'fEmaTrendEnabled'};
+  const ids = {1:'fEmaEnabled', 2:'fCandleCloseEnabled', 3:'fCandle2Enabled', 4:'fEmaTrendEnabled'};
   const chk = document.getElementById(ids[n]);
   chk.checked = !chk.checked;
   onFilterChange(n, chk.checked);
@@ -1329,100 +1270,13 @@ function onFilterChange(n, enabled){
   const el = document.getElementById('fi'+n);
   if(enabled) el.classList.add('enabled');
   else         el.classList.remove('enabled');
-  if(n===1) filterEmaEnabled = enabled;
-  if(n===2) filterOBEnabled  = enabled;
-  if(n===3) filterFVGEnabled = enabled;
-  if(n===4) filterEmaTrend   = enabled;
-  const names = {1:'EMA Wick-Cross', 2:'Order Block', 3:'Fair Value Gap', 4:'EMA Trend Filter'};
+  if(n===1) filterEmaEnabled  = enabled;
+  if(n===2) filterCandleClose = enabled;
+  if(n===3) filterCandle2     = enabled;
+  if(n===4) filterEmaTrend    = enabled;
+  const names = {1:'EMA Wick-Cross', 2:'Candle Close', 3:'Candle 2 (Range)', 4:'EMA Trend Filter'};
   toast('Filter '+(enabled?'ON':'OFF')+' — '+names[n], 'info');
   saveState();
-}
-
-
-// ─── ORDER BLOCK DETECTION ────────────────────────
-// An Order Block (OB) is the last candle in the opposite direction
-// before a strong impulsive move.
-//
-// Bearish OB (demand / bullish OB):
-//   Find the last bearish (close < open) candle in the lookback window
-//   that was immediately followed by a bullish expansion (next close > its high).
-//   Its range [low, high] = demand zone.
-//
-// Bullish OB (supply / bearish OB):
-//   Find the last bullish (close > open) candle in the lookback window
-//   that was immediately followed by a bearish expansion (next close < its low).
-//   Its range [low, high] = supply zone.
-//
-// Returns { demandOB, supplyOB } — each is {low, high} or null.
-function detectOrderBlocks(candleArr, lookback){
-  const len = candleArr.length;
-  if(len < lookback + 2) return { demandOB: null, supplyOB: null };
-
-  let demandOB = null;   // last bearish OB → bullish zone (buy signal must reach into it)
-  let supplyOB = null;   // last bullish OB → bearish zone (sell signal must reach into it)
-
-  // Scan from most-recent backward (skip the very last candle = current signal)
-  const start = len - 2;       // [n-1] is the just-closed signal candle — don't use it as OB seed
-  const end   = Math.max(0, start - lookback);
-
-  for(let i = start; i > end; i--){
-    const c    = candleArr[i];
-    const next = candleArr[i + 1];
-    if(!c || !next) continue;
-
-    // Bearish candle (last down-close before bullish impulse) → demand OB
-    if(!demandOB && c.close < c.open && next.close > c.high){
-      demandOB = { low: c.low, high: c.high };
-    }
-    // Bullish candle (last up-close before bearish impulse) → supply OB
-    if(!supplyOB && c.close > c.open && next.close < c.low){
-      supplyOB = { low: c.low, high: c.high };
-    }
-    if(demandOB && supplyOB) break;
-  }
-  return { demandOB, supplyOB };
-}
-
-
-// ─── FAIR VALUE GAP DETECTION ─────────────────────
-// A Fair Value Gap (FVG / imbalance) is a 3-candle pattern where
-// candle[i-2] and candle[i] do NOT overlap — creating a price gap.
-//
-// Bullish FVG: candle[i-2].high < candle[i].low
-//   → gap between top of first candle and bottom of third (buy-side imbalance)
-//
-// Bearish FVG: candle[i-2].low > candle[i].high
-//   → gap between bottom of first candle and top of third (sell-side imbalance)
-//
-// Returns { bullishFVG, bearishFVG } — each is {low, high} or null.
-function detectFVGs(candleArr, lookback){
-  const len = candleArr.length;
-  if(len < 3) return { bullishFVG: null, bearishFVG: null };
-
-  let bullishFVG = null;
-  let bearishFVG = null;
-
-  // Start from the most-recent complete 3-candle window (excluding current signal candle)
-  const start = len - 2;        // candle[n-1] is the just-closed signal candle
-  const end   = Math.max(2, start - lookback);
-
-  for(let i = start; i >= end; i--){
-    const c0 = candleArr[i - 2];
-    // c1 = middle candle (candle[i-1]) — we don't need its values
-    const c2 = candleArr[i];
-    if(!c0 || !c2) continue;
-
-    // Bullish FVG: gap between c0.high and c2.low (no overlap, c2 above c0)
-    if(!bullishFVG && c0.high < c2.low){
-      bullishFVG = { low: c0.high, high: c2.low };
-    }
-    // Bearish FVG: gap between c0.low and c2.high (no overlap, c2 below c0)
-    if(!bearishFVG && c0.low > c2.high){
-      bearishFVG = { low: c2.high, high: c0.low };
-    }
-    if(bullishFVG && bearishFVG) break;
-  }
-  return { bullishFVG, bearishFVG };
 }
 
 
@@ -1439,7 +1293,7 @@ function saveState(){
       _version: STATE_VERSION,
       tradeMode, durType, tradeLog, stats, candles: candles.slice(-100),
       analysisCandleMode, analysisCandleTF,
-      filters: { ema: filterEmaEnabled, ob: filterOBEnabled, fvg: filterFVGEnabled, emaTrend: filterEmaTrend, emaPeriod: v('cfgEmaPeriod'), emaTrendPeriod: v('cfgEmaTrendPeriod'), obLookback: v('cfgOBLookback'), fvgLookback: v('cfgFVGLookback') },
+      filters: { ema: filterEmaEnabled, candleClose: filterCandleClose, candle2: filterCandle2, emaTrend: filterEmaTrend, emaPeriod: v('cfgEmaPeriod'), emaTrendPeriod: v('cfgEmaTrendPeriod') },
       cfg: {
         symbol: v('cfgSymbol'), minRange: v('cfgMinRange'), maxPos: v('cfgMaxPos'),
         stake: v('cfgStake'), sl: v('cfgSL'), tp: v('cfgTP'),
@@ -1512,15 +1366,15 @@ function loadState(){
         const chk1 = document.getElementById('fEmaEnabled');
         if(chk1){ chk1.checked = filterEmaEnabled; onFilterChange(1, filterEmaEnabled); }
       }
-      if(s.filters.ob !== undefined){
-        filterOBEnabled = !!s.filters.ob;
-        const chk2 = document.getElementById('fOBEnabled');
-        if(chk2){ chk2.checked = filterOBEnabled; onFilterChange(2, filterOBEnabled); }
+      if(s.filters.candleClose !== undefined){
+        filterCandleClose = !!s.filters.candleClose;
+        const chk2 = document.getElementById('fCandleCloseEnabled');
+        if(chk2){ chk2.checked = filterCandleClose; onFilterChange(2, filterCandleClose); }
       }
-      if(s.filters.fvg !== undefined){
-        filterFVGEnabled = !!s.filters.fvg;
-        const chk3 = document.getElementById('fFVGEnabled');
-        if(chk3){ chk3.checked = filterFVGEnabled; onFilterChange(3, filterFVGEnabled); }
+      if(s.filters.candle2 !== undefined){
+        filterCandle2 = !!s.filters.candle2;
+        const chk3 = document.getElementById('fCandle2Enabled');
+        if(chk3){ chk3.checked = filterCandle2; onFilterChange(3, filterCandle2); }
       }
       if(s.filters.emaPeriod !== undefined) setVal('cfgEmaPeriod', s.filters.emaPeriod);
       if(s.filters.emaTrend !== undefined){
@@ -1529,8 +1383,6 @@ function loadState(){
         if(chk4){ chk4.checked = filterEmaTrend; onFilterChange(4, filterEmaTrend); }
       }
       if(s.filters.emaTrendPeriod !== undefined) setVal('cfgEmaTrendPeriod', s.filters.emaTrendPeriod);
-      if(s.filters.obLookback  !== undefined) setVal('cfgOBLookback',  s.filters.obLookback);
-      if(s.filters.fvgLookback !== undefined) setVal('cfgFVGLookback', s.filters.fvgLookback);
     }
 
     // Restore schedule settings
@@ -1554,6 +1406,8 @@ function loadState(){
 
     rebuildLog();
     updateStats();
+    // Load DLS switch engine state alongside main state
+    if(typeof dlsLoadState === 'function') dlsLoadState();
   } catch(e){}
 }
 
@@ -1786,22 +1640,12 @@ function connectWS(isLoginFlow=false){
       return;
     }
 
-    // ── Cycle mode: reconnect using the correct phase token ──
-    if(dlcycleEnabled){
-      const cycleTokens = loadCycleTokens();
-      const phaseToken  = dlcyclePhase === 'demo' ? cycleTokens.demo : cycleTokens.live;
-      if(phaseToken){
-        if(!apiToken) apiToken = phaseToken;
-        _scheduleReconnect();
-        return;
-      }
-    }
-
-    // ── Single mode: reconnect using saved token ──
+    // ── Token still in storage → always try to reconnect ──
     const savedToken = loadSavedToken();
     const hasToken   = !!apiToken || !!(savedToken && savedToken.token);
 
     if(hasToken){
+      // Restore apiToken from storage if it was cleared somehow
       if(!apiToken && savedToken) apiToken = savedToken.token;
       _scheduleReconnect();
     } else {
@@ -1887,6 +1731,8 @@ function handleMsg(msg, isLoginFlow){
       // Reconcile any silent trades that settled during the disconnection window
       setTimeout(reconcileSilentTrades, 3000);
       startSessionTimer();
+      // ── DLS post-switch: resume auto-bot if a switch just happened ──
+      if(typeof _dlsPostSwitchResume === 'function') _dlsPostSwitchResume();
       // Restart schedule engine if it was enabled
       if(scheduleEnabled){ _startScheduleEngine(); }
       // Restore autoBot if it was running before disconnect
@@ -2260,40 +2106,16 @@ function onNewCandle(){
     }
   }
 
-  // ── LAYER 3: FILTER 2 — ORDER BLOCK ─────────────
-  // BUY:  signal candle's low swept into a bearish OB (demand zone) — price
-  //       returning to institutional buy interest below the range low
-  // SELL: signal candle's high swept into a bullish OB (supply zone) — price
-  //       returning to institutional sell interest above the range high
-  if(filterOBEnabled){
-    const obLookback = parseInt(v('cfgOBLookback')) || 10;
-    const { demandOB, supplyOB } = detectOrderBlocks(candles, obLookback);
-    if(isBullish){
-      // Signal low must touch or enter the demand OB zone
-      isBullish = !!(demandOB && signal.low <= demandOB.high && signal.low >= demandOB.low - (demandOB.high - demandOB.low));
-    }
-    if(isBearish){
-      // Signal high must touch or enter the supply OB zone
-      isBearish = !!(supplyOB && signal.high >= supplyOB.low && signal.high <= supplyOB.high + (supplyOB.high - supplyOB.low));
-    }
+  // ── LAYER 3: FILTER 2 — SIGNAL CANDLE CLOSE DIRECTION ──
+  if(filterCandleClose){
+    if(isBullish) isBullish = (signal.close > signal.open);   // must close bullish
+    if(isBearish) isBearish = (signal.close < signal.open);   // must close bearish
   }
 
-  // ── LAYER 4: FILTER 3 — FAIR VALUE GAP ──────────
-  // BUY:  signal candle's low trades into an unfilled bullish FVG — price
-  //       filling the buy-side imbalance and signaling continuation up
-  // SELL: signal candle's high trades into an unfilled bearish FVG — price
-  //       filling the sell-side imbalance and signaling continuation down
-  if(filterFVGEnabled){
-    const fvgLookback = parseInt(v('cfgFVGLookback')) || 15;
-    const { bullishFVG, bearishFVG } = detectFVGs(candles, fvgLookback);
-    if(isBullish){
-      // Signal low must reach into the bullish FVG zone
-      isBullish = !!(bullishFVG && signal.low <= bullishFVG.high && signal.close >= bullishFVG.low);
-    }
-    if(isBearish){
-      // Signal high must reach into the bearish FVG zone
-      isBearish = !!(bearishFVG && signal.high >= bearishFVG.low && signal.close <= bearishFVG.high);
-    }
+  // ── LAYER 4: FILTER 3 — RANGE (CANDLE 2) DIRECTION ──
+  if(filterCandle2){
+    if(isBullish) isBullish = (range.close > range.open);     // range candle must be bullish
+    if(isBearish) isBearish = (range.close < range.open);     // range candle must be bearish
   }
 
   // ── LAYER 5: FILTER 4 — EMA TREND FILTER ────────────────
@@ -2743,6 +2565,12 @@ function _settleLogEntry(le, finalProfit){
   toast((won ? '✅ WIN' : '❌ LOSS') + ' ' + fmtAmount(Math.abs(finalProfit)), 'info');
   saveState();
   checkSessionLimits();
+
+  // ── Demo↔Live switch engine hook ────────────────────────────
+  // Fire AFTER checkSessionLimits so session halt doesn't interfere.
+  // Pass the signed net P/L (positive = win, negative = loss).
+  const signedPnl = won ? finalProfit : -Math.abs(finalProfit);
+  if(typeof dlsOnTradeSettled === 'function') dlsOnTradeSettled(signedPnl);
 }
 
 // ─── BINARY SESSION LIMIT CHECK ───────────────────
@@ -3610,28 +3438,18 @@ function toast(msg, type){
 window.addEventListener('beforeunload', saveState);
 
 // ─── TOKEN PERSISTENCE HELPERS ────────────────────
-// Single-mode tokens:
-//   "Remember Me" checked   → localStorage  (survives browser close + reload)
-//   "Remember Me" unchecked → sessionStorage (survives network-drop reload only)
-//
-// Cycle-mode tokens:
-//   Always sessionStorage only — never localStorage (security: live token risk).
-//   Survives network drops and page reloads within the same browser session.
-//   Cleared on explicit logout or when cycle mode is turned OFF.
-const TOKEN_KEY       = 'crt_token';
-const SERVER_KEY      = 'crt_server';
-const REMEMBER_KEY    = 'crt_remember';
-const CYCLE_DEMO_KEY  = 'crt_cycle_demo_token';
-const CYCLE_LIVE_KEY  = 'crt_cycle_live_token';
-const CYCLE_STATE_KEY = 'crt_cycle_state';  // active phase + setting + num for reload resume
+// Tokens saved with "Remember Me" go to localStorage (survives browser close).
+// Tokens saved without go to sessionStorage (survives refresh only).
+const TOKEN_KEY  = 'crt_token';
+const SERVER_KEY = 'crt_server';
+const REMEMBER_KEY = 'crt_remember';
 
-// ── Single-mode token save/load ───────────────────
 function saveToken(token, server, remember){
   if(remember){
     localStorage.setItem(TOKEN_KEY,  token);
     localStorage.setItem(SERVER_KEY, server);
     localStorage.setItem(REMEMBER_KEY, '1');
-    // Clear session copy so there is no duplicate
+    // Clear session copy so there's no duplicate
     sessionStorage.removeItem(TOKEN_KEY);
     sessionStorage.removeItem(SERVER_KEY);
   } else {
@@ -3648,10 +3466,14 @@ function loadSavedToken(){
   // Prefer localStorage (persistent remember-me) over sessionStorage
   const lsToken  = localStorage.getItem(TOKEN_KEY);
   const lsServer = localStorage.getItem(SERVER_KEY);
-  if(lsToken) return { token: lsToken, server: lsServer, remember: true };
+  if(lsToken){
+    return { token: lsToken, server: lsServer, remember: true };
+  }
   const ssToken  = sessionStorage.getItem(TOKEN_KEY);
   const ssServer = sessionStorage.getItem(SERVER_KEY);
-  if(ssToken) return { token: ssToken, server: ssServer, remember: false };
+  if(ssToken){
+    return { token: ssToken, server: ssServer, remember: false };
+  }
   return null;
 }
 
@@ -3661,52 +3483,6 @@ function clearSavedToken(){
   localStorage.removeItem(REMEMBER_KEY);
   sessionStorage.removeItem(TOKEN_KEY);
   sessionStorage.removeItem(SERVER_KEY);
-}
-
-// ── Cycle-mode token save/load ────────────────────
-// Saves both cycle tokens to sessionStorage whenever they are entered or cycle starts.
-function saveCycleTokens(){
-  const demoEl = document.getElementById('cfgDemoToken');
-  const liveEl = document.getElementById('cfgLiveToken');
-  const demo   = demoEl ? demoEl.value.trim() : '';
-  const live   = liveEl ? liveEl.value.trim() : '';
-  if(demo) sessionStorage.setItem(CYCLE_DEMO_KEY, demo);
-  else     sessionStorage.removeItem(CYCLE_DEMO_KEY);
-  if(live) sessionStorage.setItem(CYCLE_LIVE_KEY, live);
-  else     sessionStorage.removeItem(CYCLE_LIVE_KEY);
-}
-
-// Saves the active cycle runtime state so a reload can resume the correct phase.
-function saveCycleRuntimeState(){
-  if(!dlcycleEnabled) return;
-  try {
-    sessionStorage.setItem(CYCLE_STATE_KEY, JSON.stringify({
-      enabled: true,
-      phase:   dlcyclePhase,
-      setting: dlcycleSetting,
-      num:     dlcycleNum
-    }));
-  } catch(e){}
-}
-
-function loadCycleTokens(){
-  return {
-    demo: sessionStorage.getItem(CYCLE_DEMO_KEY) || '',
-    live: sessionStorage.getItem(CYCLE_LIVE_KEY) || ''
-  };
-}
-
-function loadCycleRuntimeState(){
-  try {
-    const raw = sessionStorage.getItem(CYCLE_STATE_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch(e){ return null; }
-}
-
-function clearCycleTokens(){
-  sessionStorage.removeItem(CYCLE_DEMO_KEY);
-  sessionStorage.removeItem(CYCLE_LIVE_KEY);
-  sessionStorage.removeItem(CYCLE_STATE_KEY);
 }
 
 // ═══════════════════════════════════════════════════
@@ -3893,75 +3669,380 @@ function setCounterStatus(msg, cls){
 //  and the `isCounter` flag set from passthrough — see handleBuyResponse.)
 
 
-window.addEventListener('load', ()=>{
-  // ── Priority 1: Resume an active cycle session ────────────────
-  // Check if cycle was running before the reload (network drop, tab refresh, etc.)
-  const cycleState = loadCycleRuntimeState();
-  const cycleTokens = loadCycleTokens();
+// ═══════════════════════════════════════════════════════════════════
+//  DEMO ↔ LIVE AUTO SWITCH ENGINE
+//  Integrated into CRT EA — Deriv WebSocket v3 (app_id 116948)
+// ═══════════════════════════════════════════════════════════════════
 
-  if(cycleState && cycleState.enabled && cycleTokens.demo && cycleTokens.live){
-    // Restore cycle tokens into the UI fields
-    const demoEl = document.getElementById('cfgDemoToken');
-    const liveEl = document.getElementById('cfgLiveToken');
-    if(demoEl) demoEl.value = cycleTokens.demo;
-    if(liveEl) liveEl.value = cycleTokens.live;
+// ── State variables ─────────────────────────────────────────────
+let dlsEnabled        = false;   // master switch toggle
+let dlsSetting        = 1;       // 1=Loss trigger, 2=Profit trigger
+let dlsCurrentMode    = 'demo';  // 'demo' | 'live'  (which account is active NOW)
+let dlsCycleCount     = 0;       // how many full demo→live→demo cycles completed
+let dlsSwitching      = false;   // true while mid-switch (prevent double triggers)
+let dlsLiveToken      = '';      // live account token (entered by user)
+let dlsDemoToken      = '';      // demo account token (entered by user on connect)
 
-    // Restore cycle setting + phase + cycle number
-    dlcycleSetting = cycleState.setting || 1;
-    dlcyclePhase   = cycleState.phase   || 'demo';
-    dlcycleNum     = cycleState.num     || 1;
-    dlcycleEnabled = true;
-    _dlSwitching   = false;
+// PNL accumulators per leg — reset on every switch
+// These are separate from the EA stats so the switch can measure
+// just the trades since the last switch, not lifetime totals.
+let dlsDemoPnl        = 0;       // net P/L accumulated in current DEMO leg
+let dlsLivePnl        = 0;       // net P/L accumulated in current LIVE leg
 
-    // Switch UI to CYCLE mode in the top bar
-    setConnMode('cycle');
-    setDLCycleSetting(dlcycleSetting);
+// Threshold config (read from UI when needed)
+function dlsGetThreshold(){ return parseFloat(document.getElementById('dlsThreshold').value) || 5; }
+function dlsGetLiveThreshold(){ return parseFloat(document.getElementById('dlsLiveThreshold').value) || 10; }
 
-    // Show cycle body
-    const tog   = document.getElementById('dlcycleToggle');
-    const state = document.getElementById('dlcycleState');
-    const body  = document.getElementById('dlcycleBody');
-    if(tog)   tog.className    = 'dlcycle-toggle on';
-    if(state) state.textContent = 'ON';
-    if(body)  body.style.display = 'block';
+// ── UI helpers ──────────────────────────────────────────────────
+function dlsSetStatus(msg, cls){
+  const el = document.getElementById('dlsStatus');
+  if(!el) return;
+  el.textContent = msg;
+  el.className = 'dls-status' + (cls ? ' ' + cls : '');
+}
 
-    // If Setting 2 and we are in live phase, restore reverse mode ON
-    if(dlcycleSetting === 2 && dlcyclePhase === 'live'){
-      reverseMode = true;
-      const revTog   = document.getElementById('reverseToggle');
-      const revState = document.getElementById('reverseState');
-      if(revTog)   revTog.className   = 'reverse-toggle on';
-      if(revState) revState.textContent = 'ON';
-    }
+function dlsUpdateIndicator(){
+  const ind  = document.getElementById('dlsModeIndicator');
+  const lbl  = document.getElementById('dlsModeLbl');
+  const pnlD = document.getElementById('dlsPnlDisplay');
+  const cycEl = document.getElementById('dlsCycleCount');
+  if(!ind || !lbl || !pnlD) return;
 
-    // Connect the correct phase token
-    const activeToken = dlcyclePhase === 'demo' ? cycleTokens.demo : cycleTokens.live;
-    apiToken  = activeToken;
-    serverUrl = 'wss://ws.derivws.com/websockets/v3?app_id=116948';
-    document.getElementById('apiTokenInput').value = activeToken;
-
-    setLoginStatus('Resuming CYCLE · ' + dlcyclePhase.toUpperCase() + '…', '');
-    document.getElementById('btnLogin').disabled = true;
-
-    _dlApplyPhaseUI();
-    connectWS(true);
-
-    toast('🔄 Cycle resumed — reconnecting ' + dlcyclePhase.toUpperCase() + ' account (Cycle #' + dlcycleNum + ')', 'info');
+  if(!dlsEnabled){
+    ind.className = 'dls-mode-indicator idle';
+    lbl.textContent = 'IDLE';
+    pnlD.textContent = '—';
+    pnlD.style.color = '#7a8fae';
+    if(cycEl) cycEl.textContent = dlsCycleCount;
     return;
   }
 
-  // ── Priority 2: Resume a single-mode session ──────────────────
+  if(dlsCurrentMode === 'demo'){
+    ind.className = 'dls-mode-indicator demo';
+    lbl.textContent = '⚠ DEMO MODE';
+    const net = dlsDemoPnl;
+    pnlD.textContent = (net >= 0 ? '+' : '') + fmtAmount(Math.abs(net));
+    pnlD.style.color = net >= 0 ? 'var(--green)' : 'var(--red)';
+  } else {
+    ind.className = 'dls-mode-indicator live';
+    lbl.textContent = '● LIVE MODE';
+    const net = dlsLivePnl;
+    pnlD.textContent = (net >= 0 ? '+' : '') + fmtAmount(Math.abs(net));
+    pnlD.style.color = net >= 0 ? 'var(--green)' : 'var(--red)';
+  }
+  if(cycEl) cycEl.textContent = dlsCycleCount;
+}
+
+// ── Setting selector ────────────────────────────────────────────
+function dlsSelectSetting(n){
+  if(!dlsEnabled){ /* allow changing setting even when off */ }
+  dlsSetting = n;
+  const t1 = document.getElementById('dlsTab1');
+  const t2 = document.getElementById('dlsTab2');
+  const h1 = document.getElementById('dlsHint1');
+  const h2 = document.getElementById('dlsHint2');
+  const tl = document.getElementById('dlsThresholdLabel');
+  const ll = document.getElementById('dlsLiveThresholdLabel');
+  if(n === 1){
+    t1.classList.add('active'); t2.classList.remove('active');
+    if(h1) h1.style.display = ''; if(h2) h2.style.display = 'none';
+    if(tl) tl.textContent = 'PNL Loss Threshold ($) — demo→live';
+    if(ll) ll.textContent = 'PNL Profit Threshold ($) — live→demo';
+  } else {
+    t2.classList.add('active'); t1.classList.remove('active');
+    if(h2) h2.style.display = ''; if(h1) h1.style.display = 'none';
+    if(tl) tl.textContent = 'PNL Profit Threshold ($) — demo→live';
+    if(ll) ll.textContent = 'PNL Profit Threshold ($) — live→demo';
+  }
+  dlsSaveState();
+}
+
+// ── Master toggle ───────────────────────────────────────────────
+function onDlsToggle(checked){
+  dlsEnabled = checked;
+  const body = document.getElementById('dlsBody');
+  if(body) body.style.display = checked ? '' : 'none';
+
+  if(checked){
+    // Validate we have both tokens
+    dlsDemoToken = document.getElementById('apiTokenInput').value.trim();
+    dlsLiveToken = document.getElementById('liveTokenInput').value.trim();
+
+    if(!dlsDemoToken){
+      dlsSetStatus('⚠ Enter your Demo API token in the connection bar first.', '');
+      dlsEnabled = false;
+      document.getElementById('dlsEnabled').checked = false;
+      if(body) body.style.display = 'none';
+      return;
+    }
+    if(!dlsLiveToken){
+      dlsSetStatus('⚠ Enter your Live API token in the connection bar to use auto-switch.', '');
+      dlsEnabled = false;
+      document.getElementById('dlsEnabled').checked = false;
+      if(body) body.style.display = 'none';
+      return;
+    }
+
+    // Start in demo mode — re-confirm current active account
+    dlsCurrentMode = _dlsDetectCurrentMode();
+    dlsDemoPnl = 0;
+    dlsLivePnl = 0;
+    dlsSwitching = false;
+
+    const modeLabel = dlsCurrentMode === 'demo' ? 'DEMO' : 'LIVE';
+    dlsSetStatus('✅ Switch engine armed · Currently on ' + modeLabel + ' · Setting ' + dlsSetting + ' active.', dlsCurrentMode);
+    toast('🔄 Auto Switch ENABLED · Setting ' + dlsSetting + ' · ' + modeLabel + ' account active', 'info');
+  } else {
+    dlsSetStatus('Switch mode inactive — enable to start cycle.', '');
+    toast('🔄 Auto Switch DISABLED', 'info');
+  }
+
+  dlsUpdateIndicator();
+  dlsSaveState();
+}
+
+// Detect whether the currently authorized account is demo or live
+// from the account type badge rendered after authorize response.
+function _dlsDetectCurrentMode(){
+  const badge = document.getElementById('acctTypeBadge');
+  if(badge && badge.classList.contains('is-live')) return 'live';
+  return 'demo'; // default to demo
+}
+
+// ── Per-trade PNL hook ──────────────────────────────────────────
+// Called from _settleLogEntry after every trade settles.
+// Accumulates the per-leg running PNL and checks if threshold crossed.
+function dlsOnTradeSettled(netPnl){
+  if(!dlsEnabled || dlsSwitching) return;
+
+  if(dlsCurrentMode === 'demo'){
+    dlsDemoPnl += netPnl;
+    dlsUpdateIndicator();
+    _dlsCheckDemoThreshold();
+  } else {
+    dlsLivePnl += netPnl;
+    dlsUpdateIndicator();
+    _dlsCheckLiveThreshold();
+  }
+  dlsSaveState();
+}
+
+// ── Threshold checks ────────────────────────────────────────────
+function _dlsCheckDemoThreshold(){
+  const threshold = dlsGetThreshold();
+
+  if(dlsSetting === 1){
+    // Setting 1: switch to LIVE when DEMO net P/L reaches −threshold (loss)
+    if(dlsDemoPnl <= -threshold){
+      dlsSetStatus(
+        '🔴 Demo loss −' + fmtAmount(threshold) + ' reached · Switching to LIVE…', 'switching'
+      );
+      _dlsDoSwitch('demo', 'live');
+    }
+  } else {
+    // Setting 2: switch to LIVE when DEMO net P/L reaches +threshold (profit)
+    if(dlsDemoPnl >= threshold){
+      dlsSetStatus(
+        '🟢 Demo profit +' + fmtAmount(threshold) + ' reached · Enabling Reverse Mode + switching to LIVE…', 'switching'
+      );
+      // Setting 2: enable reverse mode before switching to live
+      if(!reverseMode){
+        reverseMode = true;
+        const tog   = document.getElementById('reverseToggle');
+        const state = document.getElementById('reverseState');
+        if(tog)   tog.className = 'reverse-toggle on';
+        if(state) state.textContent = 'ON';
+        toast('⇄ Reverse Mode AUTO-ENABLED by Switch Engine (Setting 2)', 'info');
+      }
+      _dlsDoSwitch('demo', 'live');
+    }
+  }
+}
+
+function _dlsCheckLiveThreshold(){
+  const threshold = dlsGetLiveThreshold();
+
+  if(dlsSetting === 1){
+    // Setting 1: switch back to DEMO when LIVE net P/L reaches +threshold (profit)
+    if(dlsLivePnl >= threshold){
+      dlsSetStatus(
+        '🎯 Live profit +' + fmtAmount(threshold) + ' reached · Switching back to DEMO…', 'switching'
+      );
+      _dlsDoSwitch('live', 'demo');
+    }
+  } else {
+    // Setting 2: switch back to DEMO when LIVE net P/L reaches +threshold (profit)
+    // AND disable reverse mode
+    if(dlsLivePnl >= threshold){
+      dlsSetStatus(
+        '🎯 Live profit +' + fmtAmount(threshold) + ' reached · Disabling Reverse + switching to DEMO…', 'switching'
+      );
+      // Setting 2: disable reverse mode when returning to demo
+      if(reverseMode){
+        reverseMode = false;
+        const tog   = document.getElementById('reverseToggle');
+        const state = document.getElementById('reverseState');
+        if(tog)   tog.className = 'reverse-toggle off';
+        if(state) state.textContent = 'OFF';
+        toast('⇄ Reverse Mode AUTO-DISABLED by Switch Engine (Setting 2)', 'info');
+      }
+      _dlsDoSwitch('live', 'demo');
+    }
+  }
+}
+
+// ── Core switch function ─────────────────────────────────────────
+// from: 'demo'|'live'  to: 'demo'|'live'
+function _dlsDoSwitch(from, to){
+  if(dlsSwitching) return;   // guard against re-entry
+  dlsSwitching = true;
+
+  const targetToken = (to === 'live') ? dlsLiveToken : dlsDemoToken;
+  if(!targetToken){
+    dlsSetStatus('⚠ Missing token for ' + to.toUpperCase() + ' account — cannot switch!', '');
+    dlsSwitching = false;
+    return;
+  }
+
+  // 1. Stop all auto trading while switching
+  const wasAutoBot = autoBot;
+  autoBot    = false;
+  botRunning = false;
+  const tog   = document.getElementById('autoToggle');
+  const state = document.getElementById('autoState');
+  if(tog)   tog.className = 'auto-toggle off';
+  if(state) state.textContent = 'OFF';
+
+  // 2. Reset session stats / log for clean slate on new account
+  resetSession();
+
+  // 3. Reset per-leg PNL counters
+  if(to === 'live'){
+    dlsLivePnl = 0;
+  } else {
+    dlsDemoPnl = 0;
+    // Only increment cycle counter when returning to demo (one full cycle)
+    dlsCycleCount++;
+    document.getElementById('dlsCycleCount').textContent = dlsCycleCount;
+  }
+
+  // 4. Update mode
+  dlsCurrentMode = to;
+  dlsUpdateIndicator();
+
+  // 5. Disconnect current WS and reconnect with new token
+  dlsSetStatus('🔄 Reconnecting to ' + to.toUpperCase() + ' account…', 'switching');
+  toast('🔄 Switching to ' + to.toUpperCase() + ' account…', 'info');
+
+  // Close current ws without triggering reconnect (we'll reconnect ourselves)
+  _intentionalDisconnect = true;
+  if(_reconnectTimer){ clearTimeout(_reconnectTimer); _reconnectTimer = null; }
+  if(ws){ try{ ws.close(); }catch(e){} ws = null; }
+
+  // Small delay to let WS close cleanly
+  setTimeout(()=>{
+    _intentionalDisconnect = false;
+    apiToken = targetToken;
+    serverUrl = 'wss://ws.derivws.com/websockets/v3?app_id=116948';
+
+    // Update the connection bar input to show active token (masked)
+    // DO NOT update apiTokenInput — the demo token stays there for reference;
+    // instead we swap apiToken variable only.
+
+    setLoginStatus('Connecting to ' + to.toUpperCase() + '…', '');
+    connectWS(false);   // reconnect flow (not login flow, preserves UI state)
+
+    // After connect + authorize completes, restore auto-bot if it was running
+    // We hook into the authorize response flow via a one-time flag.
+    _dlsPendingRestoreAutoBot = wasAutoBot;
+    dlsSwitching = false;
+
+    dlsSetStatus(
+      '✅ Switched to ' + to.toUpperCase() + ' · Cycle #' + dlsCycleCount +
+      ' · Waiting for next threshold…',
+      to
+    );
+    toast('✅ Now trading on ' + to.toUpperCase() + ' account', 'info');
+    dlsSaveState();
+  }, 600);
+}
+
+// Flag: after a DLS-triggered reconnect, restore auto-bot once connected
+let _dlsPendingRestoreAutoBot = false;
+
+// Called from within authorize success handler to resume bot after switch
+function _dlsPostSwitchResume(){
+  if(_dlsPendingRestoreAutoBot && dlsEnabled){
+    _dlsPendingRestoreAutoBot = false;
+    setTimeout(()=>{
+      if(!eaHalted && dlsEnabled){
+        autoBot    = true;
+        botRunning = true;
+        const tog   = document.getElementById('autoToggle');
+        const state = document.getElementById('autoState');
+        if(tog)   tog.className = 'auto-toggle on';
+        if(state) state.textContent = 'ON';
+        const acLabel = analysisCandleMode==='tick' ? 'TICK' : 'CANDLE·'+analysisCandleTF;
+        setBotStatus('⚡ Auto CRT active · '+tradeMode+' · '+v('cfgSymbol')+' · AC:'+acLabel, 'running');
+        toast('⚡ Auto CRT resumed on ' + dlsCurrentMode.toUpperCase() + ' account', 'info');
+      }
+    }, 1500);
+  }
+}
+
+// ── Persistence for DLS state ───────────────────────────────────
+function dlsSaveState(){
+  try {
+    const dlsState = {
+      enabled:      dlsEnabled,
+      setting:      dlsSetting,
+      currentMode:  dlsCurrentMode,
+      cycleCount:   dlsCycleCount,
+      liveToken:    dlsLiveToken,
+      threshold:    dlsGetThreshold(),
+      liveThreshold: dlsGetLiveThreshold()
+    };
+    localStorage.setItem('crt_dls_state', JSON.stringify(dlsState));
+  } catch(e){}
+}
+
+function dlsLoadState(){
+  try {
+    const raw = localStorage.getItem('crt_dls_state');
+    if(!raw) return;
+    const s = JSON.parse(raw);
+    if(s.setting)       { dlsSetting = s.setting; dlsSelectSetting(s.setting); }
+    if(s.cycleCount)    { dlsCycleCount = s.cycleCount; const el = document.getElementById('dlsCycleCount'); if(el) el.textContent = dlsCycleCount; }
+    if(s.threshold)     { const el = document.getElementById('dlsThreshold');     if(el) el.value = s.threshold; }
+    if(s.liveThreshold) { const el = document.getElementById('dlsLiveThreshold'); if(el) el.value = s.liveThreshold; }
+    if(s.liveToken)     { dlsLiveToken = s.liveToken; const el = document.getElementById('liveTokenInput'); if(el && !el.value) el.value = s.liveToken; }
+    if(s.currentMode)   dlsCurrentMode = s.currentMode;
+    // Do NOT auto-restore dlsEnabled=true on page load — user must re-enable
+    // to prevent accidental live trading on refresh
+    dlsUpdateIndicator();
+  } catch(e){}
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  END DEMO ↔ LIVE AUTO SWITCH ENGINE
+// ═══════════════════════════════════════════════════════════════════
+
+window.addEventListener('load', ()=>{
   const saved = loadSavedToken();
   if(saved){
     apiToken  = saved.token;
     serverUrl = 'wss://ws.derivws.com/websockets/v3?app_id=116948';
     document.getElementById('apiTokenInput').value = saved.token;
+    // Pre-tick "Remember Me" if token came from localStorage
     const rememberChk = document.getElementById('rememberMe');
     if(rememberChk) rememberChk.checked = saved.remember;
-    setLoginStatus('Reconnecting…', '');
+    // Auto-reconnect
+    setLoginStatus('Reconnecting…','');
     document.getElementById('btnLogin').disabled = true;
     connectWS(true);
   }
+  // Load DLS persistent state (tokens, settings, cycle count)
+  dlsLoadState();
 });
 
 // Wrap doLogin to persist token after successful login attempt
@@ -3971,546 +4052,32 @@ window.doLogin = function(){
   const server  = 'wss://ws.derivws.com/websockets/v3?app_id=116948';
   const remember = document.getElementById('rememberMe')?.checked || false;
   saveToken(token, server, remember);
+
+  // Cache the live token for DLS engine
+  const liveInput = document.getElementById('liveTokenInput');
+  if(liveInput && liveInput.value.trim()){
+    dlsLiveToken = liveInput.value.trim();
+    dlsDemoToken = token;
+  }
+
   origDoLogin();
 };
 
 const origDoLogout = doLogout;
 window.doLogout = function(){
+  // Disable DLS switch engine on logout
+  if(dlsEnabled){
+    dlsEnabled = false;
+    const chk = document.getElementById('dlsEnabled');
+    if(chk) chk.checked = false;
+    const body = document.getElementById('dlsBody');
+    if(body) body.style.display = 'none';
+    dlsSetStatus('Switch mode inactive — enable to start cycle.', '');
+    dlsUpdateIndicator();
+  }
   origDoLogout();
   clearSavedToken();
-  clearCycleTokens();
 };
-
-// ── CONNECTION BAR MODE SWITCHER ──────────────────
-let _connMode = 'single'; // 'single' | 'cycle'
-
-function setConnMode(mode){
-  _connMode = mode;
-  const single = document.getElementById('singleTokenFields');
-  const cycle  = document.getElementById('cycleTokenFields');
-  const btnS   = document.getElementById('connModeSingle');
-  const btnC   = document.getElementById('connModeCycle');
-
-  if(mode === 'single'){
-    single.style.display = 'flex';
-    cycle.style.display  = 'none';
-    btnS.style.background = 'rgba(45,139,255,.2)';
-    btnS.style.color      = '#6ab5ff';
-    btnS.style.borderColor = 'var(--accent)';
-    btnC.style.background = 'transparent';
-    btnC.style.color      = '#8ba4cc';
-    btnC.style.borderColor = 'rgba(245,197,24,.4)';
-  } else {
-    single.style.display = 'none';
-    cycle.style.display  = 'flex';
-    btnC.style.background = 'rgba(245,197,24,.15)';
-    btnC.style.color      = 'var(--gold)';
-    btnC.style.borderColor = 'var(--gold)';
-    btnS.style.background = 'transparent';
-    btnS.style.color      = '#8ba4cc';
-    btnS.style.borderColor = 'rgba(45,139,255,.3)';
-  }
-}
-
-// Called when user clicks START CYCLE in the top bar
-function startCycleFromBar(){
-  const demoTok = document.getElementById('cfgDemoToken').value.trim();
-  const liveTok = document.getElementById('cfgLiveToken').value.trim();
-
-  if(!demoTok){ toast('⚠ Enter your Demo account token', 'info'); document.getElementById('cfgDemoToken').focus(); return; }
-  if(!liveTok){ toast('⚠ Enter your Live account token', 'info'); document.getElementById('cfgLiveToken').focus(); return; }
-
-  // Enable cycle mode and kick off
-  dlcycleEnabled = true;
-  dlcyclePhase   = 'demo';
-  dlcycleNum     = 1;
-  _dlSwitching   = false;
-
-  // If Setting 2 is active and Reverse Mode was somehow on, clear it now
-  if(dlcycleSetting === 2 && reverseMode){
-    reverseMode = false;
-    const revTog   = document.getElementById('reverseToggle');
-    const revState = document.getElementById('reverseState');
-    if(revTog)   revTog.className   = 'reverse-toggle off';
-    if(revState) revState.textContent = 'OFF';
-  }
-
-  const tog   = document.getElementById('dlcycleToggle');
-  const state = document.getElementById('dlcycleState');
-  const body  = document.getElementById('dlcycleBody');
-  if(tog)   tog.className    = 'dlcycle-toggle on';
-  if(state) state.textContent = 'ON';
-  if(body)  body.style.display = 'block';
-
-  _dlApplyPhaseUI();
-  _dlConnectPhase('demo');
-  saveCycleTokens();
-  saveCycleRuntimeState();
-  toast('🔄 Cycle started [S'+dlcycleSetting+'] — connecting DEMO account', 'info');
-  _dlSaveState();
-}
-
-// ═══════════════════════════════════════════════════════════════════
-//  DEMO / LIVE CYCLE MODE  —  DUAL SETTING LOGIC
-//  ─────────────────────────────────────────────────────────────────
-//  SETTING 1 (Loss Trigger — original logic):
-//    DEMO phase  → trades until Net P/L loss reaches -cfgDemoLoss
-//                → switch to LIVE
-//    LIVE phase  → trades until Net P/L hits ±cfgLiveTP_S1
-//                → switch back to DEMO. Cycle repeats.
-//
-//  SETTING 2 (Profit Trigger — new logic with Reverse Mode):
-//    DEMO phase  → trades until Net P/L profit reaches +cfgDemoTP
-//                → enable Reverse Mode automatically
-//                → switch to LIVE
-//    LIVE phase  → trades (in Reverse Mode) until Net P/L profit reaches +cfgLiveTP
-//                → disable Reverse Mode automatically
-//                → switch back to DEMO. Cycle repeats.
-//
-//  Both settings CANNOT be active simultaneously.
-//  The selected setting governs the entire cycle period.
-// ═══════════════════════════════════════════════════════════════════
-
-let dlcycleEnabled  = false;        // master toggle
-let dlcyclePhase    = 'demo';       // 'demo' | 'live'
-let dlcycleNum      = 1;            // current cycle iteration
-let _dlSwitching    = false;        // guard against double-switch
-let dlcycleSetting  = 1;           // 1 = Loss Trigger | 2 = Profit Trigger
-
-// ── SETTING SELECTOR ─────────────────────────────
-function setDLCycleSetting(n){
-  if(dlcycleEnabled){
-    toast('⚠ Cannot change setting while cycle is running — stop cycle first','info');
-    return;
-  }
-  dlcycleSetting = n;
-  const btn1 = document.getElementById('dlSettingBtn1');
-  const btn2 = document.getElementById('dlSettingBtn2');
-  const f1   = document.getElementById('dlSetting1Fields');
-  const f2   = document.getElementById('dlSetting2Fields');
-
-  if(n === 1){
-    // Setting 1 active
-    btn1.style.background  = 'rgba(255,61,90,.18)';
-    btn1.style.borderWidth = '2px';
-    btn1.style.borderColor = 'var(--red)';
-    btn1.style.color       = '#ff7090';
-    btn2.style.background  = 'transparent';
-    btn2.style.borderWidth = '1px';
-    btn2.style.borderColor = 'rgba(0,230,118,.3)';
-    btn2.style.color       = '#8ba4cc';
-    if(f1) f1.style.display = 'block';
-    if(f2) f2.style.display = 'none';
-    toast('Setting 1 selected — Loss Trigger mode','info');
-  } else {
-    // Setting 2 active
-    btn2.style.background  = 'rgba(0,230,118,.15)';
-    btn2.style.borderWidth = '2px';
-    btn2.style.borderColor = 'var(--green)';
-    btn2.style.color       = '#00e676';
-    btn1.style.background  = 'transparent';
-    btn1.style.borderWidth = '1px';
-    btn1.style.borderColor = 'rgba(255,61,90,.3)';
-    btn1.style.color       = '#8ba4cc';
-    if(f1) f1.style.display = 'none';
-    if(f2) f2.style.display = 'block';
-    toast('Setting 2 selected — Profit Trigger mode (with Reverse Mode)','info');
-  }
-  _dlSaveState();
-}
-
-// ── TOGGLE CYCLE MODE (left panel toggle - on/off only) ───────────
-function toggleDLCycle(){
-  if(!dlcycleEnabled){
-    // If not already running, prompt them to use the top bar
-    if(_connMode !== 'cycle'){
-      toast('⚠ Switch to CYCLE mode in the top bar and enter both tokens first', 'info');
-      return;
-    }
-    const demoTok = document.getElementById('cfgDemoToken').value.trim();
-    const liveTok = document.getElementById('cfgLiveToken').value.trim();
-    if(!demoTok || !liveTok){
-      toast('⚠ Enter both Demo and Live tokens in the top bar first', 'info');
-      return;
-    }
-    startCycleFromBar();
-    return;
-  }
-
-  // Turning OFF — clean up Reverse Mode if Setting 2 left it on
-  dlcycleEnabled = false;
-  _dlSwitching   = false;
-  if(dlcycleSetting === 2 && reverseMode){
-    reverseMode = false;
-    const tog   = document.getElementById('reverseToggle');
-    const state = document.getElementById('reverseState');
-    if(tog)   tog.className   = 'reverse-toggle off';
-    if(state) state.textContent = 'OFF';
-  }
-  const tog   = document.getElementById('dlcycleToggle');
-  const state = document.getElementById('dlcycleState');
-  if(tog)   tog.className    = 'dlcycle-toggle off';
-  if(state) state.textContent = 'OFF';
-  clearCycleTokens();
-  _dlClearPhaseUI();
-  toast('🔄 Cycle Mode OFF — staying on current account', 'info');
-  _dlSaveState();
-}
-
-// ── CONNECT THE CORRECT PHASE TOKEN ───────────────
-function _dlConnectPhase(phase){
-  const demoTok = document.getElementById('cfgDemoToken').value.trim();
-  const liveTok = document.getElementById('cfgLiveToken').value.trim();
-
-  const token = phase === 'demo' ? demoTok : liveTok;
-  if(!token){
-    toast('⚠ Missing ' + phase.toUpperCase() + ' token — cycle paused', 'info');
-    return;
-  }
-
-  // Intentionally disconnect current connection then reconnect with new token
-  _intentionalDisconnect = true;
-  if(_reconnectTimer){ clearTimeout(_reconnectTimer); _reconnectTimer = null; }
-  if(ws){ try{ ws.close(); }catch(e){} ws = null; }
-
-  // Persist the phase switch immediately so a reload during the 600ms gap
-  // reconnects to the correct (new) phase token, not the old one.
-  saveCycleRuntimeState();
-
-  // Small delay so WS fully closes before reopening
-  setTimeout(()=>{
-    _intentionalDisconnect = false;
-    apiToken  = token;
-    serverUrl = 'wss://ws.derivws.com/websockets/v3?app_id=116948';
-
-    // Update the visible token field so user sees which is active
-    document.getElementById('apiTokenInput').value = token;
-
-    setLoginStatus('Connecting ' + phase.toUpperCase() + '…', '');
-    document.getElementById('btnLogin').disabled = true;
-
-    // Reset session stats before connecting so fresh count begins
-    _silentResetSession();
-
-    connectWS(true);
-
-    setBotStatus('🔄 Switching to ' + phase.toUpperCase() + ' account…', 'running');
-  }, 600);
-}
-
-// ── SILENT SESSION RESET (no confirm dialog) ──────
-function _silentResetSession(){
-  tradeLog = [];
-  Object.keys(counterPendingMap).forEach(cancelCounterCheck);
-  stopAllPositionTimers();
-  openPositions = {};
-
-  stats.totalSignals = 0; stats.buySigs = 0; stats.sellSigs = 0;
-  stats.totalTrades  = 0; stats.wins    = 0; stats.losses   = 0;
-  stats.totalProfit  = 0; stats.totalLoss = 0;
-  stats.lastSignal   = ''; stats.lastTime  = '';
-
-  sessionStartBalance = null;
-  eaHalted = false;
-
-  const haltBanner = document.getElementById('eaHaltBanner');
-  if(haltBanner) haltBanner.style.display = 'none';
-}
-
-// ── CHECK CYCLE LIMITS AFTER EACH TRADE SETTLES ──
-// Dispatches to the correct setting handler.
-function _dlCheckCycleLimits(){
-  if(!dlcycleEnabled || _dlSwitching) return;
-  if(dlcycleSetting === 1){
-    _dlCheckLimits_S1();
-  } else {
-    _dlCheckLimits_S2();
-  }
-  _dlUpdateStatsCard();
-}
-
-// ────────────────────────────────────────────────
-//  SETTING 1 LOGIC — Loss Trigger (original logic)
-// ────────────────────────────────────────────────
-function _dlCheckLimits_S1(){
-  const net       = stats.totalProfit - stats.totalLoss;
-  const demoLoss  = parseFloat(document.getElementById('cfgDemoLoss').value) || 5;
-  const liveTP    = parseFloat(document.getElementById('cfgLiveTP_S1').value) || 10;
-
-  if(dlcyclePhase === 'demo'){
-    // Switch to LIVE when net loss reaches the trigger
-    if(net <= -demoLoss){
-      _dlSwitching = true;
-      const msg = '🛑 DEMO LOSS −' + fmtAmount(demoLoss) + ' REACHED — switching to LIVE!';
-      toast(msg, 'info');
-      setBotStatus(msg, 'error');
-      _dlFlashSwitch('DEMO LOSS TRIGGER → LIVE PHASE ⚡', '#00e676');
-      dlcyclePhase = 'live';
-      dlcycleNum++;
-      _dlApplyPhaseUI();
-      setTimeout(()=>{ _dlSwitching = false; _dlConnectPhase('live'); }, 1800);
-    }
-  } else {
-    // Switch back to DEMO when live hits profit OR loss target
-    if(Math.abs(net) >= liveTP){
-      _dlSwitching = true;
-      const hitReason = net >= 0
-        ? '🎯 LIVE TARGET +' + fmtAmount(liveTP) + ' HIT'
-        : '🛑 LIVE LOSS −' + fmtAmount(liveTP) + ' HIT';
-      const msg = hitReason + ' — switching to DEMO!';
-      toast(msg, 'info');
-      setBotStatus(msg, net >= 0 ? 'running' : 'error');
-      _dlFlashSwitch(hitReason + ' → DEMO PHASE ⚠', '#ffc107');
-      dlcyclePhase = 'demo';
-      dlcycleNum++;
-      _dlApplyPhaseUI();
-      setTimeout(()=>{ _dlSwitching = false; _dlConnectPhase('demo'); }, 1800);
-    }
-  }
-}
-
-// ─────────────────────────────────────────────────────
-//  SETTING 2 LOGIC — Profit Trigger + Reverse Mode
-// ─────────────────────────────────────────────────────
-function _dlCheckLimits_S2(){
-  const net      = stats.totalProfit - stats.totalLoss;
-  const demoTP   = parseFloat(document.getElementById('cfgDemoTP').value) || 10;
-  const liveTP   = parseFloat(document.getElementById('cfgLiveTP').value) || 10;
-
-  if(dlcyclePhase === 'demo'){
-    // Switch to LIVE when demo net profit reaches trigger
-    if(net >= demoTP){
-      _dlSwitching = true;
-
-      // Step 1: Enable Reverse Mode before switching to LIVE
-      if(!reverseMode){
-        reverseMode = true;
-        const revTog   = document.getElementById('reverseToggle');
-        const revState = document.getElementById('reverseState');
-        if(revTog)   revTog.className   = 'reverse-toggle on';
-        if(revState) revState.textContent = 'ON';
-        toast('⇄ Reverse Mode AUTO-ENABLED before LIVE switch','info');
-      }
-
-      const msg = '🎯 DEMO PROFIT +' + fmtAmount(demoTP) + ' HIT — Reverse Mode ON → switching to LIVE!';
-      toast(msg, 'info');
-      setBotStatus(msg, 'running');
-      _dlFlashSwitch('DEMO PROFIT HIT → REVERSE ON → LIVE ⚡', '#00e676');
-      dlcyclePhase = 'live';
-      dlcycleNum++;
-      _dlApplyPhaseUI();
-      setTimeout(()=>{ _dlSwitching = false; _dlConnectPhase('live'); }, 1800);
-    }
-  } else {
-    // Switch back to DEMO when live net profit reaches trigger
-    if(net >= liveTP){
-      _dlSwitching = true;
-
-      // Step 2: Disable Reverse Mode before switching back to DEMO
-      if(reverseMode){
-        reverseMode = false;
-        const revTog   = document.getElementById('reverseToggle');
-        const revState = document.getElementById('reverseState');
-        if(revTog)   revTog.className   = 'reverse-toggle off';
-        if(revState) revState.textContent = 'OFF';
-        toast('⇄ Reverse Mode AUTO-DISABLED before DEMO switch','info');
-      }
-
-      const msg = '🎯 LIVE PROFIT +' + fmtAmount(liveTP) + ' HIT — Reverse Mode OFF → switching to DEMO!';
-      toast(msg, 'info');
-      setBotStatus(msg, 'running');
-      _dlFlashSwitch('LIVE PROFIT HIT → REVERSE OFF → DEMO ⚠', '#ffc107');
-      dlcyclePhase = 'demo';
-      dlcycleNum++;
-      _dlApplyPhaseUI();
-      setTimeout(()=>{ _dlSwitching = false; _dlConnectPhase('demo'); }, 1800);
-    }
-  }
-}
-
-// ── APPLY PHASE UI ────────────────────────────────
-function _dlApplyPhaseUI(){
-  const banner   = document.getElementById('dlPhaseBanner');
-  const card     = document.getElementById('dlcycleStatsCard');
-  const badge    = document.getElementById('dlPhaseBadge');
-  const statusEl = document.getElementById('dlcycleStatus');
-  const s2Rev    = dlcycleSetting === 2 && dlcyclePhase === 'live' ? ' · ⇄ REV' : '';
-
-  if(!dlcycleEnabled){
-    _dlClearPhaseUI();
-    return;
-  }
-
-  if(dlcyclePhase === 'demo'){
-    banner.style.display = 'block';
-    banner.className     = 'demo-phase';
-    banner.textContent   = '⚠  DEMO PHASE  ·  VIRTUAL FUNDS  ·  REAL DERIV ENGINE  ·  CYCLE #' + dlcycleNum + '  ⚠';
-    if(card){ card.style.display='block'; card.className='dlcycle-stats'; }
-    if(badge){ badge.style.display='inline-block'; badge.className='st-phase-badge demo'; badge.textContent='DEMO'; }
-    if(statusEl){
-      statusEl.style.borderColor = 'var(--gold)';
-      statusEl.style.color       = 'var(--gold)';
-      const triggerAmt = dlcycleSetting === 1
-        ? '−' + fmtAmount(parseFloat(document.getElementById('cfgDemoLoss').value)||5) + ' LOSS'
-        : '+' + fmtAmount(parseFloat(document.getElementById('cfgDemoTP').value)||10) + ' PROFIT';
-      statusEl.textContent = 'Phase: DEMO — Cycle #'+dlcycleNum+' · Trigger: '+triggerAmt+' [S'+dlcycleSetting+']';
-    }
-  } else {
-    banner.style.display = 'block';
-    banner.className     = 'live-phase';
-    banner.textContent   = '⚡  LIVE PHASE  ·  REAL FUNDS  ·  REAL TRADES  ·  CYCLE #' + dlcycleNum + s2Rev + '  ⚡';
-    if(card){ card.style.display='block'; card.className='dlcycle-stats live-active'; }
-    if(badge){ badge.style.display='inline-block'; badge.className='st-phase-badge live'; badge.textContent='LIVE'; }
-    if(statusEl){
-      statusEl.style.borderColor = 'var(--green)';
-      statusEl.style.color       = 'var(--green)';
-      const liveTriggerAmt = dlcycleSetting === 1
-        ? '±'+fmtAmount(parseFloat(document.getElementById('cfgLiveTP_S1').value)||10)
-        : '+'+fmtAmount(parseFloat(document.getElementById('cfgLiveTP').value)||10)+' PROFIT';
-      const revNote = dlcycleSetting === 2 ? ' · ⇄ Reverse Mode ON' : '';
-      statusEl.textContent = 'Phase: LIVE — Cycle #'+dlcycleNum+' · Trigger: '+liveTriggerAmt+revNote+' [S'+dlcycleSetting+']';
-    }
-  }
-
-  _dlUpdateStatsCard();
-}
-
-function _dlClearPhaseUI(){
-  const banner   = document.getElementById('dlPhaseBanner');
-  const card     = document.getElementById('dlcycleStatsCard');
-  const badge    = document.getElementById('dlPhaseBadge');
-  const statusEl = document.getElementById('dlcycleStatus');
-  if(banner){ banner.style.display='none'; banner.className=''; }
-  if(card)   card.style.display='none';
-  if(badge)  badge.style.display='none';
-  if(statusEl){ statusEl.style.borderColor='var(--gold)'; statusEl.style.color='var(--gold)'; statusEl.textContent='Phase: Not started'; }
-}
-
-// ── UPDATE CYCLE STATS CARD ───────────────────────
-function _dlUpdateStatsCard(){
-  const net = stats.totalProfit - stats.totalLoss;
-
-  const titleEl  = document.getElementById('dlcycleStatsTitle');
-  const phaseEl  = document.getElementById('dlsPhase');
-  const cycleEl  = document.getElementById('dlsCycleNum');
-  const tradesEl = document.getElementById('dlsTrades');
-  const wlEl     = document.getElementById('dlsWL');
-  const targetEl = document.getElementById('dlsTarget');
-  const netEl    = document.getElementById('dlsNetPnL');
-
-  if(!titleEl) return;
-
-  const isDemo = dlcyclePhase === 'demo';
-  const sLabel = ' [S' + dlcycleSetting + ']';
-  titleEl.textContent = '🔄 Cycle #' + dlcycleNum + ' — ' + (isDemo ? 'Demo Phase' : 'Live Phase') + sLabel;
-  if(phaseEl){ phaseEl.textContent = isDemo ? 'DEMO ⚠' : 'LIVE ⚡'; phaseEl.style.color = isDemo ? 'var(--gold)' : 'var(--green)'; }
-  if(cycleEl)  cycleEl.textContent  = dlcycleNum;
-  if(tradesEl) tradesEl.textContent = stats.totalTrades;
-  if(wlEl)     wlEl.textContent     = stats.wins + ' / ' + stats.losses;
-
-  // Determine trigger display based on current phase + setting
-  let triggerLabel = '';
-  if(dlcycleSetting === 1){
-    triggerLabel = isDemo
-      ? '−' + fmtAmount(parseFloat(document.getElementById('cfgDemoLoss').value)||5) + ' LOSS'
-      : '±'  + fmtAmount(parseFloat(document.getElementById('cfgLiveTP_S1').value)||10);
-  } else {
-    triggerLabel = isDemo
-      ? '+' + fmtAmount(parseFloat(document.getElementById('cfgDemoTP').value)||10) + ' PROFIT'
-      : '+' + fmtAmount(parseFloat(document.getElementById('cfgLiveTP').value)||10)  + ' PROFIT';
-  }
-  if(targetEl){
-    targetEl.textContent = triggerLabel;
-    targetEl.style.color = isDemo ? 'var(--gold)' : 'var(--green)';
-  }
-
-  if(netEl){
-    netEl.textContent = (net >= 0 ? '+' : '-') + fmtAmount(Math.abs(net));
-    netEl.className   = 'dls-pnl ' + (net > 0 ? 'pos' : net < 0 ? 'neg' : 'zero');
-  }
-}
-
-// ── FLASH SCREEN ON PHASE SWITCH ─────────────────
-function _dlFlashSwitch(label, color){
-  const el = document.createElement('div');
-  el.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.6);pointer-events:none;';
-  el.innerHTML = `<div style="font-family:'Orbitron',sans-serif;font-size:20px;font-weight:900;color:${color};letter-spacing:4px;text-align:center;text-shadow:0 0 28px ${color};padding:22px 38px;background:rgba(0,0,0,.75);border:2px solid ${color};border-radius:14px;animation:phaseFlashIn .35s ease-out;">${label}</div>`;
-  document.body.appendChild(el);
-  setTimeout(()=>{ el.style.opacity='0'; el.style.transition='opacity .4s'; setTimeout(()=>el.remove(), 400); }, 2000);
-}
-
-// ── HOOK INTO checkSessionLimits ─────────────────
-// The original checkSessionLimits halts the EA via eaHalted.
-// In cycle mode we intercept BEFORE halt so we can switch instead.
-const _origCheckSessionLimits = checkSessionLimits;
-function checkSessionLimits(){
-  if(dlcycleEnabled){
-    _dlCheckCycleLimits();
-    if(_dlSwitching) return;
-  }
-  _origCheckSessionLimits();
-}
-
-// ── HOOK: update cycle stats card after every trade ──
-const _origSettleLE = _settleLogEntry;
-function _settleLogEntry(le, finalProfit){
-  _origSettleLE(le, finalProfit);
-  if(dlcycleEnabled) _dlUpdateStatsCard();
-}
-
-// ── PERSIST STATE ─────────────────────────────────
-function _dlSaveState(){
-  // Always persist cycle runtime state (phase, setting, num) to sessionStorage
-  // so a network-drop page reload can resume the correct phase automatically.
-  if(dlcycleEnabled) saveCycleRuntimeState();
-  try{
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if(raw){
-      const s = JSON.parse(raw);
-      s.dlcycle = {
-        enabled:  dlcycleEnabled,
-        setting:  dlcycleSetting,
-        phase:    dlcyclePhase,
-        num:      dlcycleNum,
-        demoTP:   document.getElementById('cfgDemoTP')    ? document.getElementById('cfgDemoTP').value    : '10',
-        liveTP:   document.getElementById('cfgLiveTP')    ? document.getElementById('cfgLiveTP').value    : '10',
-        demoLoss: document.getElementById('cfgDemoLoss')  ? document.getElementById('cfgDemoLoss').value  : '5',
-        liveTPv1: document.getElementById('cfgLiveTP_S1') ? document.getElementById('cfgLiveTP_S1').value : '10'
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
-    }
-  }catch(e){}
-}
-
-const _dlOrigSave = saveState;
-function saveState(){
-  _dlOrigSave();
-  _dlSaveState();
-}
-
-const _dlOrigLoad = loadState;
-function loadState(){
-  _dlOrigLoad();
-  try{
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if(raw){
-      const s = JSON.parse(raw);
-      if(s.dlcycle){
-        if(s.dlcycle.demoTP   && document.getElementById('cfgDemoTP'))   document.getElementById('cfgDemoTP').value   = s.dlcycle.demoTP;
-        if(s.dlcycle.liveTP   && document.getElementById('cfgLiveTP'))   document.getElementById('cfgLiveTP').value   = s.dlcycle.liveTP;
-        if(s.dlcycle.demoLoss && document.getElementById('cfgDemoLoss')) document.getElementById('cfgDemoLoss').value = s.dlcycle.demoLoss;
-        if(s.dlcycle.liveTPv1 && document.getElementById('cfgLiveTP_S1'))document.getElementById('cfgLiveTP_S1').value= s.dlcycle.liveTPv1;
-        if(s.dlcycle.setting) setDLCycleSetting(s.dlcycle.setting);
-        if(s.dlcycle.enabled){
-          dlcyclePhase = s.dlcycle.phase || 'demo';
-          dlcycleNum   = s.dlcycle.num   || 1;
-          document.getElementById('dlcycleBody').style.display = 'block';
-          toast('🔄 Cycle Mode was active — re-enter tokens & re-enable to resume', 'info');
-        }
-      }
-    }
-  }catch(e){}
-}
 
 </script>
 </body>
