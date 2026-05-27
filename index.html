@@ -2354,8 +2354,21 @@ function handleBuyResponse(buy){
                : durType === 'seconds' ? _dur * 1000
                : _dur * 60 * 1000;
 
+  // ── COUNTER DIRECTION GUARD ──────────────────────────────────────────────────
+  // contractDir: the actual Deriv contract type ('call' or 'put') — used for
+  //              display and position counting.
+  // counterDir:  the direction a counter trade MUST use if this position loses.
+  //              ALWAYS the strict opposite of contractDir, set HERE at open time
+  //              and never changed. This is the single source of truth for counter
+  //              logic — it must NOT be derived again later from pos.dir because
+  //              race conditions, reverse-mode state, or any future flag could
+  //              cause a mismatch.
+  const _contractDir = buy.contract_type === 'CALL' ? 'call' : 'put';
+  const _counterDir  = _contractDir === 'call' ? 'PUT' : 'CALL'; // locked at open
+
   openPositions[String(contractId)] = {
-    contractId: String(contractId), dir: buy.contract_type==='CALL'?'call':'put',
+    contractId: String(contractId), dir: _contractDir,
+    counterDir: _counterDir,        // ← immutable counter direction locked at open
     stake:    parseFloat(buy.buy_price||0),
     buyPrice: parseFloat(buy.buy_price||0),
     currentPnl: 0,
@@ -3547,9 +3560,25 @@ function scheduleCounterCheck(cid){
   const pos = openPositions[cid];
   if(!pos) return;
 
-  // Never schedule a counter check for a counter trade itself
-  if(pos.isCounter){
-    setCounterStatus('Counter trade active — no re-counter.', 'ok');
+  // ── GUARD: Never schedule a counter check for a counter trade itself ──
+  // Check BOTH isCounter flag AND counterDir sanity.
+  if(pos.isCounter === true){
+    setCounterStatus('Counter trade active — no re-counter (guard).', 'ok');
+    return;
+  }
+
+  // ── GUARD: counterDir must be the strict opposite of pos.dir — abort if not ──
+  if(!pos.counterDir || pos.counterDir === undefined){
+    setCounterStatus('⚠ counterDir not set on position #'+cid+' — counter scheduling aborted.', 'ok');
+    console.error('[COUNTER GUARD] counterDir missing at schedule time for position', cid, pos);
+    return;
+  }
+  const _dirIsCall     = pos.dir === 'call';
+  const _ctrIsCall     = pos.counterDir === 'CALL';
+  if(_dirIsCall === _ctrIsCall){
+    // Same-direction guard fires — this must never happen
+    setCounterStatus('⚠ Same-direction counter blocked for #'+cid+' — scheduling aborted.', 'ok');
+    console.error('[COUNTER GUARD] Same-direction counter prevented at schedule for', cid, pos);
     return;
   }
 
@@ -3603,9 +3632,40 @@ function runCounterCheck(cid){
   cid = String(cid);
   const pos = openPositions[cid];
 
-  // Position may have already closed — nothing to counter
+  // ── GUARD 1: Position may have already closed — nothing to counter ──
   if(!pos){
     setCounterStatus('Position closed before counter check — skipped.', 'ok');
+    return;
+  }
+
+  // ── GUARD 2: HARD isCounter block — counter trades must NEVER be re-countered.
+  //    Check BOTH the isCounter flag AND the passthrough in case flag was lost.
+  //    This is the primary protection against direction-flip loops.
+  if(pos.isCounter === true){
+    setCounterStatus('Counter trade #'+cid+' — no re-counter (guard active).', 'ok');
+    return;
+  }
+
+  // ── GUARD 3: counterDir must be locked and valid — if missing, abort.
+  //    counterDir is set at trade-open time and is the ONLY source used here.
+  //    We never re-derive it from pos.dir to avoid any reverse-mode contamination.
+  const counterType = pos.counterDir; // 'CALL' or 'PUT' — immutably set at open
+  if(counterType !== 'CALL' && counterType !== 'PUT'){
+    setCounterStatus('⚠ Counter direction undefined for #'+cid+' — skipped (bug guard).', 'ok');
+    console.error('[COUNTER GUARD] counterDir missing or invalid on position', cid, pos);
+    return;
+  }
+
+  // ── GUARD 4: Sanity-check that counterDir is truly opposite of dir.
+  //    If this assertion fails something corrupted the position — abort.
+  const dirIsCall = pos.dir === 'call';
+  const counterIsCall = counterType === 'CALL';
+  if(dirIsCall === counterIsCall){
+    // Same direction — this would be a BUY counter to a BUY, which is WRONG.
+    // Abort unconditionally; log for debugging.
+    setCounterStatus('⚠ Counter direction mismatch for #'+cid+' — blocked to prevent same-direction counter.', 'ok');
+    console.error('[COUNTER GUARD] DIRECTION MISMATCH — pos.dir:', pos.dir,
+      'counterDir:', counterType, '— aborting counter to prevent same-direction trade.');
     return;
   }
 
@@ -3617,30 +3677,30 @@ function runCounterCheck(cid){
     return;
   }
 
-  // In loss — place immediate counter trade in the opposite direction
-  const counterType = (pos.dir === 'call') ? 'PUT' : 'CALL';
   const symbol  = pos.symbol || v('cfgSymbol');
   const stake   = parseFloat(v('cfgStake')) || pos.stake || 1;
   const sl      = parseFloat(v('cfgSL'))    || 0;
   const tp      = parseFloat(v('cfgTP'))    || 0;
 
-  // Guard: abort if fewer than 15 s remain — not enough time for a valid counter contract.
+  // ── GUARD 5: Abort if fewer than 15 s remain — not enough time for a valid counter contract.
   const remMsNow = pos.expiryMs ? pos.expiryMs - Date.now() : null;
   if(remMsNow !== null && remMsNow < 15000){
     setCounterStatus(`⚠ Only ${Math.round(remMsNow/1000)}s left — too late to counter.`, 'ok');
     return;
   }
 
-  setCounterStatus(`🔴 #${cid} in loss (${fmtAmount(Math.abs(pnl))}) — firing ${counterType} counter…`, 'fired');
-  const remSec  = pos.expiryMs ? Math.max(5, Math.round((pos.expiryMs - Date.now()) / 1000)) : null;
+  // ── All guards passed — fire counter trade ──────────────────────────────────
+  setCounterStatus(
+    `🔴 #${cid} in loss (${fmtAmount(Math.abs(pnl))}) — firing ${counterType} counter (orig: ${pos.dir.toUpperCase()})…`,
+    'fired'
+  );
+  const remSec   = pos.expiryMs ? Math.max(5, Math.round((pos.expiryMs - Date.now()) / 1000)) : null;
   const remLabel = remSec
     ? ` (syncing to remaining ${remSec >= 60 ? Math.floor(remSec/60)+'m '+(remSec%60)+'s' : remSec+'s'})`
     : '';
-  // remLabel is stored for the toast — counter duration is synced in placeCounterTrade
 
-  // Build a log entry for the counter trade
-  // dir uses CBUY / CSELL so the log table renders a distinct counter badge
-  // instead of falling through to the GHOST label.
+  // Build a log entry for the counter trade.
+  // dir uses CBUY / CSELL so the log table renders a distinct counter badge.
   const logEntry = {
     id:         Date.now() + '_ct',
     time:       new Date().toLocaleTimeString(),
@@ -3663,7 +3723,7 @@ function runCounterCheck(cid){
   // Place the counter trade — mark it so it can never itself be countered
   placeCounterTrade(counterType, symbol, stake, sl, tp, logEntry.id, pos.expiryMs);
 
-  toast(`⚡ Counter ${counterType} placed vs open loss${remLabel}`, 'info');
+  toast(`⚡ Counter ${counterType} (vs ${pos.dir.toUpperCase()} loss)${remLabel}`, 'info');
 }
 
 // Like placeTrade but stamps isCounter=true on the resulting position.
@@ -3691,9 +3751,18 @@ function placeCounterTrade(contractType, symbol, stake, slAmt, tpAmt, logId, ori
     durUnit = 't';
   } else {
     // Remaining ms on original trade, minus network buffer, floored to avoid
-    // rounding up past the original expiry, minimum 5 s so Deriv accepts it.
+    // rounding up past the original expiry.
+    // GUARD: if fewer than 5 s remain after the network buffer is deducted,
+    // abort rather than clamping up — a floored-up duration would cause the
+    // counter to outlive the original trade.
     const rawRemMs = originExpiryMs ? originExpiryMs - Date.now() - NETWORK_BUFFER_MS : null;
-    const remMs    = (rawRemMs !== null && rawRemMs > 0) ? Math.max(5000, rawRemMs) : null;
+    if(rawRemMs !== null && rawRemMs < 5000){
+      // Not enough margin — placing a counter now would overshoot the original expiry.
+      setCounterStatus('⚠ Counter aborted — insufficient time remaining to sync expiry.', 'ok');
+      toast('⚠ Counter aborted: too close to original expiry to place safely.', 'warn');
+      return;
+    }
+    const remMs = (rawRemMs !== null && rawRemMs > 0) ? rawRemMs : null;
     if(remMs){
       dur     = Math.floor(remMs / 1000); // floor: never round up past original expiry
       durUnit = 's';                      // always seconds for exact sync
