@@ -225,6 +225,8 @@
   tr:hover td{background:rgba(45,139,255,.06);}
   .tag-buy{color:#6ab5ff;background:rgba(45,139,255,.15);padding:2px 8px;border-radius:3px;font-size:11px;letter-spacing:.5px;font-weight:700;}
   .tag-sell{color:#ff7090;background:rgba(255,61,90,.14);padding:2px 8px;border-radius:3px;font-size:11px;letter-spacing:.5px;font-weight:700;}
+  .tag-cbuy{color:#6ab5ff;background:rgba(45,139,255,.10);padding:2px 8px;border-radius:3px;font-size:11px;letter-spacing:.5px;font-weight:700;border:1px dashed rgba(45,139,255,.5);}
+  .tag-csell{color:#ff7090;background:rgba(255,61,90,.10);padding:2px 8px;border-radius:3px;font-size:11px;letter-spacing:.5px;font-weight:700;border:1px dashed rgba(255,61,90,.5);}
   .tag-win{color:var(--green);font-weight:700;}
   .tag-loss{color:#ff7090;font-weight:700;}
   .tag-open{color:var(--gold);font-weight:700;}
@@ -2460,8 +2462,11 @@ function handleContractUpdate(poc){
   if(poc.ticks_remaining !== undefined && poc.ticks_remaining !== null){
     pos.ticksRemaining = parseInt(poc.ticks_remaining);
   }
-  // Also update expiryMs if Deriv gives us an expiry time
-  if(poc.expiry_time && !pos.expiryMs){
+  // Always sync expiryMs from Deriv's authoritative expiry_time when available.
+  // The client-side estimate (Date.now() + durMs) can drift due to proposal/buy
+  // round-trip latency — especially noticeable when two trades are open simultaneously.
+  // Overwriting with the server value keeps the countdown and safety-fallback poll accurate.
+  if(poc.expiry_time){
     pos.expiryMs = poc.expiry_time * 1000; // epoch seconds → ms
   }
 
@@ -2715,7 +2720,7 @@ function fmtCountdown(p){
   if(!p.expiryMs) return { text: '—', cls: '' };
   const rem = Math.max(0, p.expiryMs - Date.now());
   if(rem === 0) return { text: '00:00', cls: 'crit' };
-  const secs = Math.ceil(rem / 1000);
+  const secs = Math.floor(rem / 1000);
   const m = Math.floor(secs / 60);
   const s = secs % 60;
   const text = String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
@@ -2834,7 +2839,11 @@ function rebuildLog(){
       ? '<span class="tag-buy">BUY</span>'
       : l.dir==='SELL'
         ? '<span class="tag-sell">SELL</span>'
-        : '<span style="color:#8ba4cc;font-size:10px;letter-spacing:1px;">GHOST</span>';
+        : l.dir==='CBUY'
+          ? '<span class="tag-cbuy">C·BUY</span>'
+          : l.dir==='CSELL'
+            ? '<span class="tag-csell">C·SELL</span>'
+            : '<span style="color:#8ba4cc;font-size:10px;letter-spacing:1px;">GHOST</span>';
     const resCls = l.result==='WIN'?'tag-win':l.result==='LOSS'?'tag-loss':l.result==='OPEN'?'tag-open':l.result==='?'?'tag-open':l.result==='FAILED'?'tag-failed':'';
     const resDisplay = l.result === '?' ? '?' : l.result;
     const pnlCls = l.pnl&&l.pnl.startsWith('+')?'tag-win':l.pnl&&l.pnl!=='—'?'tag-loss':'';
@@ -3518,16 +3527,30 @@ function scheduleCounterCheck(cid){
     return;
   }
 
-  // Parse decimal wait time: int part = minutes, decimal part treated as seconds (x100)
-  // e.g. 1.5 → 1 min 30 sec | 2.3 → 2 min 30 sec | 0.5 → 0 min 50 sec
-  // Decimal treated as true fraction of a minute: 1.5 = 1m 30s, 2.3 = 2m 18s, 0.5 = 30s
+  // Parse decimal wait time: decimal part is fraction of a minute.
+  // e.g. 0.5 → 0m 30s | 1.5 → 1m 30s | 2.5 → 2m 30s | 2.3 → 2m 18s
   const rawWait  = parseFloat(document.getElementById('cfgCounterWait').value) || 3;
   const waitMins = Math.floor(rawWait);
-  const waitSecs = Math.round((rawWait - waitMins) * 60); // fraction of a minute → seconds
+  const waitSecs = Math.round((rawWait - waitMins) * 60); // true fraction of a minute → seconds
   const waitMs   = (waitMins * 60 + waitSecs) * 1000;
   const waitLabel = waitMins > 0
     ? (waitSecs > 0 ? `${waitMins}m ${waitSecs}s` : `${waitMins}m`)
     : `${waitSecs}s`;
+
+  // Guard: if the wait time leaves fewer than 15 s on the original trade there
+  // is not enough room for a counter contract. Skip scheduling entirely.
+  const MIN_REMAINING_MS = 15000;
+  if(pos.expiryMs){
+    const totalDurMs  = pos.expiryMs - pos.openTimeMs;          // full trade duration
+    const latestFireMs = totalDurMs - MIN_REMAINING_MS;         // latest safe check point
+    if(waitMs >= latestFireMs){
+      setCounterStatus(
+        `⚠ Counter wait (${waitLabel}) leaves <15 s on trade — counter skipped.`, 'ok'
+      );
+      return;
+    }
+  }
+
   const dir = pos.dir; // 'call' or 'put'
 
   setCounterStatus(`⏳ Watching ${dir.toUpperCase()} #${cid} — checking in ${waitLabel}…`, 'watching');
@@ -3575,6 +3598,13 @@ function runCounterCheck(cid){
   const sl      = parseFloat(v('cfgSL'))    || 0;
   const tp      = parseFloat(v('cfgTP'))    || 0;
 
+  // Guard: abort if fewer than 15 s remain — not enough time for a valid counter contract.
+  const remMsNow = pos.expiryMs ? pos.expiryMs - Date.now() : null;
+  if(remMsNow !== null && remMsNow < 15000){
+    setCounterStatus(`⚠ Only ${Math.round(remMsNow/1000)}s left — too late to counter.`, 'ok');
+    return;
+  }
+
   setCounterStatus(`🔴 #${cid} in loss (${fmtAmount(Math.abs(pnl))}) — firing ${counterType} counter…`, 'fired');
   const remSec  = pos.expiryMs ? Math.max(5, Math.round((pos.expiryMs - Date.now()) / 1000)) : null;
   const remLabel = remSec
@@ -3583,10 +3613,12 @@ function runCounterCheck(cid){
   // remLabel is stored for the toast — counter duration is synced in placeCounterTrade
 
   // Build a log entry for the counter trade
+  // dir uses CBUY / CSELL so the log table renders a distinct counter badge
+  // instead of falling through to the GHOST label.
   const logEntry = {
     id:         Date.now() + '_ct',
     time:       new Date().toLocaleTimeString(),
-    signal:     counterType === 'CALL' ? '▲ COUNTER RISE' : '▼ COUNTER FALL',
+    dir:        counterType === 'CALL' ? 'CBUY' : 'CSELL',
     entry:      '—',
     market:     symbol,
     result:     'OPEN',
@@ -3609,9 +3641,22 @@ function runCounterCheck(cid){
 }
 
 // Like placeTrade but stamps isCounter=true on the resulting position.
-// originExpiryMs: the expiryMs of the original trade — counter closes at the same time.
+// originExpiryMs: the expiryMs of the original trade — counter must close at the same time.
+//
+// SYNC STRATEGY:
+//   remMs = time left on original trade at the moment this function runs.
+//   We subtract a 1-second network buffer for the proposal→buy round-trip so
+//   that by the time Deriv actually starts the counter contract it expires at
+//   the same wall-clock second as the original.
+//   Math.floor (not round) prevents ever rounding UP past the original expiry.
+//   Minimum enforced at 5 s so Deriv doesn't reject too-short contracts.
 function placeCounterTrade(contractType, symbol, stake, slAmt, tpAmt, logId, originExpiryMs){
   stats.totalTrades++;
+
+  // Network round-trip compensation: proposal → server → buy confirmation takes
+  // roughly 0.5–1 s. Deduct 1 s so the counter contract expires at the same
+  // second as the original rather than 1 s after it.
+  const NETWORK_BUFFER_MS = 1000;
 
   let dur, durUnit;
   if(durType === 'ticks'){
@@ -3619,14 +3664,15 @@ function placeCounterTrade(contractType, symbol, stake, slAmt, tpAmt, logId, ori
     dur     = parseInt(v('cfgDuration')) || 5;
     durUnit = 't';
   } else {
-    // Calculate remaining seconds until the original trade expires
-    const remMs = originExpiryMs ? Math.max(5000, originExpiryMs - Date.now()) : null;
-    if(remMs && durType !== 'ticks'){
-      // Always send in seconds so Deriv accepts fractional time accurately
-      dur     = Math.round(remMs / 1000);
-      durUnit = 's';
+    // Remaining ms on original trade, minus network buffer, floored to avoid
+    // rounding up past the original expiry, minimum 5 s so Deriv accepts it.
+    const rawRemMs = originExpiryMs ? originExpiryMs - Date.now() - NETWORK_BUFFER_MS : null;
+    const remMs    = (rawRemMs !== null && rawRemMs > 0) ? Math.max(5000, rawRemMs) : null;
+    if(remMs){
+      dur     = Math.floor(remMs / 1000); // floor: never round up past original expiry
+      durUnit = 's';                      // always seconds for exact sync
     } else {
-      // Fallback: use configured duration
+      // Fallback: use configured duration (no expiry info available)
       dur     = parseInt(v('cfgDuration')) || 5;
       durUnit = durType === 'seconds' ? 's' : 'm';
     }
