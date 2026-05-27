@@ -1197,6 +1197,11 @@ let openPositions = {};    // contract_id -> position object
 let tradeLog = [];
 let eaHalted = false;      // binary SL/TP halt flag
 
+// Tracks contracts that have already been fully settled so a second POC message
+// (e.g. from the safety fallback poll arriving after the stream already settled it)
+// can never call closePosition or _settleLogEntry a second time.
+const _settledContracts = new Set();
+
 // ── SMART COUNTER FILTER STATE ──────────────────────
 let counterFilterEnabled = false;   // master toggle
 // Map of contractId -> { timer, dir, logId } for pending counter checks
@@ -2368,14 +2373,11 @@ function handleBuyResponse(buy){
   // ── Schedule counter check if filter is active ──
   scheduleCounterCheck(String(contractId));
 
-  // NOTE: We used buy+subscribe:1 so Deriv is already streaming POC updates.
-  // For tick contracts on Volatility indices the POC subscription alone does
-  // NOT stream — the buy+subscribe pattern is the only reliable method.
-  // We still send a direct POC subscription as belt-and-braces for longer
-  // duration contracts (seconds/minutes) that DO stream normally.
-  if(durType !== 'ticks'){
-    send({ proposal_open_contract:1, contract_id:contractId, subscribe:1 });
-  }
+  // buy+subscribe:1 (sent at proposal acceptance above) already opens the
+  // POC stream for this contract. A second subscription here would create two
+  // simultaneous streams per trade — with two trades open that is 4 interleaved
+  // POC streams all hitting handleContractUpdate, causing cross-contract
+  // log entry contamination and premature settlement. Do NOT re-add this.
 
   // Safety fallback poll — fires after max expected contract lifetime + 5 s
   const dur = parseInt(v('cfgDuration'))||5;
@@ -2398,6 +2400,10 @@ function handleBuyResponse(buy){
 // the log entry by contractId — this is the ONLY reliable method.
 function handleContractUpdate(poc){
   const cid = String(poc.contract_id);
+
+  // If this contract was already fully settled, ignore all further POC messages.
+  // This prevents the safety fallback poll or duplicate stream from re-closing it.
+  if(_settledContracts.has(cid)) return;
 
   // ── Settle detection ──────────────────────────────
   const isSold     = Number(poc.is_sold)    === 1;
@@ -2442,8 +2448,9 @@ function handleContractUpdate(poc){
     let le = logId
       ? tradeLog.find(l => l.id === logId && (l.result === 'OPEN' || l.result === '?'))
       : null;
+    // Only fall back to contractId match — never do a blind "no contractId" catch-all
+    // as that grabs the wrong trade's log entry when multiple trades are open.
     if(!le) le = tradeLog.find(l => l.contractId === cid && (l.result === 'OPEN' || l.result === '?'));
-    if(!le) le = tradeLog.find(l => !l.contractId && (l.result === 'OPEN' || l.result === '?'));
     if(le){
       if(!le.contractId) le.contractId = cid;
       contractLogMap[cid] = le.id;
@@ -2478,9 +2485,18 @@ function handleContractUpdate(poc){
   }
 
   const slAmt = pos.slAmt, tpAmt = pos.tpAmt;
-  if((slAmt > 0 && finalProfit <= -slAmt) || (tpAmt > 0 && finalProfit >= tpAmt)){
-    closePosition(cid, finalProfit, 'force');
-    return;
+  // ── SL/TP: display-only flag — never early-close ──────────────────────────
+  // Trades must always run to their full set duration. SL/TP thresholds are
+  // informational markers only. When hit, we flag the position so the UI can
+  // show a visual indicator, but we do NOT sell or close the trade — Deriv will
+  // settle it at the correct expiry time via the POC stream.
+  if(slAmt > 0 && finalProfit <= -slAmt && !pos._slHit){
+    pos._slHit = true;
+    toast(`⚠ SL hit on #${cid} (P&L ${fmtAmount(finalProfit)}) — trade runs to expiry`, 'warn');
+  }
+  if(tpAmt > 0 && finalProfit >= tpAmt && !pos._tpHit){
+    pos._tpHit = true;
+    toast(`✅ TP hit on #${cid} (P&L ${fmtAmount(finalProfit)}) — trade runs to expiry`, 'info');
   }
 
   renderPositions();
@@ -2509,6 +2525,11 @@ function pollContractIfOpen(contractId){
 
 function closePosition(cid, finalProfit, status){
   cid = String(cid);
+
+  // Idempotency guard — if already settled, do nothing.
+  if(_settledContracts.has(cid)) return;
+  _settledContracts.add(cid);
+
   const pos = openPositions[cid];
 
   if(!pos){
@@ -2527,12 +2548,16 @@ function closePosition(cid, finalProfit, status){
   // Find log entry FIRST — only proceed if it hasn't been settled already
   const le = tradeLog.find(l => l.id === pos.logId && (l.result === 'OPEN' || l.result === '?'));
 
-  const alreadySettled = status === 'won' || status === 'lost' ||
-                         status === 'sold' || status === 'expired' ||
-                         status === 'cancelled';
-  if(!alreadySettled && durType !== 'ticks'){
-    send({ sell: cid, price: 0 });
-  }
+  // ── CRITICAL GUARD ─────────────────────────────────────────────────────────
+  // We NEVER send a manual sell command to Deriv.
+  // Every trade must run to its full natural expiry as set at placement time.
+  // The only valid close paths are:
+  //   • Deriv streams is_expired = 1  (contract reached its duration)
+  //   • Deriv streams is_sold   = 1   (Deriv-side settlement)
+  //   • Deriv streams status = won / lost / sold / expired
+  // SL/TP checks above update the UI P&L display only — they do NOT cut trades early.
+  // Removing send({sell}) here is intentional and must not be re-added.
+  // ───────────────────────────────────────────────────────────────────────────
 
   delete openPositions[cid];
   delete contractLogMap[cid];
@@ -2745,7 +2770,6 @@ function renderPositions(){
       </div>
       <span class="pos-timer ${cd.cls}" id="cdtimer_${cid}">${cd.text}</span>
       <span class="pos-pnl ${pnlCls}">${(p.currentPnl>=0?'+':'-')+fmtAmount(Math.abs(p.currentPnl))}</span>
-      <button class="btn-close-pos" onclick="manualClose('${cid}')">✕</button>
     </div>`;
   }).join('');
 }
@@ -2779,9 +2803,11 @@ function stopAllPositionTimers(){
   Object.keys(_posTimers).forEach(stopPositionTimer);
 }
 
+// manualClose is DISABLED.
+// Trades must only close via Deriv's natural expiry (is_expired/is_sold/status flags).
+// Do NOT re-enable or re-wire this function — it would cause early close of live trades.
 function manualClose(cid){
-  send({ sell: cid, price:0 });
-  toast('Closing position '+cid,'info');
+  console.warn('[GUARD] manualClose called for', cid, '— blocked. Trades close at natural expiry only.');
 }
 
 // ─── UPDATE STATS ─────────────────────────────────
