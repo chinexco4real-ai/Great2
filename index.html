@@ -1791,16 +1791,16 @@ function handleMsg(msg, isLoginFlow){
     return;
   }
 
-  if(msg.msg_type === 'buy' || msg.msg_type === 'proposal'){
+  // ── PROPOSAL handler — step 2 of proposal→buy flow ──────────────────────
+  // MUST be a completely separate block from 'buy'. The old combined
+  // (buy || proposal) error block caused proposal messages to fall through
+  // into the buy handler, calling handleBuyResponse(undefined) and corrupting state.
+  if(msg.msg_type === 'proposal'){
     if(msg.error){
-      const errCode = msg.error.code    || '';
-      const errMsg  = msg.error.message || 'Unknown error';
-      // Diagnostic: show exactly which currency was used so we can debug
+      const errMsg = msg.error.message || 'Proposal error';
       const usedCcy = payoutCurrency || accountCurrency;
       setBotStatus('Trade error: ' + errMsg, 'error');
       toast('Trade failed [ccy:'+usedCcy+']: ' + errMsg, 'info');
-
-      // ── Recover the orphaned log entry ────────────
       const logId = msg.echo_req && msg.echo_req.passthrough && msg.echo_req.passthrough.log_id;
       if(logId){
         const le = tradeLog.find(l => l.id === logId);
@@ -1811,37 +1811,11 @@ function handleMsg(msg, isLoginFlow){
         }
       }
       if(stats.totalTrades > 0) stats.totalTrades--;
-      rebuildLog();
-      updateStats();
-      return;
-    }
-  }
-
-  if(msg.msg_type === 'proposal'){
-    // Step 2 of two-step flow: Deriv returned a priced proposal — buy it immediately.
-    // The passthrough carries log_id, sl_amt, tp_amt and is_counter so the buy
-    // response handler can link back to the correct log entry.
-    if(msg.error){
-      const errMsg = msg.error.message || 'Proposal error';
-      setBotStatus('Trade error: ' + errMsg, 'error');
-      toast('Trade failed: ' + errMsg, 'info');
-      // Mark orphaned log entry FAILED
-      const logId = msg.echo_req && msg.echo_req.passthrough && msg.echo_req.passthrough.log_id;
-      if(logId){
-        const le = tradeLog.find(l => l.id === logId);
-        if(le && (le.result === 'OPEN' || le.result === '?')){
-          le.result = 'FAILED';
-          le.pnl    = '—';
-          le._failReason = errMsg;
-        }
-      }
-      if(stats.totalTrades > 0) stats.totalTrades--;
       rebuildLog(); updateStats();
-      return;
+      return;  // ← MUST return here — never fall through to buy handler
     }
     const p = msg.proposal;
     if(p && p.id){
-      // Buy the proposal at the quoted price, forwarding passthrough intact
       send({
         buy:         p.id,
         price:       p.ask_price,
@@ -1849,12 +1823,30 @@ function handleMsg(msg, isLoginFlow){
         passthrough: msg.echo_req.passthrough || {}
       });
     }
-    return;
+    return;  // ← always return from proposal block
   }
 
+  // ── BUY handler — trade confirmed by Deriv ─────────────────────────────────
   if(msg.msg_type === 'buy'){
-    if(msg.error) return; // already handled above
-    handleBuyResponse(msg.buy);
+    if(msg.error){
+      const errMsg = msg.error.message || 'Buy error';
+      const usedCcy = payoutCurrency || accountCurrency;
+      setBotStatus('Trade error: ' + errMsg, 'error');
+      toast('Trade failed [ccy:'+usedCcy+']: ' + errMsg, 'info');
+      const logId = msg.echo_req && msg.echo_req.passthrough && msg.echo_req.passthrough.log_id;
+      if(logId){
+        const le = tradeLog.find(l => l.id === logId);
+        if(le && (le.result === 'OPEN' || le.result === '?')){
+          le.result = 'FAILED';
+          le.pnl    = '—';
+          le._failReason = errMsg + ' [ccy:'+usedCcy+']';
+        }
+      }
+      if(stats.totalTrades > 0) stats.totalTrades--;
+      rebuildLog(); updateStats();
+      return;
+    }
+    if(msg.buy) handleBuyResponse(msg.buy, msg.echo_req);
     return;
   }
 
@@ -2324,12 +2316,15 @@ function placeTrade(contractType, symbol, stake, slAmt, tpAmt, logId){
 }
 
 // ─── HANDLE BUY RESPONSE ──────────────────────────
-function handleBuyResponse(buy){
+function handleBuyResponse(buy, echo_req){
   const contractId = buy.contract_id;
-  const passthrough = buy.passthrough||{};
-  const logId = passthrough.log_id;
-  const slAmt = passthrough.sl_amt||0;
-  const tpAmt = passthrough.tp_amt||0;
+  // Passthrough is reliably in echo_req.passthrough (what WE sent).
+  // buy.passthrough is only present on some Deriv API versions — never rely on it alone.
+  // echo_req is the authoritative source: it is always the exact object we sent.
+  const passthrough = (echo_req && echo_req.passthrough) || buy.passthrough || {};
+  const logId    = passthrough.log_id;
+  const slAmt    = passthrough.sl_amt    || 0;
+  const tpAmt    = passthrough.tp_amt    || 0;
   const isCounter = !!passthrough.is_counter;  // ← counter flag
 
   // Stamp the map IMMEDIATELY so handleContractUpdate can always find
@@ -2349,10 +2344,14 @@ function handleBuyResponse(buy){
   }
 
   // Calculate expiry for countdown timer
+  // Prefer buy.date_expiry (server epoch seconds) — exact Deriv expiry time.
+  // Fall back to client-side estimate only when date_expiry is absent (tick contracts).
   const _dur   = parseInt(v('cfgDuration')) || 5;
   const _durMs = durType === 'ticks'   ? null
                : durType === 'seconds' ? _dur * 1000
                : _dur * 60 * 1000;
+  // Server-authoritative expiry: buy.date_expiry is epoch seconds from Deriv
+  const _serverExpiryMs = buy.date_expiry ? buy.date_expiry * 1000 : null;
 
   // ── COUNTER DIRECTION GUARD ──────────────────────────────────────────────────
   // contractDir: the actual Deriv contract type ('call' or 'put') — used for
@@ -2377,7 +2376,7 @@ function handleBuyResponse(buy){
     symbol: v('cfgSymbol'),
     openTime:   new Date().toLocaleTimeString(),
     openTimeMs: Date.now(),
-    expiryMs:   _durMs ? Date.now() + _durMs : null,
+    expiryMs:   _serverExpiryMs || (_durMs ? Date.now() + _durMs : null),
     durType:    durType,
     durValue:   _dur,
     isCounter:  isCounter   // true for counter trades → never re-countered
@@ -2386,11 +2385,20 @@ function handleBuyResponse(buy){
   // ── Schedule counter check if filter is active ──
   scheduleCounterCheck(String(contractId));
 
-  // buy+subscribe:1 (sent at proposal acceptance above) already opens the
-  // POC stream for this contract. A second subscription here would create two
-  // simultaneous streams per trade — with two trades open that is 4 interleaved
-  // POC streams all hitting handleContractUpdate, causing cross-contract
-  // log entry contamination and premature settlement. Do NOT re-add this.
+  // ── CRITICAL: Subscribe to POC stream for settlement updates ──────────────
+  // For tick contracts:   buy+subscribe:1 opens the POC stream automatically.
+  // For second/minute contracts (STP100, V10, V50 etc. with time duration):
+  //   Deriv does NOT stream POC via the buy response. An explicit
+  //   proposal_open_contract subscription MUST be sent after buy confirms.
+  //   Without this, the contract sits on OPEN forever — it never settles.
+  // We send it for ALL contract types (tick + time) to guarantee coverage.
+  // Deriv deduplicates subscriptions server-side — a second subscribe on a
+  // tick contract causes no harm but ensures time contracts always settle.
+  setTimeout(()=>{
+    if(openPositions[String(contractId)]){  // only if not already settled
+      send({ proposal_open_contract: 1, contract_id: contractId, subscribe: 1 });
+    }
+  }, 500);  // short delay to let buy response fully process first
 
   // Safety fallback poll — fires after max expected contract lifetime + 5 s
   const dur = parseInt(v('cfgDuration'))||5;
@@ -2418,31 +2426,32 @@ function handleContractUpdate(poc){
   // This prevents the safety fallback poll or duplicate stream from re-closing it.
   if(_settledContracts.has(cid)) return;
 
-  // ── Settle detection ──────────────────────────────
-  const isSold     = Number(poc.is_sold)    === 1;
-  const isExpired  = Number(poc.is_expired) === 1;
-  const statusDone = poc.status === 'won' || poc.status === 'lost' || poc.status === 'sold';
-  const isSettleable = Number(poc.is_settleable) === 1;
-  const isValidSell  = Number(poc.is_valid_to_sell);
-  // Only treat as finished when Deriv has definitively settled the contract.
-  // Removing the (isSettleable && isValidSell===0) condition prevents early
-  // settlement on a non-final tick which gives a lower-than-actual profit_loss.
-  const isFinished = isSold || isExpired || statusDone;
+  // ── Settle detection ──────────────────────────────────────────────────────
+  // CRITICAL: Deriv sends is_sold / is_expired as EITHER boolean true OR
+  // integer 1 depending on contract type and API version. Cast to Number first
+  // then compare, OR use truthy check — both are needed for full coverage.
+  const isSold    = poc.is_sold    === 1 || poc.is_sold    === true;
+  const isExpired = poc.is_expired === 1 || poc.is_expired === true;
+  const statusDone = poc.status === 'won' || poc.status === 'lost'
+                  || poc.status === 'sold' || poc.status === 'expired';
+  // is_settleable=1 AND is_valid_to_sell=0 means Deriv has settled the contract
+  // but has not yet flipped is_sold — this is common on tick contracts.
+  const isSettleable  = poc.is_settleable  === 1 || poc.is_settleable  === true;
+  const isValidToSell = poc.is_valid_to_sell === 1 || poc.is_valid_to_sell === true;
+  const settledByState = isSettleable && !isValidToSell;
+  // Final P/L present = definitive settlement even if flags lag
+  const hasFinalPnl = poc.profit_loss !== undefined && poc.profit_loss !== null && poc.profit_loss !== '';
+  const isFinished  = isSold || isExpired || statusDone || settledByState || (hasFinalPnl && isSettleable);
 
-  // ── Calculate P&L ─────────────────────────────────
-  // Only use profit_loss when the contract is fully and definitively settled
-  // (status = won / lost / sold / expired). Using it on live ticks gives a
-  // mark-to-market value that is lower than the final settled amount.
+  // ── Calculate final P&L for settlement ──────────────────────────────────
+  // Priority: profit_loss (Deriv's authoritative net P&L field) > sell_price - stake > profit
+  // profit_loss is always present on settled contracts and is the most accurate value.
   let finalProfit = null;
-  const isDefinitivelySettled = statusDone || isSold || isExpired;
-  if(isDefinitivelySettled && poc.profit_loss !== undefined && poc.profit_loss !== null && poc.profit_loss !== ''){
-    // profit_loss from Deriv is the true net P&L — use it only on final settlement
+  if(poc.profit_loss !== undefined && poc.profit_loss !== null && poc.profit_loss !== ''){
     finalProfit = parseFloat(poc.profit_loss);
-  } else if(poc.sell_price !== undefined){
-    // sell_price is the final payout; subtract the ORIGINAL stake (not live poc.buy_price
-    // which is a mark-to-market value and gives shallower losses than the true amount)
-    const pos = openPositions[String(poc.contract_id)];
-    const originalStake = pos ? pos.buyPrice : (parseFloat(poc.buy_price) || 0);
+  } else if(poc.sell_price !== undefined && poc.sell_price !== null){
+    const pos2 = openPositions[String(poc.contract_id)];
+    const originalStake = pos2 ? pos2.buyPrice : (parseFloat(poc.buy_price) || 0);
     finalProfit = parseFloat(poc.sell_price) - originalStake;
   } else if(poc.profit !== undefined && poc.profit !== null && poc.profit !== ''){
     finalProfit = parseFloat(poc.profit);
@@ -2476,7 +2485,13 @@ function handleContractUpdate(poc){
   const pos = openPositions[cid];
   if(!pos) return;
 
-  pos.currentPnl = finalProfit;
+  // For live (non-settled) updates, prefer poc.profit (Deriv's live mark-to-market)
+  // over the finalProfit calculation which was computed for settlement only.
+  // poc.profit is the real-time floating P&L Deriv pushes on every tick.
+  const livePnl = (poc.profit !== undefined && poc.profit !== null && poc.profit !== '')
+    ? parseFloat(poc.profit)
+    : finalProfit;
+  pos.currentPnl = livePnl;
 
   // Store ticks remaining for tick-contract countdown display
   if(poc.ticks_remaining !== undefined && poc.ticks_remaining !== null){
@@ -2517,23 +2532,31 @@ function handleContractUpdate(poc){
 }
 
 // ─── POLL CONTRACT (fallback if stream delivers nothing) ────────
+// This is the safety net for contracts that somehow never settled via POC stream.
+// It re-subscribes and also fires a plain one-shot to force Deriv to return
+// the final settled state — critical for contracts that expired while
+// the POC subscription was not yet active.
 function pollContractIfOpen(contractId){
   contractId = String(contractId);
   const inLog = tradeLog.find(l => l.contractId === contractId && (l.result === 'OPEN' || l.result === '?'));
   const inPos = openPositions[contractId];
   if(!inLog && !inPos) return; // already settled
 
-  // Use subscribe:1 so Deriv returns a fully-populated POC including profit_loss.
+  // Fire BOTH subscribe (for live update) and plain one-shot (for already-expired contracts).
+  // Deriv returns is_sold/is_expired/profit_loss on both — whichever arrives first settles it.
   send({ proposal_open_contract: 1, contract_id: contractId, subscribe: 1 });
+  // One-shot fires immediately in parallel — catches contracts already past expiry
+  // that won't generate further POC stream events.
+  send({ proposal_open_contract: 1, contract_id: contractId });
 
-  // Safety: if still unsettled after another 5 s, try plain one-shot as last resort
+  // Final safety: if STILL unsettled after 8 s, force one more one-shot poll
   setTimeout(()=>{
     const stillOpen = tradeLog.find(l => l.contractId === contractId && (l.result === 'OPEN' || l.result === '?'));
     const stillPos  = openPositions[contractId];
     if(stillOpen || stillPos){
       send({ proposal_open_contract: 1, contract_id: contractId });
     }
-  }, 5000);
+  }, 8000);
 }
 
 function closePosition(cid, finalProfit, status){
@@ -2739,7 +2762,20 @@ function resetSession(){
   // ── 5. Refresh all stats + Expected Balance ───────
   updateStats();
 
-  // ── 6. Persist cleared state ──────────────────────
+  // ── 6. Reset DLS switch-mode P&L accumulators (if switch mode is active) ──
+  // The switch engine tracks its own per-leg P&L (dlsDemoPnl / dlsLivePnl)
+  // separately from the EA stats. A session reset must also zero these so the
+  // switch thresholds measure fresh performance from this new session start —
+  // not carried-over losses/profits from the previous session.
+  if(dlsEnabled){
+    dlsDemoPnl = 0;
+    dlsLivePnl = 0;
+    dlsUpdateIndicator();
+    dlsSaveState();
+    toast('↺ Switch mode P&L reset for new session', 'info');
+  }
+
+  // ── 7. Persist cleared state ──────────────────────
   saveState();
 
   toast('✓ Session reset — P&L, stats & log cleared', 'info');
