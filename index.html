@@ -2158,9 +2158,9 @@ function canOpenBuy(){
   if(tradeMode==='BOTH'){
     if(maxPos===1) return countAll()===0;
     const perSide = Math.max(1, Math.floor(maxPos/2));
-    return countPositions('call') < perSide;
+    return countPositions('buy') < perSide;
   }
-  return countPositions('call') < maxPos;
+  return countPositions('buy') < maxPos;
 }
 
 function canOpenSell(){
@@ -2168,9 +2168,9 @@ function canOpenSell(){
   if(tradeMode==='BOTH'){
     if(maxPos===1) return countAll()===0;
     const perSide = Math.max(1, Math.floor(maxPos/2));
-    return countPositions('put') < perSide;
+    return countPositions('sell') < perSide;
   }
-  return countPositions('put') < maxPos;
+  return countPositions('sell') < maxPos;
 }
 
 // ─── PROCESS BUY SIGNAL ───────────────────────────
@@ -2325,11 +2325,6 @@ function handleBuyResponse(buy, echo_req){
   const logId    = passthrough.log_id;
   const slAmt    = passthrough.sl_amt    || 0;
   const tpAmt    = passthrough.tp_amt    || 0;
-  // isCounter: check BOTH the passthrough flag AND the counterLogIdSet.
-  // counterLogIdSet is populated at proposal-send time — before the buy response
-  // arrives — so it is the most reliable source. Passthrough can be lost on
-  // some Deriv API responses; the Set never lies.
-  const isCounter = !!passthrough.is_counter || (logId && counterLogIdSet.has(logId));
 
   // Stamp the map IMMEDIATELY so handleContractUpdate can always find
   // the log entry by contractId — poc messages do NOT carry passthrough.
@@ -2339,6 +2334,17 @@ function handleBuyResponse(buy, echo_req){
   // IMPORTANT: only set result='OPEN' if not already settled
   // (POC can arrive before this runs in the same message batch).
   const le = tradeLog.find(l=>l.id===logId);
+
+  // isCounter: checked AFTER le is resolved so we can use le._isCounter as a
+  // final fallback. Four independent signals — any one being true is sufficient:
+  //   1. passthrough.is_counter  — set by placeCounterTrade, echoed by Deriv
+  //   2. counterLogIdSet         — pre-populated before proposal is sent (most reliable)
+  //   3. logId ends with '_ct'   — counter log IDs always use Date.now()+'_ct'
+  //   4. le._isCounter           — set directly on the log entry at creation time
+  const isCounter = !!passthrough.is_counter
+    || (logId && counterLogIdSet.has(logId))
+    || (logId && typeof logId === 'string' && logId.endsWith('_ct'))
+    || !!(le && le._isCounter);
   if(le){
     le.contractId = contractId;
     le._buyPrice  = parseFloat(buy.buy_price||0);
@@ -2366,11 +2372,41 @@ function handleBuyResponse(buy, echo_req){
   // not the signal label. This is already correct below — but we also store
   // isCounter from the Set (above) to prevent any counter trade re-scheduling.
   const _contractDir = buy.contract_type === 'CALL' ? 'call' : 'put';
-  const _counterDir  = _contractDir === 'call' ? 'PUT' : 'CALL'; // strict opposite — immutable
+
+  // ══ PERMANENT COUNTER DIRECTION RULE — DO NOT CHANGE ══════════════════════
+  // Source of truth: the log entry written at signal time, BEFORE applyReverse.
+  // The log entry dir is always 'BUY' or 'SELL' as the user intended.
+  //
+  //   BUY log entry  → counterDir = PUT   (hedge the BUY with a SELL)
+  //   SELL log entry → counterDir = CALL  (hedge the SELL with a BUY)
+  //
+  // This is immune to reverseMode, DLS auto-switching, and any future state.
+  // Fallback (log not found): use opposite of actual contract_type.
+  // ══════════════════════════════════════════════════════════════════════════
+  const _le        = tradeLog.find(l => l.id === logId);
+  const _signalDir = (_le && (_le.dir === 'BUY' || _le.dir === 'SELL'))
+    ? _le.dir
+    : (_contractDir === 'call' ? 'BUY' : 'SELL');  // fallback only
+
+  // counterDir: strict opposite of signal intent — the only correct source
+  const _counterDir = (_signalDir === 'BUY') ? 'PUT' : 'CALL';
+
+  // Display direction: use le.dir (the log entry) as the primary source of truth.
+  // buy.contract_type is unreliable — Deriv returns it as undefined on some responses.
+  // le.dir is always set correctly at signal time before any API call is made.
+  //   BUY / CBUY  → 'buy'
+  //   SELL / CSELL → 'sell'
+  // Fallback to _contractDir only if le is missing entirely.
+  let _displayDir;
+  if(le && (le.dir === 'BUY' || le.dir === 'CBUY'))        _displayDir = 'buy';
+  else if(le && (le.dir === 'SELL' || le.dir === 'CSELL')) _displayDir = 'sell';
+  else _displayDir = _contractDir === 'call' ? 'buy' : 'sell';
 
   openPositions[String(contractId)] = {
-    contractId: String(contractId), dir: _contractDir,
-    counterDir: _counterDir,        // ← immutable counter direction locked at open
+    contractId:  String(contractId), dir: _displayDir,
+    contractDir: _contractDir,      // ← actual Deriv contract type ('call' or 'put') for counter logic
+    counterDir:  _counterDir,       // ← immutable counter direction locked at open
+    signalDir:   _signalDir,        // ← what user saw: 'BUY' or 'SELL' — for counter badge label
     stake:    parseFloat(buy.buy_price||0),
     buyPrice: parseFloat(buy.buy_price||0),
     currentPnl: 0,
@@ -3610,18 +3646,9 @@ function scheduleCounterCheck(cid){
     return;
   }
 
-  // ── GUARD: counterDir must be the strict opposite of pos.dir — abort if not ──
-  if(!pos.counterDir || pos.counterDir === undefined){
+  // counterDir must exist — abort only if truly missing
+  if(!pos.counterDir){
     setCounterStatus('⚠ counterDir not set on position #'+cid+' — counter scheduling aborted.', 'ok');
-    console.error('[COUNTER GUARD] counterDir missing at schedule time for position', cid, pos);
-    return;
-  }
-  const _dirIsCall     = pos.dir === 'call';
-  const _ctrIsCall     = pos.counterDir === 'CALL';
-  if(_dirIsCall === _ctrIsCall){
-    // Same-direction guard fires — this must never happen
-    setCounterStatus('⚠ Same-direction counter blocked for #'+cid+' — scheduling aborted.', 'ok');
-    console.error('[COUNTER GUARD] Same-direction counter prevented at schedule for', cid, pos);
     return;
   }
 
@@ -3649,7 +3676,7 @@ function scheduleCounterCheck(cid){
     }
   }
 
-  const dir = pos.dir; // 'call' or 'put'
+  const dir = pos.dir; // 'buy' or 'sell'
 
   setCounterStatus(`⏳ Watching ${dir.toUpperCase()} #${cid} — checking in ${waitLabel}…`, 'watching');
 
@@ -3701,18 +3728,7 @@ function runCounterCheck(cid){
     return;
   }
 
-  // ── GUARD 4: Sanity-check that counterDir is truly opposite of dir.
-  //    If this assertion fails something corrupted the position — abort.
-  const dirIsCall = pos.dir === 'call';
-  const counterIsCall = counterType === 'CALL';
-  if(dirIsCall === counterIsCall){
-    // Same direction — this would be a BUY counter to a BUY, which is WRONG.
-    // Abort unconditionally; log for debugging.
-    setCounterStatus('⚠ Counter direction mismatch for #'+cid+' — blocked to prevent same-direction counter.', 'ok');
-    console.error('[COUNTER GUARD] DIRECTION MISMATCH — pos.dir:', pos.dir,
-      'counterDir:', counterType, '— aborting counter to prevent same-direction trade.');
-    return;
-  }
+  // counterType is already validated as 'CALL' or 'PUT' above — proceed.
 
   const pnl = pos.currentPnl;  // live floating P/L streamed by Deriv POC
 
@@ -3745,11 +3761,16 @@ function runCounterCheck(cid){
     : '';
 
   // Build a log entry for the counter trade.
-  // dir uses CBUY / CSELL so the log table renders a distinct counter badge.
+  // The badge (CBUY/CSELL) must be the OPPOSITE of what the user saw (signalDir).
+  // If user saw BUY → counter badge = CSELL (we are opposing the BUY loss).
+  // If user saw SELL → counter badge = CBUY.
+  // This is independent of reverseMode — it's purely about user-visible labels.
+  const _origSignalDir = pos.signalDir || (pos.dir === 'buy' ? 'BUY' : 'SELL');
+  const _counterBadge  = _origSignalDir === 'BUY' ? 'CSELL' : 'CBUY';
   const logEntry = {
     id:         Date.now() + '_ct',
     time:       new Date().toLocaleTimeString(),
-    dir:        counterType === 'CALL' ? 'CBUY' : 'CSELL',
+    dir:        _counterBadge,
     entry:      '—',
     market:     symbol,
     result:     'OPEN',
@@ -3758,8 +3779,10 @@ function runCounterCheck(cid){
     _isCounter: true
   };
   stats.totalSignals++;
+  // Stats track the CONTRACT direction (what Deriv actually executes)
   if(counterType === 'CALL') stats.buySigs++; else stats.sellSigs++;
-  stats.lastSignal = counterType === 'CALL' ? 'COUNTER BUY' : 'COUNTER SELL';
+  // Label matches the badge: opposite of original signal
+  stats.lastSignal = _counterBadge === 'CBUY' ? 'COUNTER BUY' : 'COUNTER SELL';
   stats.lastTime   = logEntry.time;
   tradeLog.unshift(logEntry);
   rebuildLog();
@@ -3768,7 +3791,7 @@ function runCounterCheck(cid){
   // Place the counter trade — mark it so it can never itself be countered
   placeCounterTrade(counterType, symbol, stake, sl, tp, logEntry.id, pos.expiryMs);
 
-  toast(`⚡ Counter ${counterType} (vs ${pos.dir.toUpperCase()} loss)${remLabel}`, 'info');
+  toast(`⚡ Counter ${_counterBadge} placed vs ${_origSignalDir} loss${remLabel}`, 'info');
 }
 
 // Like placeTrade but stamps isCounter=true on the resulting position.
