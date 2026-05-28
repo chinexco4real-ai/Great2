@@ -2325,7 +2325,11 @@ function handleBuyResponse(buy, echo_req){
   const logId    = passthrough.log_id;
   const slAmt    = passthrough.sl_amt    || 0;
   const tpAmt    = passthrough.tp_amt    || 0;
-  const isCounter = !!passthrough.is_counter;  // ← counter flag
+  // isCounter: check BOTH the passthrough flag AND the counterLogIdSet.
+  // counterLogIdSet is populated at proposal-send time — before the buy response
+  // arrives — so it is the most reliable source. Passthrough can be lost on
+  // some Deriv API responses; the Set never lies.
+  const isCounter = !!passthrough.is_counter || (logId && counterLogIdSet.has(logId));
 
   // Stamp the map IMMEDIATELY so handleContractUpdate can always find
   // the log entry by contractId — poc messages do NOT carry passthrough.
@@ -2353,17 +2357,16 @@ function handleBuyResponse(buy, echo_req){
   // Server-authoritative expiry: buy.date_expiry is epoch seconds from Deriv
   const _serverExpiryMs = buy.date_expiry ? buy.date_expiry * 1000 : null;
 
-  // ── COUNTER DIRECTION GUARD ──────────────────────────────────────────────────
-  // contractDir: the actual Deriv contract type ('call' or 'put') — used for
-  //              display and position counting.
-  // counterDir:  the direction a counter trade MUST use if this position loses.
-  //              ALWAYS the strict opposite of contractDir, set HERE at open time
-  //              and never changed. This is the single source of truth for counter
-  //              logic — it must NOT be derived again later from pos.dir because
-  //              race conditions, reverse-mode state, or any future flag could
-  //              cause a mismatch.
+  // ── COUNTER DIRECTION — locked at open, immune to reverseMode ───────────────
+  // contractDir: actual Deriv contract placed ('call' or 'put')
+  // counterDir:  STRICT opposite of contractDir — locked HERE, never re-derived.
+  //
+  // IMPORTANT: reverseMode (toggled by DLS engine) can cause a BUY signal to
+  // place a PUT contract. counterDir must oppose the ACTUAL contract placed,
+  // not the signal label. This is already correct below — but we also store
+  // isCounter from the Set (above) to prevent any counter trade re-scheduling.
   const _contractDir = buy.contract_type === 'CALL' ? 'call' : 'put';
-  const _counterDir  = _contractDir === 'call' ? 'PUT' : 'CALL'; // locked at open
+  const _counterDir  = _contractDir === 'call' ? 'PUT' : 'CALL'; // strict opposite — immutable
 
   openPositions[String(contractId)] = {
     contractId: String(contractId), dir: _contractDir,
@@ -2372,7 +2375,7 @@ function handleBuyResponse(buy, echo_req){
     buyPrice: parseFloat(buy.buy_price||0),
     currentPnl: 0,
     slAmt, tpAmt,
-    logId,
+    logId: logId || null,           // stored so guards can cross-check counterLogIdSet
     symbol: v('cfgSymbol'),
     openTime:   new Date().toLocaleTimeString(),
     openTimeMs: Date.now(),
@@ -3597,8 +3600,12 @@ function scheduleCounterCheck(cid){
   if(!pos) return;
 
   // ── GUARD: Never schedule a counter check for a counter trade itself ──
-  // Check BOTH isCounter flag AND counterDir sanity.
-  if(pos.isCounter === true){
+  // Triple-check: isCounter flag + counterLogIdSet (by logId) + counterLogIdSet (by contractId)
+  // Any one of these being true means this is a counter trade — block scheduling.
+  const _posLogId = pos.logId;
+  const _isCounterPos = pos.isCounter === true
+    || (_posLogId && counterLogIdSet.has(_posLogId));
+  if(_isCounterPos){
     setCounterStatus('Counter trade active — no re-counter (guard).', 'ok');
     return;
   }
@@ -3675,9 +3682,11 @@ function runCounterCheck(cid){
   }
 
   // ── GUARD 2: HARD isCounter block — counter trades must NEVER be re-countered.
-  //    Check BOTH the isCounter flag AND the passthrough in case flag was lost.
-  //    This is the primary protection against direction-flip loops.
-  if(pos.isCounter === true){
+  //    Triple-check: isCounter flag + counterLogIdSet. Any match = hard block.
+  const _rcLogId = pos.logId;
+  const _rcIsCounter = pos.isCounter === true
+    || (_rcLogId && counterLogIdSet.has(_rcLogId));
+  if(_rcIsCounter){
     setCounterStatus('Counter trade #'+cid+' — no re-counter (guard active).', 'ok');
     return;
   }
@@ -3772,8 +3781,17 @@ function runCounterCheck(cid){
 //   the same wall-clock second as the original.
 //   Math.floor (not round) prevents ever rounding UP past the original expiry.
 //   Minimum enforced at 5 s so Deriv doesn't reject too-short contracts.
+// Set of log IDs that belong to counter trades — populated when counter proposal
+// is sent, BEFORE the buy response arrives. Used as a hard guard in
+// handleBuyResponse to stamp isCounter=true even if passthrough is lost.
+const counterLogIdSet = new Set();
+
 function placeCounterTrade(contractType, symbol, stake, slAmt, tpAmt, logId, originExpiryMs){
   stats.totalTrades++;
+  // Register this logId as a counter trade IMMEDIATELY — before proposal is sent.
+  // This ensures handleBuyResponse can mark isCounter=true even if
+  // echo_req.passthrough.is_counter is somehow absent.
+  if(logId) counterLogIdSet.add(logId);
 
   // Network round-trip compensation: proposal → server → buy confirmation takes
   // roughly 0.5–1 s. Deduct 1 s so the counter contract expires at the same
