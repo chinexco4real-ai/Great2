@@ -438,6 +438,26 @@
   .dls-cycle-lbl{font-size:10px;color:#8ba4cc;letter-spacing:1px;font-weight:700;text-transform:uppercase;}
   .dls-cycle-val{font-family:'Orbitron',sans-serif;font-size:13px;color:var(--accent2);font-weight:700;}
 
+  /* ─── TIME EXIT (inside DLS panel) ─── */
+  .dls-time-exit{background:rgba(255,140,0,.05);border:1px solid rgba(255,140,0,.25);border-radius:8px;padding:11px 13px;margin-top:10px;}
+  .dls-time-exit .te-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:0;}
+  .dls-time-exit .te-title{font-size:11px;letter-spacing:1.5px;color:#ffb347;text-transform:uppercase;font-weight:700;}
+  /* tiny toggle reusing dls-switch styles */
+  .dls-time-exit .dls-switch input:checked + .dls-slider{background:rgba(255,140,0,.22);border-color:#ff8c00;}
+  .dls-time-exit .dls-switch input:checked + .dls-slider::before{background:#ff8c00;box-shadow:0 0 6px rgba(255,140,0,.6);}
+  .dls-time-exit .te-body{margin-top:10px;}
+  .te-duration-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
+  .te-duration-row .te-field{display:flex;flex-direction:column;gap:4px;}
+  .te-duration-row .te-field label{font-size:10px;letter-spacing:1px;color:#8ba4cc;text-transform:uppercase;font-weight:700;}
+  .te-duration-row .te-field input{background:var(--bg3);border:1px solid var(--border2);color:var(--white);padding:8px 10px;border-radius:6px;font-family:'Share Tech Mono',monospace;font-size:13px;font-weight:600;outline:none;width:100%;transition:border .2s;}
+  .te-duration-row .te-field input:focus{border-color:#ff8c00;box-shadow:0 0 0 2px rgba(255,140,0,.15);}
+  .te-countdown{display:flex;align-items:center;justify-content:space-between;padding:7px 11px;background:rgba(255,140,0,.07);border:1px solid rgba(255,140,0,.2);border-radius:6px;margin-top:6px;}
+  .te-countdown .tc-lbl{font-size:10px;letter-spacing:1px;color:#8ba4cc;text-transform:uppercase;font-weight:700;}
+  .te-countdown .tc-val{font-family:'Orbitron',sans-serif;font-size:14px;font-weight:700;color:#ff8c00;letter-spacing:2px;}
+  .te-countdown.active .tc-val{animation:tePulse 1s ease-in-out infinite;}
+  .te-countdown.warn .tc-val{color:var(--red);}
+  @keyframes tePulse{0%,100%{opacity:1}50%{opacity:.5}}
+
   /* ─── TRADE SCHEDULE TIMER ─── */
   .schedule-section{background:rgba(0,240,255,.04);border:1px solid rgba(0,240,255,.22);border-radius:9px;padding:13px 15px;margin-top:9px;}
   .schedule-section .section-lbl{color:var(--accent2);font-size:11px;letter-spacing:2px;margin-bottom:10px;font-weight:700;}
@@ -1076,6 +1096,39 @@
                 <span class="dls-cycle-lbl">Switch Cycles</span>
                 <span class="dls-cycle-val" id="dlsCycleCount">0</span>
               </div>
+
+              <!-- ── TIME EXIT (Live session timeout) ── -->
+              <div class="dls-time-exit">
+                <div class="te-header">
+                  <span class="te-title">⏱ Live Time Exit</span>
+                  <label class="dls-switch">
+                    <input type="checkbox" id="dlsTimeExitEnabled" onchange="dlsOnTimeExitToggle(this.checked)"/>
+                    <span class="dls-slider"></span>
+                  </label>
+                </div>
+                <div class="te-body" id="dlsTimeExitBody" style="display:none;">
+                  <div style="font-size:10px;color:#8ba4cc;font-family:'Share Tech Mono',monospace;font-weight:600;margin-bottom:8px;line-height:1.5;">
+                    If profit target is not reached on LIVE, force switch back to DEMO after this duration.
+                  </div>
+                  <div class="te-duration-row">
+                    <div class="te-field">
+                      <label>Hours</label>
+                      <input type="number" id="dlsTimeExitH" value="0" min="0" max="23" step="1" placeholder="0"/>
+                    </div>
+                    <div class="te-field">
+                      <label>Minutes</label>
+                      <input type="number" id="dlsTimeExitM" value="30" min="0" max="59" step="1" placeholder="30"/>
+                    </div>
+                  </div>
+                  <!-- Live countdown — only visible while on LIVE -->
+                  <div class="te-countdown" id="dlsTeCountdown" style="display:none;">
+                    <span class="tc-lbl">⏳ Exit In</span>
+                    <span class="tc-val" id="dlsTeCountdownVal">—</span>
+                  </div>
+                </div>
+              </div>
+              <!-- ── END TIME EXIT ── -->
+
             </div>
           </div>
           <!-- ══ END DEMO ↔ LIVE AUTO SWITCH ══ -->
@@ -3939,6 +3992,14 @@ let dlsConsecLosses   = 0;       // running count of consecutive losses on DEMO 
 let dlsDemoPnl        = 0;       // net P/L accumulated in current DEMO leg
 let dlsLivePnl        = 0;       // net P/L accumulated in current LIVE leg
 
+// ── Time Exit state ──────────────────────────────────────────────
+// Fires a forced live→demo switch after a configurable duration on LIVE,
+// regardless of whether the profit target has been hit.
+let dlsTimeExitEnabled  = false;  // master toggle for the feature
+let dlsTimeExitTimer    = null;   // setTimeout handle for the exit
+let dlsTimeExitInterval = null;   // setInterval handle for the countdown display
+let dlsTimeExitDeadline = null;   // Date.now() timestamp when the exit will fire
+
 // Threshold config (read from UI when needed)
 function dlsGetThreshold(){ return parseFloat(document.getElementById('dlsThreshold').value) || 5; }
 function dlsGetLiveThreshold(){ return parseFloat(document.getElementById('dlsLiveThreshold').value) || 10; }
@@ -3955,6 +4016,87 @@ function dlsUpdateStreakDisplay(){
   if(dlsConsecLosses === 0) el.style.color = 'var(--green)';
   else if(dlsConsecLosses >= target) el.style.color = 'var(--red)';
   else el.style.color = 'var(--gold)';
+}
+
+// ── Time Exit helpers ────────────────────────────────────────────
+
+// Read hours+minutes inputs → total milliseconds
+function dlsGetTimeExitMs(){
+  const h = parseInt(document.getElementById('dlsTimeExitH').value) || 0;
+  const m = parseInt(document.getElementById('dlsTimeExitM').value) || 0;
+  return (h * 3600 + m * 60) * 1000;
+}
+
+// Toggle handler for the Time Exit checkbox
+function dlsOnTimeExitToggle(checked){
+  dlsTimeExitEnabled = checked;
+  const body = document.getElementById('dlsTimeExitBody');
+  if(body) body.style.display = checked ? '' : 'none';
+  if(!checked){
+    _dlsClearTimeExit();   // cancel any running timer
+  } else if(dlsEnabled && dlsCurrentMode === 'live'){
+    // If we're already on LIVE when the user enables this, start the timer now
+    _dlsStartTimeExit();
+  }
+  dlsSaveState();
+}
+
+// Start the time-exit countdown (called whenever we arrive on LIVE)
+function _dlsStartTimeExit(){
+  _dlsClearTimeExit();   // safety — clear any stale timer first
+  const ms = dlsGetTimeExitMs();
+  if(ms <= 0) return;    // 0h 0m = disabled
+  dlsTimeExitDeadline = Date.now() + ms;
+
+  // Main timeout — fires the forced switch
+  dlsTimeExitTimer = setTimeout(()=>{
+    _dlsClearTimeExit();
+    if(!dlsEnabled || dlsCurrentMode !== 'live') return; // already switched or disabled
+    const pnlStr = (dlsLivePnl >= 0 ? '+' : '') + fmtAmount(Math.abs(dlsLivePnl));
+    dlsSetStatus(
+      '⏱ Live time limit reached · LIVE P/L: ' + pnlStr + ' · Force-switching back to DEMO…',
+      'switching'
+    );
+    toast('⏱ Live time exit triggered · Switching back to DEMO', 'info');
+    _dlsDoSwitch('live', 'demo');
+  }, ms);
+
+  // Countdown display — ticks every second
+  _dlsUpdateTeCountdown();
+  dlsTimeExitInterval = setInterval(_dlsUpdateTeCountdown, 1000);
+
+  const cd = document.getElementById('dlsTeCountdown');
+  if(cd) cd.style.display = '';
+}
+
+// Clear all time-exit timers and hide the countdown display
+function _dlsClearTimeExit(){
+  if(dlsTimeExitTimer)   { clearTimeout(dlsTimeExitTimer);   dlsTimeExitTimer   = null; }
+  if(dlsTimeExitInterval){ clearInterval(dlsTimeExitInterval); dlsTimeExitInterval = null; }
+  dlsTimeExitDeadline = null;
+  const cd = document.getElementById('dlsTeCountdown');
+  if(cd){ cd.style.display = 'none'; cd.className = 'te-countdown'; }
+  const cv = document.getElementById('dlsTeCountdownVal');
+  if(cv) cv.textContent = '—';
+}
+
+// Called every second to refresh the countdown display
+function _dlsUpdateTeCountdown(){
+  const cv = document.getElementById('dlsTeCountdownVal');
+  const cd = document.getElementById('dlsTeCountdown');
+  if(!cv || !cd || !dlsTimeExitDeadline) return;
+  const remMs = dlsTimeExitDeadline - Date.now();
+  if(remMs <= 0){
+    cv.textContent = '00:00:00';
+    return;
+  }
+  const remS = Math.ceil(remMs / 1000);
+  const hh   = String(Math.floor(remS / 3600)).padStart(2, '0');
+  const mm   = String(Math.floor((remS % 3600) / 60)).padStart(2, '0');
+  const ss   = String(remS % 60).padStart(2, '0');
+  cv.textContent = hh + ':' + mm + ':' + ss;
+  // Warn when < 5 minutes remain
+  cd.className = 'te-countdown active' + (remMs < 300000 ? ' warn' : '');
 }
 
 // ── UI helpers ──────────────────────────────────────────────────
@@ -4101,6 +4243,7 @@ function onDlsToggle(checked){
   } else {
     dlsSetStatus('Switch mode inactive — enable to start cycle.', '');
     toast('🔄 Auto Switch DISABLED', 'info');
+    _dlsClearTimeExit();   // always cancel live timer when engine is disabled
   }
 
   dlsUpdateIndicator();
@@ -4197,6 +4340,7 @@ function _dlsCheckLiveThreshold(){
     // Setting 3: switch back to DEMO when LIVE profit target is reached
     const target = dlsGetStreakLiveProfit();
     if(dlsLivePnl >= target){
+      _dlsClearTimeExit();   // profit target hit — cancel time-exit, no longer needed
       dlsSetStatus(
         '🎯 Live profit target +' + fmtAmount(target) + ' reached · Resetting streak · Switching back to DEMO…', 'switching'
       );
@@ -4210,6 +4354,7 @@ function _dlsCheckLiveThreshold(){
   if(dlsSetting === 1){
     // Setting 1: switch back to DEMO when LIVE net P/L reaches +threshold (profit)
     if(dlsLivePnl >= threshold){
+      _dlsClearTimeExit();   // profit target hit — cancel time-exit
       dlsSetStatus(
         '🎯 Live profit +' + fmtAmount(threshold) + ' reached · Switching back to DEMO…', 'switching'
       );
@@ -4219,6 +4364,7 @@ function _dlsCheckLiveThreshold(){
     // Setting 2: switch back to DEMO when LIVE net P/L reaches +threshold (profit)
     // AND disable reverse mode
     if(dlsLivePnl >= threshold){
+      _dlsClearTimeExit();   // profit target hit — cancel time-exit
       dlsSetStatus(
         '🎯 Live profit +' + fmtAmount(threshold) + ' reached · Disabling Reverse + switching to DEMO…', 'switching'
       );
@@ -4273,6 +4419,10 @@ function _dlsDoSwitch(from, to){
     dlsCycleCount++;
     document.getElementById('dlsCycleCount').textContent = dlsCycleCount;
   }
+
+  // Time Exit: clear any running live timer on every switch;
+  // a new one will start after reconnect completes (in _dlsPostSwitchResume)
+  _dlsClearTimeExit();
 
   // 4. Update mode
   dlsCurrentMode = to;
@@ -4334,6 +4484,17 @@ function _dlsPostSwitchResume(){
         setBotStatus('⚡ Auto CRT active · '+tradeMode+' · '+v('cfgSymbol')+' · AC:'+acLabel, 'running');
         toast('⚡ Auto CRT resumed on ' + dlsCurrentMode.toUpperCase() + ' account', 'info');
       }
+      // Start the time-exit countdown now that we are confirmed live and trading
+      if(dlsEnabled && dlsTimeExitEnabled && dlsCurrentMode === 'live'){
+        _dlsStartTimeExit();
+        const ms = dlsGetTimeExitMs();
+        if(ms > 0){
+          const h = Math.floor(ms / 3600000);
+          const m = Math.floor((ms % 3600000) / 60000);
+          const label = (h > 0 ? h + 'h ' : '') + m + 'm';
+          toast('⏱ Live Time Exit armed · Force-switch in ' + label, 'info');
+        }
+      }
     }, 1500);
   }
 }
@@ -4351,7 +4512,10 @@ function dlsSaveState(){
       liveThreshold: dlsGetLiveThreshold(),
       lossStreak:   dlsGetLossStreak(),
       streakLiveProfit: dlsGetStreakLiveProfit(),
-      consecLosses: dlsConsecLosses
+      consecLosses: dlsConsecLosses,
+      timeExitEnabled: dlsTimeExitEnabled,
+      timeExitH: parseInt(document.getElementById('dlsTimeExitH').value) || 0,
+      timeExitM: parseInt(document.getElementById('dlsTimeExitM').value) || 30
     };
     localStorage.setItem('crt_dls_state', JSON.stringify(dlsState));
   } catch(e){}
@@ -4369,6 +4533,15 @@ function dlsLoadState(){
     if(s.lossStreak)    { const el = document.getElementById('dlsLossStreak');    if(el) el.value = s.lossStreak; }
     if(s.streakLiveProfit){ const el = document.getElementById('dlsStreakLiveProfit'); if(el) el.value = s.streakLiveProfit; }
     if(s.consecLosses !== undefined){ dlsConsecLosses = s.consecLosses; dlsUpdateStreakDisplay(); }
+    if(s.timeExitH !== undefined){ const el = document.getElementById('dlsTimeExitH'); if(el) el.value = s.timeExitH; }
+    if(s.timeExitM !== undefined){ const el = document.getElementById('dlsTimeExitM'); if(el) el.value = s.timeExitM; }
+    if(s.timeExitEnabled){
+      dlsTimeExitEnabled = true;
+      const chk = document.getElementById('dlsTimeExitEnabled');
+      if(chk) chk.checked = true;
+      const body = document.getElementById('dlsTimeExitBody');
+      if(body) body.style.display = '';
+    }
     if(s.liveToken)     { dlsLiveToken = s.liveToken; const el = document.getElementById('liveTokenInput'); if(el && !el.value) el.value = s.liveToken; }
     if(s.currentMode)   dlsCurrentMode = s.currentMode;
     // Do NOT auto-restore dlsEnabled=true on page load — user must re-enable
@@ -4429,6 +4602,7 @@ window.doLogout = function(){
     dlsSetStatus('Switch mode inactive — enable to start cycle.', '');
     dlsUpdateIndicator();
   }
+  _dlsClearTimeExit();   // always cancel any live timer on logout
   origDoLogout();
   clearSavedToken();
 };
