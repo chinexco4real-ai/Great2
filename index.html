@@ -1624,6 +1624,7 @@ function doLogout(){
   schedulePhase = 'idle';
   autoBot = false;
   botRunning = false;
+  _stopKeepAlive();
   if(ws){ ws.close(); ws=null; }
   stopSessionTimer();
   apiToken='';
@@ -1653,6 +1654,26 @@ let pendingLogin    = false;
 let _reconnectTimer = null;   // holds the setTimeout handle
 let _reconnectCount = 0;      // number of reconnect attempts this session
 let _intentionalDisconnect = false; // set true only on user-initiated logout
+let _keepAliveTimer = null;   // setInterval handle for the WS ping heartbeat
+
+// ── Keepalive heartbeat ───────────────────────────────────────────
+// Deriv's server drops idle connections after ~60–120 s of silence.
+// We send a lightweight `ping` every 25 seconds to keep the socket alive.
+// The server responds with {msg_type:"ping",ping:"pong"} which we simply ignore.
+const _KEEPALIVE_INTERVAL = 25000; // 25 s — well within any idle timeout
+
+function _startKeepAlive(){
+  _stopKeepAlive();
+  _keepAliveTimer = setInterval(()=>{
+    if(ws && ws.readyState === 1){
+      send({ ping: 1 });
+    }
+  }, _KEEPALIVE_INTERVAL);
+}
+
+function _stopKeepAlive(){
+  if(_keepAliveTimer){ clearInterval(_keepAliveTimer); _keepAliveTimer = null; }
+}
 
 // Exponential back-off: 3 s, 6 s, 12 s, 24 s … capped at 60 s
 function _reconnectDelay(){ return Math.min(3000 * Math.pow(2, _reconnectCount), 60000); }
@@ -1701,6 +1722,8 @@ function connectWS(isLoginFlow=false){
     // Hide reconnect banner
     const banner = document.getElementById('reconnectBanner');
     if(banner) banner.style.display = 'none';
+    // Start keepalive heartbeat to prevent server-side idle disconnects
+    _startKeepAlive();
     // Authorize
     send({ authorize: apiToken });
   };
@@ -1711,6 +1734,7 @@ function connectWS(isLoginFlow=false){
   };
 
   ws.onerror = () => {
+    _stopKeepAlive();
     setDot('error');
     if(isLoginFlow){
       setLoginStatus('Connection error. Check token/server.','err');
@@ -1720,6 +1744,7 @@ function connectWS(isLoginFlow=false){
   };
 
   ws.onclose = (evt) => {
+    _stopKeepAlive();
     setDot('error');
     stopSessionTimer();
     enableTradeButtons(false);
@@ -1746,6 +1771,9 @@ function connectWS(isLoginFlow=false){
 function send(obj){ if(ws && ws.readyState===1) ws.send(JSON.stringify(obj)); }
 
 function handleMsg(msg, isLoginFlow){
+  // Keepalive ping response — silently ignore, no UI update needed
+  if(msg.msg_type === 'ping') return;
+
   if(msg.msg_type === 'authorize'){
     if(msg.error){ setLoginStatus('Auth failed: '+msg.error.message,'err'); document.getElementById('btnLogin').disabled=false; return; }
     const acc = msg.authorize;
@@ -1813,6 +1841,7 @@ function handleMsg(msg, isLoginFlow){
       }, 400);
     } else {
       // Reconnect flow — restore state without resetting UI
+      setLoginStatus('Connected ✓', 'ok');   // clear the stuck "Reconnecting…" label
       enableTradeButtons(true);
       startTickFeed();
       subscribeBalance();
