@@ -458,6 +458,45 @@
   .te-countdown.warn .tc-val{color:var(--red);}
   @keyframes tePulse{0%,100%{opacity:1}50%{opacity:.5}}
 
+  /* ─── PROFIT SNAPSHOT (DLS) ─── */
+  .psnap-section{background:linear-gradient(135deg,rgba(0,230,118,.04),rgba(45,139,255,.03));border:1px solid rgba(0,230,118,.28);border-radius:9px;padding:13px 14px;margin-top:10px;}
+  .psnap-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  .psnap-title{font-size:11px;letter-spacing:2px;color:var(--green);text-transform:uppercase;font-weight:700;}
+  .psnap-subtitle{font-size:10px;color:#7a8fae;font-family:'Share Tech Mono',monospace;font-weight:600;margin-bottom:9px;line-height:1.5;}
+  .psnap-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-bottom:10px;}
+  .psnap-box{background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:6px 4px;text-align:center;min-height:48px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;transition:all .3s;position:relative;}
+  .psnap-box.filled-win{border-color:rgba(0,230,118,.5);background:rgba(0,230,118,.08);}
+  .psnap-box.filled-loss{border-color:rgba(255,61,90,.4);background:rgba(255,61,90,.07);}
+  .psnap-box.filled-even{border-color:rgba(122,143,174,.4);background:rgba(122,143,174,.06);}
+  .psnap-box.active-slot{border-color:rgba(0,240,255,.6);background:rgba(0,240,255,.06);animation:snapPulse 1.2s ease-in-out infinite;}
+  @keyframes snapPulse{0%,100%{box-shadow:0 0 0 0 rgba(0,240,255,.0)}50%{box-shadow:0 0 0 3px rgba(0,240,255,.25)}}
+  .psnap-num{font-size:9px;color:#7a8fae;font-weight:700;letter-spacing:.5px;}
+  .psnap-val{font-family:'Orbitron',sans-serif;font-size:10px;font-weight:700;letter-spacing:.5px;line-height:1.1;}
+  .psnap-val.win{color:var(--green);}
+  .psnap-val.loss{color:#ff7090;}
+  .psnap-val.even{color:#8ba4cc;}
+  .psnap-val.empty{color:#3a4a66;font-size:12px;}
+  .psnap-actions{display:flex;align-items:center;gap:7px;margin-bottom:8px;}
+  .btn-psnap-reset{flex:1;padding:8px;background:rgba(255,61,90,.08);border:1px solid rgba(255,61,90,.35);color:#ff7090;border-radius:6px;font-family:'Orbitron',sans-serif;font-size:10px;letter-spacing:1px;cursor:pointer;transition:all .2s;font-weight:700;}
+  .btn-psnap-reset:hover{background:rgba(255,61,90,.18);border-color:var(--red);}
+  .psnap-timer-wrap{background:rgba(0,0,0,.2);border:1px solid var(--border2);border-radius:7px;padding:9px 11px;}
+  .psnap-timer-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;}
+  .psnap-timer-lbl{font-size:10px;letter-spacing:1.5px;color:#8ba4cc;text-transform:uppercase;font-weight:700;}
+  .psnap-timer-fields{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;}
+  .psnap-timer-field{display:flex;flex-direction:column;gap:3px;}
+  .psnap-timer-field label{font-size:10px;letter-spacing:1px;color:#8ba4cc;text-transform:uppercase;font-weight:700;}
+  .psnap-timer-field input{background:var(--bg3);border:1px solid var(--border2);color:var(--white);padding:7px 9px;border-radius:5px;font-family:'Share Tech Mono',monospace;font-size:12px;font-weight:600;outline:none;width:100%;transition:border .2s;}
+  .psnap-timer-field input:focus{border-color:var(--accent2);box-shadow:0 0 0 2px rgba(0,240,255,.12);}
+  .psnap-countdown{display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:rgba(0,240,255,.05);border:1px solid rgba(0,240,255,.18);border-radius:5px;margin-top:4px;}
+  .psnap-countdown.warn{background:rgba(255,140,0,.07);border-color:rgba(255,140,0,.35);}
+  .psnap-countdown.crit{background:rgba(255,61,90,.07);border-color:rgba(255,61,90,.35);}
+  .psc-lbl{font-size:10px;letter-spacing:1px;color:#8ba4cc;text-transform:uppercase;font-weight:700;}
+  .psc-val{font-family:'Orbitron',sans-serif;font-size:13px;font-weight:700;color:var(--accent2);letter-spacing:2px;}
+  .psnap-countdown.warn .psc-val{color:#ff8c00;animation:tePulse 1s infinite;}
+  .psnap-countdown.crit .psc-val{color:var(--red);animation:tePulse .6s infinite;}
+  .psnap-timer-enabled{display:flex;align-items:center;gap:7px;margin-bottom:6px;}
+  .psnap-timer-enabled label{font-size:11px;color:#8ba4cc;letter-spacing:1px;font-weight:700;text-transform:uppercase;}
+
   /* ─── TRADE SCHEDULE TIMER ─── */
   .schedule-section{background:rgba(0,240,255,.04);border:1px solid rgba(0,240,255,.22);border-radius:9px;padding:13px 15px;margin-top:9px;}
   .schedule-section .section-lbl{color:var(--accent2);font-size:11px;letter-spacing:2px;margin-bottom:10px;font-weight:700;}
@@ -1129,9 +1168,68 @@
               </div>
               <!-- ── END TIME EXIT ── -->
 
+
+
             </div>
           </div>
           <!-- ══ END DEMO ↔ LIVE AUTO SWITCH ══ -->
+
+          <!-- ══ PROFIT SNAPSHOT — always visible ══ -->
+          <div class="section-div"></div>
+          <div class="psnap-section" id="psnapSection">
+            <div class="psnap-header">
+              <span class="psnap-title">📸 Live Profit Snapshot</span>
+            </div>
+            <div class="psnap-subtitle">Captures LIVE P&amp;L before each switch back to demo. Up to 10 entries. Always visible regardless of account mode.</div>
+
+            <!-- 10 snapshot boxes: 2 rows of 5 -->
+            <div class="psnap-grid" id="psnapGrid">
+              <!-- Rendered by JS -->
+            </div>
+
+            <!-- Reset button -->
+            <div class="psnap-actions">
+              <button class="btn-psnap-reset" onclick="psnapReset()">🗑 RESET SNAPSHOTS</button>
+            </div>
+
+            <!-- Daily auto-reset timer -->
+            <div class="psnap-timer-wrap">
+              <div class="psnap-timer-header">
+                <span class="psnap-timer-lbl">🕐 Daily Auto-Reset</span>
+                <div class="psnap-timer-enabled">
+                  <input type="checkbox" id="psnapTimerEnabled" style="width:15px;height:15px;accent-color:var(--accent2);" onchange="psnapOnTimerToggle(this.checked)"/>
+                  <label for="psnapTimerEnabled">Enable</label>
+                </div>
+              </div>
+              <div id="psnapTimerBody" style="display:none;">
+                <div style="font-size:10px;color:#7a8fae;font-family:'Share Tech Mono',monospace;font-weight:600;margin-bottom:8px;line-height:1.5;">
+                  Snapshots clear automatically at this time every day.
+                </div>
+                <!-- Time picker row -->
+                <div class="psnap-timer-fields">
+                  <div class="psnap-timer-field">
+                    <label>Hour (24h)</label>
+                    <input type="number" id="psnapTimerH" value="21" min="0" max="23" step="1" placeholder="21" onchange="psnapTimerRestart()"/>
+                  </div>
+                  <div class="psnap-timer-field">
+                    <label>Minute</label>
+                    <input type="number" id="psnapTimerM" value="0" min="0" max="59" step="1" placeholder="0" onchange="psnapTimerRestart()"/>
+                  </div>
+                </div>
+                <!-- Next fire time display -->
+                <div class="psnap-countdown" id="psnapCountdown">
+                  <span class="psc-lbl">⏳ Resets At</span>
+                  <span class="psc-val" id="psnapCountdownVal">—</span>
+                </div>
+                <!-- Countdown to next fire -->
+                <div class="psnap-countdown" id="psnapCountdownIn" style="margin-top:5px;">
+                  <span class="psc-lbl">🗑 In</span>
+                  <span class="psc-val" id="psnapCountdownInVal">—</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- ══ END PROFIT SNAPSHOT ══ -->
 
           <div class="section-div"></div>
           <div class="section-lbl">Last Signal</div>
@@ -4440,6 +4538,8 @@ function _dlsDoSwitch(from, to){
   if(to === 'live'){
     dlsLivePnl = 0;
   } else {
+    // ── PROFIT SNAPSHOT: capture live P&L before switching back to demo ──
+    psnapCapture(dlsLivePnl);
     dlsDemoPnl = 0;
     // Reset consecutive loss streak when returning to demo (fresh start)
     dlsConsecLosses = 0;
@@ -4528,6 +4628,200 @@ function _dlsPostSwitchResume(){
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════
+//  PROFIT SNAPSHOT ENGINE
+//  Captures live P&L every time we switch back to demo.
+//  Up to 10 slots. Manual reset + daily clock-time auto-reset.
+// ═══════════════════════════════════════════════════════════════════
+
+const PSNAP_MAX       = 10;
+let psnapSlots        = [];
+let psnapTimerEnabled = false;
+let psnapTimerRef     = null;   // setTimeout for next daily fire
+let psnapTickRef      = null;   // setInterval for live countdown display
+let _psnapFireDate    = null;   // Date object for next scheduled fire
+
+// ── Render all 10 boxes ─────────────────────────────────────────────
+function psnapRenderGrid(){
+  const grid = document.getElementById('psnapGrid');
+  if(!grid) return;
+  grid.innerHTML = '';
+  for(let i = 0; i < PSNAP_MAX; i++){
+    const box    = document.createElement('div');
+    const slot   = psnapSlots[i];
+    const isNext = (i === psnapSlots.length) && psnapSlots.length < PSNAP_MAX;
+
+    let cls    = 'psnap-box';
+    let valTxt = '—';
+    let valCls = 'empty';
+
+    if(slot !== undefined){
+      const n = parseFloat(slot);
+      if(n > 0){      cls += ' filled-win';  valTxt = '+'+fmtAmount(Math.abs(n)); valCls = 'win';  }
+      else if(n < 0){ cls += ' filled-loss'; valTxt = '−'+fmtAmount(Math.abs(n)); valCls = 'loss'; }
+      else{           cls += ' filled-even'; valTxt = fmtAmount(0);               valCls = 'even'; }
+    } else if(isNext){
+      cls    += ' active-slot';
+      valTxt  = '…';
+      valCls  = 'empty';
+    }
+
+    box.className = cls;
+    box.innerHTML =
+      '<div class="psnap-num">#'+(i+1)+'</div>' +
+      '<div class="psnap-val '+valCls+'">'+valTxt+'</div>';
+    grid.appendChild(box);
+  }
+}
+
+// ── Capture a value ──────────────────────────────────────────────────
+function psnapCapture(pnlValue){
+  if(psnapSlots.length >= PSNAP_MAX) psnapSlots.shift();
+  psnapSlots.push(parseFloat(pnlValue) || 0);
+  psnapRenderGrid();
+  psnapSave();
+  toast('📸 Live P&L snapshot #'+psnapSlots.length+': '+fmtSigned(pnlValue), 'info');
+}
+
+// ── Manual reset ────────────────────────────────────────────────────
+function psnapReset(){
+  psnapSlots = [];
+  psnapRenderGrid();
+  psnapSave();
+  toast('🗑 Profit snapshots cleared', 'info');
+}
+
+// ── Timer toggle ────────────────────────────────────────────────────
+function psnapOnTimerToggle(checked){
+  psnapTimerEnabled = checked;
+  const body = document.getElementById('psnapTimerBody');
+  if(body) body.style.display = checked ? '' : 'none';
+  if(checked){
+    psnapTimerRestart();
+  } else {
+    _psnapClearTimer();
+    _psnapUpdateDisplay(null);
+  }
+  psnapSave();
+}
+
+// ── Calculate next occurrence of HH:MM (today or tomorrow) ──────────
+function _psnapNextFire(){
+  const h   = parseInt(document.getElementById('psnapTimerH')?.value) || 0;
+  const m   = parseInt(document.getElementById('psnapTimerM')?.value) || 0;
+  const now = new Date();
+  const d   = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, 0, 0);
+  if(d <= now) d.setDate(d.getDate() + 1);   // already passed today → tomorrow
+  return d;
+}
+
+// ── Format "21:00 · Sat 31 May" ─────────────────────────────────────
+function _psnapFmtFire(d){
+  const hh  = String(d.getHours()).padStart(2,'0');
+  const mm  = String(d.getMinutes()).padStart(2,'0');
+  const day = d.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
+  return hh+':'+mm+' · '+day;
+}
+
+// ── Update both countdown rows ───────────────────────────────────────
+function _psnapUpdateDisplay(fireDate){
+  const atEl  = document.getElementById('psnapCountdownVal');
+  const inEl  = document.getElementById('psnapCountdownInVal');
+  const cdIn  = document.getElementById('psnapCountdownIn');
+
+  if(!fireDate){
+    if(atEl) atEl.textContent = '—';
+    if(inEl) inEl.textContent = '—';
+    if(cdIn) cdIn.className = 'psnap-countdown';
+    return;
+  }
+
+  if(atEl) atEl.textContent = _psnapFmtFire(fireDate);
+
+  const msLeft = fireDate - Date.now();
+  if(msLeft <= 0){ if(inEl) inEl.textContent = 'Now!'; return; }
+
+  const s   = Math.ceil(msLeft / 1000);
+  const hrs = Math.floor(s / 3600);
+  const min = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  const lbl = (hrs > 0 ? hrs+'h ' : '') + (min > 0 ? min+'m ' : '') + sec+'s';
+  if(inEl) inEl.textContent = lbl;
+
+  if(cdIn){
+    cdIn.className = 'psnap-countdown' +
+      (msLeft < 60000 ? ' crit' : msLeft < 300000 ? ' warn' : '');
+  }
+}
+
+// ── Arm (or re-arm) the daily timer ─────────────────────────────────
+function psnapTimerRestart(){
+  _psnapClearTimer();
+  if(!psnapTimerEnabled) return;
+
+  _psnapFireDate    = _psnapNextFire();
+  const msLeft      = _psnapFireDate - Date.now();
+
+  // One-shot timeout that fires at the exact daily time
+  psnapTimerRef = setTimeout(()=>{
+    psnapReset();
+    toast('🕐 Daily auto-reset fired at '+_psnapFmtFire(new Date())+' — snapshots cleared', 'info');
+    psnapTimerRestart();   // reschedule for the same time tomorrow
+  }, msLeft);
+
+  // Tick the countdown every second
+  psnapTickRef = setInterval(()=>{
+    _psnapUpdateDisplay(_psnapFireDate);
+  }, 1000);
+
+  _psnapUpdateDisplay(_psnapFireDate);  // immediate first paint
+  psnapSave();
+}
+
+function _psnapClearTimer(){
+  if(psnapTimerRef){ clearTimeout(psnapTimerRef);   psnapTimerRef = null; }
+  if(psnapTickRef) { clearInterval(psnapTickRef);   psnapTickRef  = null; }
+  _psnapFireDate = null;
+}
+
+// ── Persistence ──────────────────────────────────────────────────────
+function psnapSave(){
+  try{
+    localStorage.setItem('crt_psnap', JSON.stringify({
+      slots:        psnapSlots,
+      timerEnabled: psnapTimerEnabled,
+      timerH:       parseInt(document.getElementById('psnapTimerH')?.value) || 21,
+      timerM:       parseInt(document.getElementById('psnapTimerM')?.value) || 0
+    }));
+  }catch(e){}
+}
+
+function psnapLoad(){
+  try{
+    const raw = localStorage.getItem('crt_psnap');
+    if(!raw){ psnapRenderGrid(); return; }
+    const s   = JSON.parse(raw);
+    if(Array.isArray(s.slots)) psnapSlots = s.slots.slice(0, PSNAP_MAX);
+    const hEl = document.getElementById('psnapTimerH');
+    const mEl = document.getElementById('psnapTimerM');
+    if(hEl && s.timerH !== undefined) hEl.value = s.timerH;
+    if(mEl && s.timerM !== undefined) mEl.value = s.timerM;
+    if(s.timerEnabled){
+      psnapTimerEnabled = true;
+      const chk  = document.getElementById('psnapTimerEnabled');
+      const body = document.getElementById('psnapTimerBody');
+      if(chk)  chk.checked = true;
+      if(body) body.style.display = '';
+      psnapTimerRestart();   // will recalculate next fire from stored HH:MM
+    }
+    psnapRenderGrid();
+  }catch(e){ psnapRenderGrid(); }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  END PROFIT SNAPSHOT ENGINE
+// ═══════════════════════════════════════════════════════════════════
+
 // ── Persistence for DLS state ───────────────────────────────────
 function dlsSaveState(){
   try {
@@ -4599,6 +4893,8 @@ window.addEventListener('load', ()=>{
   }
   // Load DLS persistent state (tokens, settings, cycle count)
   dlsLoadState();
+  // Load profit snapshot state
+  psnapLoad();
 });
 
 // Wrap doLogin to persist token after successful login attempt
