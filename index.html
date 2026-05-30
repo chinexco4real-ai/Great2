@@ -404,11 +404,12 @@
   .dls-switch input:checked + .dls-slider{background:rgba(0,240,255,.18);border-color:var(--accent2);}
   .dls-switch input:checked + .dls-slider::before{transform:translateX(22px);background:var(--accent2);box-shadow:0 0 6px rgba(0,240,255,.5);}
   /* Setting selector */
-  .dls-setting-tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px;}
+  .dls-setting-tabs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px;}
   .dls-tab{padding:9px 4px;background:var(--bg3);border:1px solid var(--border2);color:#7a8fae;border-radius:6px;font-size:12px;letter-spacing:.5px;cursor:pointer;text-align:center;transition:all .2s;font-family:'Rajdhani',sans-serif;font-weight:700;}
   .dls-tab:hover{color:var(--text);border-color:#3a5580;}
   .dls-tab.active.s1{background:rgba(255,61,90,.15);border-color:var(--red);color:#ff7090;}
   .dls-tab.active.s2{background:rgba(0,230,118,.12);border-color:var(--green);color:var(--green);}
+  .dls-tab.active.s3{background:rgba(245,197,24,.12);border-color:var(--gold);color:var(--gold);}
   /* Token fields */
   .dls-token-row{display:flex;flex-direction:column;gap:4px;margin-bottom:9px;}
   .dls-token-row label{font-size:11px;letter-spacing:1px;color:#8ba4cc;text-transform:uppercase;font-weight:700;}
@@ -1008,18 +1009,43 @@
                 <div class="dls-tab s2" id="dlsTab2" onclick="dlsSelectSetting(2)">
                   ② PROFIT<br><span style="font-size:10px;opacity:.75;">switch on profit</span>
                 </div>
+                <div class="dls-tab s3" id="dlsTab3" onclick="dlsSelectSetting(3)">
+                  ③ STREAK<br><span style="font-size:10px;opacity:.75;">loss streak</span>
+                </div>
               </div>
 
-              <!-- PNL threshold -->
-              <div class="dls-token-row">
+              <!-- PNL threshold (Settings 1 & 2) -->
+              <div class="dls-token-row" id="dlsThresholdRow">
                 <label id="dlsThresholdLabel">PNL Loss Threshold ($) — demo→live</label>
                 <input type="number" id="dlsThreshold" value="5" min="0.01" step="0.01"/>
               </div>
 
-              <!-- Live PNL threshold (same concept, demo and live each have independent targets) -->
-              <div class="dls-token-row">
+              <!-- Live PNL threshold (Settings 1 & 2) -->
+              <div class="dls-token-row" id="dlsLiveThresholdRow">
                 <label id="dlsLiveThresholdLabel">PNL Threshold ($) — live→demo</label>
                 <input type="number" id="dlsLiveThreshold" value="10" min="0.01" step="0.01"/>
+              </div>
+
+              <!-- Setting 3: Consecutive loss streak input -->
+              <div class="dls-token-row" id="dlsStreakRow" style="display:none;">
+                <label>Consecutive Losses to Switch Demo → Live</label>
+                <input type="number" id="dlsLossStreak" value="3" min="1" max="50" step="1"/>
+                <span style="font-size:10px;color:#8ba4cc;font-family:'Share Tech Mono',monospace;margin-top:3px;">Default: 3 straight losses triggers switch to LIVE</span>
+              </div>
+
+              <!-- Setting 3: Live profit target to switch back -->
+              <div class="dls-token-row" id="dlsStreakLiveProfitRow" style="display:none;">
+                <label>Profit Target ($) — live→demo</label>
+                <input type="number" id="dlsStreakLiveProfit" value="10" min="0.01" step="0.01"/>
+                <span style="font-size:10px;color:#8ba4cc;font-family:'Share Tech Mono',monospace;margin-top:3px;">Switch back to DEMO once this profit is reached on LIVE</span>
+              </div>
+
+              <!-- Streak counter display (Setting 3 only) -->
+              <div id="dlsStreakDisplay" style="display:none;margin-bottom:8px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 11px;background:rgba(245,197,24,.07);border:1px solid rgba(245,197,24,.25);border-radius:6px;">
+                  <span style="font-size:11px;color:#8ba4cc;letter-spacing:1px;font-weight:700;text-transform:uppercase;">Consecutive Losses</span>
+                  <span style="font-family:'Orbitron',sans-serif;font-size:15px;font-weight:700;color:var(--gold);" id="dlsStreakCounter">0</span>
+                </div>
               </div>
 
               <!-- Hint per setting -->
@@ -1028,6 +1054,9 @@
               </div>
               <div class="dls-hint" id="dlsHint2" style="display:none;">
                 <b>Setting 2 — Profit:</b> When Net P/L on DEMO reaches +threshold, EA enables Reverse Mode, resets session &amp; switches to LIVE. When LIVE Net P/L reaches +live-threshold, EA disables Reverse Mode, resets &amp; switches back to DEMO. Cycle repeats.
+              </div>
+              <div class="dls-hint" id="dlsHint3" style="display:none;">
+                <b>Setting 3 — Loss Streak:</b> After N consecutive straight losses on DEMO, switch to LIVE. When LIVE profit target is reached, reset streak &amp; switch back to DEMO. Streak counter resets on every switch.
               </div>
 
               <!-- Current mode indicator -->
@@ -3894,12 +3923,15 @@ function setCounterStatus(msg, cls){
 
 // ── State variables ─────────────────────────────────────────────
 let dlsEnabled        = false;   // master switch toggle
-let dlsSetting        = 1;       // 1=Loss trigger, 2=Profit trigger
+let dlsSetting        = 1;       // 1=Loss trigger, 2=Profit trigger, 3=Loss Streak trigger
 let dlsCurrentMode    = 'demo';  // 'demo' | 'live'  (which account is active NOW)
 let dlsCycleCount     = 0;       // how many full demo→live→demo cycles completed
 let dlsSwitching      = false;   // true while mid-switch (prevent double triggers)
 let dlsLiveToken      = '';      // live account token (entered by user)
 let dlsDemoToken      = '';      // demo account token (entered by user on connect)
+
+// Setting 3: consecutive loss streak tracker
+let dlsConsecLosses   = 0;       // running count of consecutive losses on DEMO (Setting 3)
 
 // PNL accumulators per leg — reset on every switch
 // These are separate from the EA stats so the switch can measure
@@ -3910,6 +3942,20 @@ let dlsLivePnl        = 0;       // net P/L accumulated in current LIVE leg
 // Threshold config (read from UI when needed)
 function dlsGetThreshold(){ return parseFloat(document.getElementById('dlsThreshold').value) || 5; }
 function dlsGetLiveThreshold(){ return parseFloat(document.getElementById('dlsLiveThreshold').value) || 10; }
+function dlsGetLossStreak(){ return parseInt(document.getElementById('dlsLossStreak').value) || 3; }
+function dlsGetStreakLiveProfit(){ return parseFloat(document.getElementById('dlsStreakLiveProfit').value) || 10; }
+
+// Update the streak counter display (Setting 3)
+function dlsUpdateStreakDisplay(){
+  const el = document.getElementById('dlsStreakCounter');
+  if(!el) return;
+  el.textContent = dlsConsecLosses;
+  const target = dlsGetLossStreak();
+  // Color: green when 0, grades to red as it approaches target
+  if(dlsConsecLosses === 0) el.style.color = 'var(--green)';
+  else if(dlsConsecLosses >= target) el.style.color = 'var(--red)';
+  else el.style.color = 'var(--gold)';
+}
 
 // ── UI helpers ──────────────────────────────────────────────────
 function dlsSetStatus(msg, cls){
@@ -3957,20 +4003,58 @@ function dlsSelectSetting(n){
   dlsSetting = n;
   const t1 = document.getElementById('dlsTab1');
   const t2 = document.getElementById('dlsTab2');
+  const t3 = document.getElementById('dlsTab3');
   const h1 = document.getElementById('dlsHint1');
   const h2 = document.getElementById('dlsHint2');
+  const h3 = document.getElementById('dlsHint3');
   const tl = document.getElementById('dlsThresholdLabel');
   const ll = document.getElementById('dlsLiveThresholdLabel');
+  // Rows for Settings 1 & 2
+  const threshRow      = document.getElementById('dlsThresholdRow');
+  const liveThreshRow  = document.getElementById('dlsLiveThresholdRow');
+  // Rows for Setting 3
+  const streakRow      = document.getElementById('dlsStreakRow');
+  const streakLiveRow  = document.getElementById('dlsStreakLiveProfitRow');
+  const streakDisp     = document.getElementById('dlsStreakDisplay');
+
+  // Deactivate all tabs
+  if(t1) t1.classList.remove('active');
+  if(t2) t2.classList.remove('active');
+  if(t3) t3.classList.remove('active');
+  if(h1) h1.style.display = 'none';
+  if(h2) h2.style.display = 'none';
+  if(h3) h3.style.display = 'none';
+
   if(n === 1){
-    t1.classList.add('active'); t2.classList.remove('active');
-    if(h1) h1.style.display = ''; if(h2) h2.style.display = 'none';
+    if(t1) t1.classList.add('active');
+    if(h1) h1.style.display = '';
     if(tl) tl.textContent = 'PNL Loss Threshold ($) — demo→live';
     if(ll) ll.textContent = 'PNL Profit Threshold ($) — live→demo';
-  } else {
-    t2.classList.add('active'); t1.classList.remove('active');
-    if(h2) h2.style.display = ''; if(h1) h1.style.display = 'none';
+    if(threshRow)     threshRow.style.display     = '';
+    if(liveThreshRow) liveThreshRow.style.display = '';
+    if(streakRow)     streakRow.style.display      = 'none';
+    if(streakLiveRow) streakLiveRow.style.display  = 'none';
+    if(streakDisp)    streakDisp.style.display      = 'none';
+  } else if(n === 2){
+    if(t2) t2.classList.add('active');
+    if(h2) h2.style.display = '';
     if(tl) tl.textContent = 'PNL Profit Threshold ($) — demo→live';
     if(ll) ll.textContent = 'PNL Profit Threshold ($) — live→demo';
+    if(threshRow)     threshRow.style.display     = '';
+    if(liveThreshRow) liveThreshRow.style.display = '';
+    if(streakRow)     streakRow.style.display      = 'none';
+    if(streakLiveRow) streakLiveRow.style.display  = 'none';
+    if(streakDisp)    streakDisp.style.display      = 'none';
+  } else {
+    // Setting 3
+    if(t3) t3.classList.add('active');
+    if(h3) h3.style.display = '';
+    if(threshRow)     threshRow.style.display     = 'none';
+    if(liveThreshRow) liveThreshRow.style.display = 'none';
+    if(streakRow)     streakRow.style.display      = '';
+    if(streakLiveRow) streakLiveRow.style.display  = '';
+    if(streakDisp)    streakDisp.style.display      = '';
+    dlsUpdateStreakDisplay();
   }
   dlsSaveState();
 }
@@ -4005,10 +4089,14 @@ function onDlsToggle(checked){
     dlsCurrentMode = _dlsDetectCurrentMode();
     dlsDemoPnl = 0;
     dlsLivePnl = 0;
+    dlsConsecLosses = 0;
     dlsSwitching = false;
+    dlsUpdateStreakDisplay();
 
     const modeLabel = dlsCurrentMode === 'demo' ? 'DEMO' : 'LIVE';
-    dlsSetStatus('✅ Switch engine armed · Currently on ' + modeLabel + ' · Setting ' + dlsSetting + ' active.', dlsCurrentMode);
+    let settingDesc = 'Setting ' + dlsSetting + ' active';
+    if(dlsSetting === 3) settingDesc = 'Setting 3 · Streak target: ' + dlsGetLossStreak() + ' losses';
+    dlsSetStatus('✅ Switch engine armed · Currently on ' + modeLabel + ' · ' + settingDesc + '.', dlsCurrentMode);
     toast('🔄 Auto Switch ENABLED · Setting ' + dlsSetting + ' · ' + modeLabel + ' account active', 'info');
   } else {
     dlsSetStatus('Switch mode inactive — enable to start cycle.', '');
@@ -4036,7 +4124,34 @@ function dlsOnTradeSettled(netPnl){
   if(dlsCurrentMode === 'demo'){
     dlsDemoPnl += netPnl;
     dlsUpdateIndicator();
-    _dlsCheckDemoThreshold();
+
+    if(dlsSetting === 3){
+      // Setting 3: track consecutive losses on DEMO
+      if(netPnl < 0){
+        dlsConsecLosses++;
+        dlsUpdateStreakDisplay();
+        const target = dlsGetLossStreak();
+        dlsSetStatus(
+          '📉 Loss streak: ' + dlsConsecLosses + ' / ' + target + ' consecutive losses on DEMO', 'demo'
+        );
+        if(dlsConsecLosses >= target){
+          dlsSetStatus(
+            '🔴 ' + dlsConsecLosses + ' straight losses reached · Switching to LIVE…', 'switching'
+          );
+          _dlsDoSwitch('demo', 'live');
+        }
+      } else {
+        // Win on DEMO resets the consecutive loss streak
+        const prev = dlsConsecLosses;
+        dlsConsecLosses = 0;
+        dlsUpdateStreakDisplay();
+        if(prev > 0){
+          dlsSetStatus('✅ Win on DEMO — loss streak reset (was ' + prev + ')', 'demo');
+        }
+      }
+    } else {
+      _dlsCheckDemoThreshold();
+    }
   } else {
     dlsLivePnl += netPnl;
     dlsUpdateIndicator();
@@ -4078,6 +4193,18 @@ function _dlsCheckDemoThreshold(){
 }
 
 function _dlsCheckLiveThreshold(){
+  if(dlsSetting === 3){
+    // Setting 3: switch back to DEMO when LIVE profit target is reached
+    const target = dlsGetStreakLiveProfit();
+    if(dlsLivePnl >= target){
+      dlsSetStatus(
+        '🎯 Live profit target +' + fmtAmount(target) + ' reached · Resetting streak · Switching back to DEMO…', 'switching'
+      );
+      _dlsDoSwitch('live', 'demo');
+    }
+    return;
+  }
+
   const threshold = dlsGetLiveThreshold();
 
   if(dlsSetting === 1){
@@ -4139,6 +4266,9 @@ function _dlsDoSwitch(from, to){
     dlsLivePnl = 0;
   } else {
     dlsDemoPnl = 0;
+    // Reset consecutive loss streak when returning to demo (fresh start)
+    dlsConsecLosses = 0;
+    dlsUpdateStreakDisplay();
     // Only increment cycle counter when returning to demo (one full cycle)
     dlsCycleCount++;
     document.getElementById('dlsCycleCount').textContent = dlsCycleCount;
@@ -4218,7 +4348,10 @@ function dlsSaveState(){
       cycleCount:   dlsCycleCount,
       liveToken:    dlsLiveToken,
       threshold:    dlsGetThreshold(),
-      liveThreshold: dlsGetLiveThreshold()
+      liveThreshold: dlsGetLiveThreshold(),
+      lossStreak:   dlsGetLossStreak(),
+      streakLiveProfit: dlsGetStreakLiveProfit(),
+      consecLosses: dlsConsecLosses
     };
     localStorage.setItem('crt_dls_state', JSON.stringify(dlsState));
   } catch(e){}
@@ -4233,6 +4366,9 @@ function dlsLoadState(){
     if(s.cycleCount)    { dlsCycleCount = s.cycleCount; const el = document.getElementById('dlsCycleCount'); if(el) el.textContent = dlsCycleCount; }
     if(s.threshold)     { const el = document.getElementById('dlsThreshold');     if(el) el.value = s.threshold; }
     if(s.liveThreshold) { const el = document.getElementById('dlsLiveThreshold'); if(el) el.value = s.liveThreshold; }
+    if(s.lossStreak)    { const el = document.getElementById('dlsLossStreak');    if(el) el.value = s.lossStreak; }
+    if(s.streakLiveProfit){ const el = document.getElementById('dlsStreakLiveProfit'); if(el) el.value = s.streakLiveProfit; }
+    if(s.consecLosses !== undefined){ dlsConsecLosses = s.consecLosses; dlsUpdateStreakDisplay(); }
     if(s.liveToken)     { dlsLiveToken = s.liveToken; const el = document.getElementById('liveTokenInput'); if(el && !el.value) el.value = s.liveToken; }
     if(s.currentMode)   dlsCurrentMode = s.currentMode;
     // Do NOT auto-restore dlsEnabled=true on page load — user must re-enable
