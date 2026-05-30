@@ -410,6 +410,7 @@
   .dls-tab.active.s1{background:rgba(255,61,90,.15);border-color:var(--red);color:#ff7090;}
   .dls-tab.active.s2{background:rgba(0,230,118,.12);border-color:var(--green);color:var(--green);}
   .dls-tab.active.s3{background:rgba(245,197,24,.12);border-color:var(--gold);color:var(--gold);}
+  .dls-tab.active.s4{background:rgba(0,240,255,.12);border-color:var(--accent2);color:var(--accent2);}
   /* Token fields */
   .dls-token-row{display:flex;flex-direction:column;gap:4px;margin-bottom:9px;}
   .dls-token-row label{font-size:11px;letter-spacing:1px;color:#8ba4cc;text-transform:uppercase;font-weight:700;}
@@ -1071,6 +1072,9 @@
                 <div class="dls-tab s3" id="dlsTab3" onclick="dlsSelectSetting(3)">
                   ③ STREAK<br><span style="font-size:10px;opacity:.75;">loss streak</span>
                 </div>
+                <div class="dls-tab s4" id="dlsTab4" onclick="dlsSelectSetting(4)" style="grid-column:1/-1;">
+                  ④ WIN STREAK + REVERSE<br><span style="font-size:10px;opacity:.75;">consec. profits → reverse on live</span>
+                </div>
               </div>
 
               <!-- PNL threshold (Settings 1 & 2) -->
@@ -1107,6 +1111,28 @@
                 </div>
               </div>
 
+              <!-- Setting 4: Consecutive win streak input -->
+              <div class="dls-token-row" id="dlsWinStreakRow" style="display:none;">
+                <label>Consecutive Profits to Switch Demo → Live</label>
+                <input type="number" id="dlsWinStreak" value="3" min="1" max="50" step="1"/>
+                <span style="font-size:10px;color:#8ba4cc;font-family:'Share Tech Mono',monospace;margin-top:3px;">Default: 3 straight wins triggers Reverse Mode + switch to LIVE</span>
+              </div>
+
+              <!-- Setting 4: Live profit target to switch back + disable reverse -->
+              <div class="dls-token-row" id="dlsWinStreakLiveProfitRow" style="display:none;">
+                <label>Profit Target ($) — live→demo (disables Reverse)</label>
+                <input type="number" id="dlsWinStreakLiveProfit" value="10" min="0.01" step="0.01"/>
+                <span style="font-size:10px;color:#8ba4cc;font-family:'Share Tech Mono',monospace;margin-top:3px;">Switch back to DEMO &amp; disable Reverse Mode once this profit is hit on LIVE</span>
+              </div>
+
+              <!-- Win streak counter display (Setting 4 only) -->
+              <div id="dlsWinStreakDisplay" style="display:none;margin-bottom:8px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 11px;background:rgba(0,230,118,.07);border:1px solid rgba(0,230,118,.25);border-radius:6px;">
+                  <span style="font-size:11px;color:#8ba4cc;letter-spacing:1px;font-weight:700;text-transform:uppercase;">Consecutive Wins</span>
+                  <span style="font-family:'Orbitron',sans-serif;font-size:15px;font-weight:700;color:var(--green);" id="dlsWinStreakCounter">0</span>
+                </div>
+              </div>
+
               <!-- Hint per setting -->
               <div class="dls-hint" id="dlsHint1">
                 <b>Setting 1 — Loss:</b> When Net P/L on DEMO reaches −threshold, reset session &amp; switch to LIVE. When LIVE Net P/L reaches +live-threshold, reset &amp; switch back to DEMO. Cycle repeats while switch is ON.
@@ -1116,6 +1142,9 @@
               </div>
               <div class="dls-hint" id="dlsHint3" style="display:none;">
                 <b>Setting 3 — Loss Streak:</b> After N consecutive straight losses on DEMO, switch to LIVE. When LIVE profit target is reached, reset streak &amp; switch back to DEMO. Streak counter resets on every switch.
+              </div>
+              <div class="dls-hint" id="dlsHint4" style="display:none;">
+                <b>Setting 4 — Win Streak + Reverse:</b> After N consecutive profits on DEMO, <b>enable Reverse Mode</b> and switch to LIVE. When LIVE profit target is reached, <b>disable Reverse Mode</b> and switch back to DEMO. Win streak counter resets on every switch.
               </div>
 
               <!-- Current mode indicator -->
@@ -4113,6 +4142,9 @@ let dlsDemoToken      = '';      // demo account token (entered by user on conne
 // Setting 3: consecutive loss streak tracker
 let dlsConsecLosses   = 0;       // running count of consecutive losses on DEMO (Setting 3)
 
+// Setting 4: consecutive win streak tracker
+let dlsConsecWins     = 0;       // running count of consecutive wins on DEMO (Setting 4)
+
 // PNL accumulators per leg — reset on every switch
 // These are separate from the EA stats so the switch can measure
 // just the trades since the last switch, not lifetime totals.
@@ -4132,6 +4164,21 @@ function dlsGetThreshold(){ return parseFloat(document.getElementById('dlsThresh
 function dlsGetLiveThreshold(){ return parseFloat(document.getElementById('dlsLiveThreshold').value) || 10; }
 function dlsGetLossStreak(){ return parseInt(document.getElementById('dlsLossStreak').value) || 3; }
 function dlsGetStreakLiveProfit(){ return parseFloat(document.getElementById('dlsStreakLiveProfit').value) || 10; }
+
+// Setting 4 helpers
+function dlsGetWinStreak(){ return parseInt(document.getElementById('dlsWinStreak').value) || 3; }
+function dlsGetWinStreakLiveProfit(){ return parseFloat(document.getElementById('dlsWinStreakLiveProfit').value) || 10; }
+
+// Update the win streak counter display (Setting 4)
+function dlsUpdateWinStreakDisplay(){
+  const el = document.getElementById('dlsWinStreakCounter');
+  if(!el) return;
+  el.textContent = dlsConsecWins;
+  const target = dlsGetWinStreak();
+  if(dlsConsecWins === 0) el.style.color = 'var(--muted)';
+  else if(dlsConsecWins >= target) el.style.color = 'var(--accent2)';
+  else el.style.color = 'var(--green)';
+}
 
 // Update the streak counter display (Setting 3)
 function dlsUpdateStreakDisplay(){
@@ -4273,9 +4320,11 @@ function dlsSelectSetting(n){
   const t1 = document.getElementById('dlsTab1');
   const t2 = document.getElementById('dlsTab2');
   const t3 = document.getElementById('dlsTab3');
+  const t4 = document.getElementById('dlsTab4');
   const h1 = document.getElementById('dlsHint1');
   const h2 = document.getElementById('dlsHint2');
   const h3 = document.getElementById('dlsHint3');
+  const h4 = document.getElementById('dlsHint4');
   const tl = document.getElementById('dlsThresholdLabel');
   const ll = document.getElementById('dlsLiveThresholdLabel');
   // Rows for Settings 1 & 2
@@ -4285,14 +4334,20 @@ function dlsSelectSetting(n){
   const streakRow      = document.getElementById('dlsStreakRow');
   const streakLiveRow  = document.getElementById('dlsStreakLiveProfitRow');
   const streakDisp     = document.getElementById('dlsStreakDisplay');
+  // Rows for Setting 4
+  const winStreakRow      = document.getElementById('dlsWinStreakRow');
+  const winStreakLiveRow  = document.getElementById('dlsWinStreakLiveProfitRow');
+  const winStreakDisp     = document.getElementById('dlsWinStreakDisplay');
 
   // Deactivate all tabs
   if(t1) t1.classList.remove('active');
   if(t2) t2.classList.remove('active');
   if(t3) t3.classList.remove('active');
+  if(t4) t4.classList.remove('active');
   if(h1) h1.style.display = 'none';
   if(h2) h2.style.display = 'none';
   if(h3) h3.style.display = 'none';
+  if(h4) h4.style.display = 'none';
 
   if(n === 1){
     if(t1) t1.classList.add('active');
@@ -4304,6 +4359,9 @@ function dlsSelectSetting(n){
     if(streakRow)     streakRow.style.display      = 'none';
     if(streakLiveRow) streakLiveRow.style.display  = 'none';
     if(streakDisp)    streakDisp.style.display      = 'none';
+    if(winStreakRow)      winStreakRow.style.display      = 'none';
+    if(winStreakLiveRow)  winStreakLiveRow.style.display  = 'none';
+    if(winStreakDisp)     winStreakDisp.style.display      = 'none';
   } else if(n === 2){
     if(t2) t2.classList.add('active');
     if(h2) h2.style.display = '';
@@ -4314,7 +4372,10 @@ function dlsSelectSetting(n){
     if(streakRow)     streakRow.style.display      = 'none';
     if(streakLiveRow) streakLiveRow.style.display  = 'none';
     if(streakDisp)    streakDisp.style.display      = 'none';
-  } else {
+    if(winStreakRow)      winStreakRow.style.display      = 'none';
+    if(winStreakLiveRow)  winStreakLiveRow.style.display  = 'none';
+    if(winStreakDisp)     winStreakDisp.style.display      = 'none';
+  } else if(n === 3){
     // Setting 3
     if(t3) t3.classList.add('active');
     if(h3) h3.style.display = '';
@@ -4324,6 +4385,22 @@ function dlsSelectSetting(n){
     if(streakLiveRow) streakLiveRow.style.display  = '';
     if(streakDisp)    streakDisp.style.display      = '';
     dlsUpdateStreakDisplay();
+    if(winStreakRow)      winStreakRow.style.display      = 'none';
+    if(winStreakLiveRow)  winStreakLiveRow.style.display  = 'none';
+    if(winStreakDisp)     winStreakDisp.style.display      = 'none';
+  } else {
+    // Setting 4
+    if(t4) t4.classList.add('active');
+    if(h4) h4.style.display = '';
+    if(threshRow)     threshRow.style.display     = 'none';
+    if(liveThreshRow) liveThreshRow.style.display = 'none';
+    if(streakRow)     streakRow.style.display      = 'none';
+    if(streakLiveRow) streakLiveRow.style.display  = 'none';
+    if(streakDisp)    streakDisp.style.display      = 'none';
+    if(winStreakRow)      winStreakRow.style.display      = '';
+    if(winStreakLiveRow)  winStreakLiveRow.style.display  = '';
+    if(winStreakDisp)     winStreakDisp.style.display      = '';
+    dlsUpdateWinStreakDisplay();
   }
   dlsSaveState();
 }
@@ -4359,12 +4436,15 @@ function onDlsToggle(checked){
     dlsDemoPnl = 0;
     dlsLivePnl = 0;
     dlsConsecLosses = 0;
+    dlsConsecWins = 0;
     dlsSwitching = false;
     dlsUpdateStreakDisplay();
+    dlsUpdateWinStreakDisplay();
 
     const modeLabel = dlsCurrentMode === 'demo' ? 'DEMO' : 'LIVE';
     let settingDesc = 'Setting ' + dlsSetting + ' active';
     if(dlsSetting === 3) settingDesc = 'Setting 3 · Streak target: ' + dlsGetLossStreak() + ' losses';
+    if(dlsSetting === 4) settingDesc = 'Setting 4 · Win streak target: ' + dlsGetWinStreak() + ' wins';
     dlsSetStatus('✅ Switch engine armed · Currently on ' + modeLabel + ' · ' + settingDesc + '.', dlsCurrentMode);
     toast('🔄 Auto Switch ENABLED · Setting ' + dlsSetting + ' · ' + modeLabel + ' account active', 'info');
   } else {
@@ -4419,6 +4499,39 @@ function dlsOnTradeSettled(netPnl){
           dlsSetStatus('✅ Win on DEMO — loss streak reset (was ' + prev + ')', 'demo');
         }
       }
+    } else if(dlsSetting === 4){
+      // Setting 4: track consecutive wins on DEMO → enable Reverse + switch to LIVE
+      if(netPnl > 0){
+        dlsConsecWins++;
+        dlsUpdateWinStreakDisplay();
+        const target = dlsGetWinStreak();
+        dlsSetStatus(
+          '📈 Win streak: ' + dlsConsecWins + ' / ' + target + ' consecutive wins on DEMO', 'demo'
+        );
+        if(dlsConsecWins >= target){
+          dlsSetStatus(
+            '🟢 ' + dlsConsecWins + ' straight wins reached · Enabling Reverse Mode + switching to LIVE…', 'switching'
+          );
+          // Enable Reverse Mode before switching
+          if(!reverseMode){
+            reverseMode = true;
+            const tog   = document.getElementById('reverseToggle');
+            const state = document.getElementById('reverseState');
+            if(tog)   tog.className = 'reverse-toggle on';
+            if(state) state.textContent = 'ON';
+            toast('⇄ Reverse Mode AUTO-ENABLED by Switch Engine (Setting 4)', 'info');
+          }
+          _dlsDoSwitch('demo', 'live');
+        }
+      } else {
+        // Loss on DEMO resets the consecutive win streak
+        const prev = dlsConsecWins;
+        dlsConsecWins = 0;
+        dlsUpdateWinStreakDisplay();
+        if(prev > 0){
+          dlsSetStatus('🔴 Loss on DEMO — win streak reset (was ' + prev + ')', 'demo');
+        }
+      }
     } else {
       _dlsCheckDemoThreshold();
     }
@@ -4471,6 +4584,28 @@ function _dlsCheckLiveThreshold(){
       dlsSetStatus(
         '🎯 Live profit target +' + fmtAmount(target) + ' reached · Resetting streak · Switching back to DEMO…', 'switching'
       );
+      _dlsDoSwitch('live', 'demo');
+    }
+    return;
+  }
+
+  if(dlsSetting === 4){
+    // Setting 4: switch back to DEMO when LIVE profit target is reached + disable Reverse
+    const target = dlsGetWinStreakLiveProfit();
+    if(dlsLivePnl >= target){
+      _dlsClearTimeExit();
+      dlsSetStatus(
+        '🎯 Live profit target +' + fmtAmount(target) + ' reached · Disabling Reverse Mode · Switching back to DEMO…', 'switching'
+      );
+      // Disable Reverse Mode on the way back to demo
+      if(reverseMode){
+        reverseMode = false;
+        const tog   = document.getElementById('reverseToggle');
+        const state = document.getElementById('reverseState');
+        if(tog)   tog.className = 'reverse-toggle off';
+        if(state) state.textContent = 'OFF';
+        toast('⇄ Reverse Mode AUTO-DISABLED by Switch Engine (Setting 4)', 'info');
+      }
       _dlsDoSwitch('live', 'demo');
     }
     return;
@@ -4544,6 +4679,9 @@ function _dlsDoSwitch(from, to){
     // Reset consecutive loss streak when returning to demo (fresh start)
     dlsConsecLosses = 0;
     dlsUpdateStreakDisplay();
+    // Reset consecutive win streak when returning to demo (fresh start)
+    dlsConsecWins = 0;
+    dlsUpdateWinStreakDisplay();
     // Only increment cycle counter when returning to demo (one full cycle)
     dlsCycleCount++;
     document.getElementById('dlsCycleCount').textContent = dlsCycleCount;
@@ -4836,6 +4974,9 @@ function dlsSaveState(){
       lossStreak:   dlsGetLossStreak(),
       streakLiveProfit: dlsGetStreakLiveProfit(),
       consecLosses: dlsConsecLosses,
+      consecWins:   dlsConsecWins,
+      winStreak:    dlsGetWinStreak(),
+      winStreakLiveProfit: dlsGetWinStreakLiveProfit(),
       timeExitEnabled: dlsTimeExitEnabled,
       timeExitH: parseInt(document.getElementById('dlsTimeExitH').value) || 0,
       timeExitM: parseInt(document.getElementById('dlsTimeExitM').value) || 30
@@ -4856,6 +4997,9 @@ function dlsLoadState(){
     if(s.lossStreak)    { const el = document.getElementById('dlsLossStreak');    if(el) el.value = s.lossStreak; }
     if(s.streakLiveProfit){ const el = document.getElementById('dlsStreakLiveProfit'); if(el) el.value = s.streakLiveProfit; }
     if(s.consecLosses !== undefined){ dlsConsecLosses = s.consecLosses; dlsUpdateStreakDisplay(); }
+    if(s.consecWins   !== undefined){ dlsConsecWins   = s.consecWins;   dlsUpdateWinStreakDisplay(); }
+    if(s.winStreak)    { const el = document.getElementById('dlsWinStreak');          if(el) el.value = s.winStreak; }
+    if(s.winStreakLiveProfit){ const el = document.getElementById('dlsWinStreakLiveProfit'); if(el) el.value = s.winStreakLiveProfit; }
     if(s.timeExitH !== undefined){ const el = document.getElementById('dlsTimeExitH'); if(el) el.value = s.timeExitH; }
     if(s.timeExitM !== undefined){ const el = document.getElementById('dlsTimeExitM'); if(el) el.value = s.timeExitM; }
     if(s.timeExitEnabled){
@@ -4931,6 +5075,247 @@ window.doLogout = function(){
   origDoLogout();
   clearSavedToken();
 };
+
+// ═══════════════════════════════════════════════════════════════════
+//  LIVE INPUT UPDATE ENGINE
+//  Every input/select/checkbox change is intercepted here and
+//  immediately reflected in the running EA — no page refresh needed.
+// ═══════════════════════════════════════════════════════════════════
+
+(function initLiveInputEngine(){
+
+  // ── Debounce helper (for numeric fields that need a short settle time) ──
+  const _debTimers = {};
+  function debounce(key, fn, ms){
+    clearTimeout(_debTimers[key]);
+    _debTimers[key] = setTimeout(fn, ms);
+  }
+
+  // ── Visual flash feedback on updated field ──
+  function flashField(el){
+    if(!el) return;
+    el.style.transition = 'box-shadow .15s';
+    el.style.boxShadow = '0 0 0 2px rgba(0,240,255,.55)';
+    setTimeout(()=>{ el.style.boxShadow = ''; }, 500);
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  //  CONFIG PANEL — all cfgXxx inputs + cfgSymbol select
+  // ══════════════════════════════════════════════════════════════
+
+  // IDs that map directly to saveState() — changing them just needs a save
+  const DIRECT_SAVE_IDS = new Set([
+    'cfgSymbol','cfgMinRange','cfgMaxPos',
+    'cfgStake','cfgSL','cfgTP','cfgDuration',
+    'cfgEmaPeriod','cfgEmaTrendPeriod','cfgCooldown','cfgCounterWait',
+    'cfgTzOffset'
+  ]);
+
+  // ── DLS numeric fields — save DLS state immediately ──
+  const DLS_NUMERIC_IDS = new Set([
+    'dlsThreshold','dlsLiveThreshold',
+    'dlsLossStreak','dlsStreakLiveProfit',
+    'dlsWinStreak','dlsWinStreakLiveProfit',
+    'dlsTimeExitH','dlsTimeExitM'
+  ]);
+
+  // ── Profit Snapshot timer fields ──
+  const PSNAP_TIMER_IDS = new Set(['psnapTimerH','psnapTimerM']);
+
+  // ══════════════════════════════════════════════════════════════
+  //  Unified handler — fires on EVERY input/change event on document
+  // ══════════════════════════════════════════════════════════════
+  function handleLiveChange(e){
+    const el  = e.target;
+    const id  = el.id;
+    const tag = el.tagName;
+    const typ = (el.type || '').toLowerCase();
+
+    // ── 1. Direct-save config fields ──────────────────────────
+    if(DIRECT_SAVE_IDS.has(id)){
+      flashField(el);
+      debounce(id, ()=>{ saveState(); }, 300);
+      // Special: symbol change — re-subscribe ticks if connected
+      if(id === 'cfgSymbol' && ws && ws.readyState === 1){
+        subscribeSymbol(el.value);
+      }
+      // Special: cfgSL / cfgTP — update halt status display immediately
+      if(id === 'cfgSL' || id === 'cfgTP'){
+        debounce('sltp', ()=>{ checkEaHalt(); }, 300);
+      }
+      // Special: schedule UTC offset — re-evaluate window immediately
+      if(id === 'cfgTzOffset'){
+        debounce('tz', ()=>{ if(scheduleEnabled && typeof _scheduleTickUI === 'function') _scheduleTickUI(); }, 300);
+      }
+      return;
+    }
+
+    // ── 2. DLS numeric fields ──────────────────────────────────
+    if(DLS_NUMERIC_IDS.has(id)){
+      flashField(el);
+      debounce(id, ()=>{
+        dlsSaveState();
+        // If DLS is active and the indicator is showing, refresh it
+        if(dlsEnabled) dlsUpdateIndicator();
+        // Re-arm time exit if its duration fields changed while on live
+        if((id === 'dlsTimeExitH' || id === 'dlsTimeExitM') &&
+           dlsEnabled && dlsTimeExitEnabled && dlsCurrentMode === 'live'){
+          _dlsStartTimeExit();
+        }
+        // Refresh streak status label if streak target changed
+        if(id === 'dlsLossStreak' && dlsSetting === 3 && dlsEnabled){
+          dlsSetStatus('Setting 3 · Streak target updated: ' + dlsGetLossStreak() + ' losses · Current: ' + dlsConsecLosses, 'demo');
+        }
+        if(id === 'dlsWinStreak' && dlsSetting === 4 && dlsEnabled){
+          dlsSetStatus('Setting 4 · Win streak target updated: ' + dlsGetWinStreak() + ' wins · Current: ' + dlsConsecWins, 'demo');
+        }
+      }, 300);
+      return;
+    }
+
+    // ── 3. Profit Snapshot timer fields ───────────────────────
+    if(PSNAP_TIMER_IDS.has(id)){
+      flashField(el);
+      debounce(id, ()=>{
+        if(psnapTimerEnabled) psnapTimerRestart();
+        psnapSave();
+      }, 300);
+      return;
+    }
+
+    // ── 4. Live token field — update cached token immediately ──
+    if(id === 'liveTokenInput'){
+      debounce(id, ()=>{
+        dlsLiveToken = el.value.trim();
+        dlsSaveState();
+      }, 400);
+      return;
+    }
+
+    // ── 5. EMA period fields — recalculate EMA immediately ────
+    if(id === 'cfgEmaPeriod' || id === 'cfgEmaTrendPeriod'){
+      flashField(el);
+      debounce(id, ()=>{
+        if(candles.length > 0){
+          const period = parseInt(el.value) || 20;
+          emaValue = calcEMA(candles, period);
+        }
+        saveState();
+      }, 400);
+      return;
+    }
+
+    // ── 6. Schedule time pickers — already handled by _tpChange ──
+    // _tpChange fires on onchange — nothing extra needed here.
+
+    // ── 7. Cooldown — update running cooldown hint label ──────
+    if(id === 'cfgCooldown'){
+      flashField(el);
+      const s = parseInt(el.value) || 0;
+      const hint = document.getElementById('cfgCooldown')?.nextElementSibling;
+      // Update hint text inline
+      debounce(id, ()=>{ saveState(); }, 300);
+      return;
+    }
+  }
+
+  // ── Also hook checkEaHalt so it's always available ───────────
+  // (non-destructive: only patches if it exists in scope)
+  function checkEaHalt(){
+    if(eaHalted) return;   // already halted — nothing to recheck
+    const sl  = parseFloat(document.getElementById('cfgSL')?.value)  || 0;
+    const tp  = parseFloat(document.getElementById('cfgTP')?.value)   || 0;
+    const pnl = stats.totalProfit - stats.totalLoss;
+    // Re-compute banner visibility without firing a halt
+    const banner = document.getElementById('eaHaltBanner');
+    if(!banner) return;
+    if(sl > 0 && pnl <= -sl){
+      banner.style.display = '';
+      banner.textContent   = '🛑 EA HALTED · Net P/L −' + fmtAmount(Math.abs(pnl)) + ' reached Max Loss limit';
+    } else if(tp > 0 && pnl >= tp){
+      banner.style.display = '';
+      banner.textContent   = '🎯 EA HALTED · Net P/L +' + fmtAmount(pnl) + ' reached Profit Target';
+    }
+  }
+
+  // ── Subscribe symbol helper (if not already defined upstream) ──
+  function subscribeSymbol(sym){
+    if(!ws || ws.readyState !== 1) return;
+    if(subscriptionId){
+      send({ forget: subscriptionId });
+      subscriptionId = null;
+    }
+    send({ ticks: sym, subscribe: 1 });
+  }
+
+  // ── Attach delegated listeners ─────────────────────────────
+  document.addEventListener('input',  handleLiveChange, true);
+  document.addEventListener('change', handleLiveChange, true);
+
+  // ── LIVE BOT STATUS REFRESH on key fields ─────────────────
+  // When the bot is running, update the status bar text if symbol/mode changes
+  const BOT_STATUS_FIELDS = ['cfgSymbol'];
+  BOT_STATUS_FIELDS.forEach(fid => {
+    const el = document.getElementById(fid);
+    if(!el) return;
+    el.addEventListener('change', ()=>{
+      if(autoBot && botRunning){
+        const acLabel = analysisCandleMode==='tick' ? 'TICK' : 'CANDLE·'+analysisCandleTF;
+        setBotStatus('⚡ Auto CRT · '+tradeMode+' · '+v('cfgSymbol')+' · AC:'+acLabel,'running');
+      }
+    });
+  });
+
+  // ── STAKE flash on manual trade buttons ───────────────────
+  // When stake changes, briefly highlight the trade buttons
+  const stakeEl = document.getElementById('cfgStake');
+  if(stakeEl){
+    stakeEl.addEventListener('input', ()=>{
+      flashField(document.getElementById('btnBuy'));
+      flashField(document.getElementById('btnSell'));
+    });
+  }
+
+  // ── DLS setting tabs — already call dlsSelectSetting(n) on click ──
+  // Nothing extra needed; dlsSelectSetting already calls dlsSaveState().
+
+  // ── Duration hint refresh ──────────────────────────────────
+  // When cfgDuration changes, update the hint text live
+  const durEl = document.getElementById('cfgDuration');
+  if(durEl){
+    durEl.addEventListener('input', ()=>{
+      const hint = document.getElementById('durHint');
+      if(!hint) return;
+      const val = parseInt(durEl.value) || 5;
+      const unit = durType === 'ticks' ? 'tick' + (val === 1 ? '' : 's')
+                 : durType === 'seconds' ? 'second' + (val === 1 ? '' : 's')
+                 : 'minute' + (val === 1 ? '' : 's');
+      hint.textContent = 'e.g. ' + val + ' ' + unit;
+    });
+  }
+
+  // ── Min Range hint on the bot status ──────────────────────
+  const minRangeEl = document.getElementById('cfgMinRange');
+  if(minRangeEl){
+    minRangeEl.addEventListener('input', ()=>{
+      if(autoBot && botRunning){
+        const acLabel = analysisCandleMode==='tick' ? 'TICK' : 'CANDLE·'+analysisCandleTF;
+        setBotStatus('⚡ Auto CRT · '+tradeMode+' · '+v('cfgSymbol')+' · AC:'+acLabel+' · Range≥'+minRangeEl.value,'running');
+      }
+    });
+  }
+
+  // ── Max positions feedback ─────────────────────────────────
+  const maxPosEl = document.getElementById('cfgMaxPos');
+  if(maxPosEl){
+    maxPosEl.addEventListener('input', ()=>{ flashField(maxPosEl); });
+  }
+
+})(); // end initLiveInputEngine
+
+// ═══════════════════════════════════════════════════════════════════
+//  END LIVE INPUT UPDATE ENGINE
+// ═══════════════════════════════════════════════════════════════════
 
 </script>
 </body>
