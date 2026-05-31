@@ -1099,9 +1099,9 @@
 
               <!-- S3: Number of profits allowed in between (0 = off) -->
               <div class="dls-token-row" id="dlsStreakProfitCountRow" style="display:none;">
-                <label>№ of Profits Allowed In-Between <span style="color:#8ba4cc;font-size:10px;">(0 = not required)</span></label>
+                <label>Max № of Profits Allowed <span style="color:#e05252;font-size:10px;">⚠ exceeding this resets all counts</span></label>
                 <input type="number" id="dlsStreakProfitCount" value="0" min="0" max="50" step="1"/>
-                <span style="font-size:10px;color:#8ba4cc;font-family:'Share Tech Mono',monospace;margin-top:3px;">Wins between losses are allowed. Set 0 to ignore profits entirely.</span>
+                <span style="font-size:10px;color:#8ba4cc;font-family:'Share Tech Mono',monospace;margin-top:3px;">If profits exceed this number the entire count resets. Set 0 to ignore profits.</span>
               </div>
 
               <!-- S3: Live profit target ($) to switch back -->
@@ -1141,9 +1141,9 @@
 
               <!-- S4: Number of losses allowed in between (0 = off) -->
               <div class="dls-token-row" id="dlsWinStreakLossCountRow" style="display:none;">
-                <label>№ of Losses Allowed In-Between <span style="color:#8ba4cc;font-size:10px;">(0 = not required)</span></label>
+                <label>Max № of Losses Allowed <span style="color:#e05252;font-size:10px;">⚠ exceeding this resets all counts</span></label>
                 <input type="number" id="dlsWinStreakLossCount" value="0" min="0" max="50" step="1"/>
-                <span style="font-size:10px;color:#8ba4cc;font-family:'Share Tech Mono',monospace;margin-top:3px;">Losses between wins are allowed. Set 0 to ignore losses entirely.</span>
+                <span style="font-size:10px;color:#8ba4cc;font-family:'Share Tech Mono',monospace;margin-top:3px;">If losses exceed this number the entire count resets. Set 0 to ignore losses.</span>
               </div>
 
               <!-- S4: Live profit target ($) to switch back + disable reverse -->
@@ -1181,10 +1181,12 @@
                 <b>Setting 2 — Profit:</b> When Net P/L on DEMO reaches +threshold, EA enables Reverse Mode, resets session &amp; switches to LIVE. When LIVE Net P/L reaches +live-threshold, EA disables Reverse Mode, resets &amp; switches back to DEMO. Cycle repeats.
               </div>
               <div class="dls-hint" id="dlsHint3" style="display:none;">
-                <b>Setting 3 — Loss + Profit Mix:</b> Counting starts <b>only when the first trade is a LOSS</b>. Set your required № of losses and optionally a № of profits allowed in between (0 = ignore profits). Once both counts are met (started with a loss), the EA switches to LIVE. Example: 4 losses + 2 profits = takes 4 losses AND 2 profits in any order — but counting never starts on a win.
+                <b>Setting 3 — Loss + Profit Mix:</b> Counting starts <b>only on a LOSS trade</b>. Set required losses and optionally a max profits allowed in-between (0 = ignore all wins).<br><br>
+                <b>⚠ Breaker:</b> If profits appear more times than the max allowed, the <b>entire count resets to 0</b> and waits for a new starting loss. Example: 4 losses + 2 profits — if a 3rd profit arrives before losses are complete, everything resets.
               </div>
               <div class="dls-hint" id="dlsHint4" style="display:none;">
-                <b>Setting 4 — Win + Loss Mix + Reverse:</b> Counting starts <b>only when the first trade is a WIN</b>. Set your required № of wins and optionally a № of losses allowed in between (0 = ignore losses). Once both counts are met (started with a win), the EA <b>enables Reverse Mode</b> and switches to LIVE. When LIVE profit target is hit, <b>Reverse Mode is disabled</b> and EA returns to DEMO.
+                <b>Setting 4 — Win + Loss Mix + Reverse:</b> Counting starts <b>only on a WIN trade</b>. Set required wins and optionally a max losses allowed in-between (0 = ignore all losses).<br><br>
+                <b>⚠ Breaker:</b> If losses appear more times than the max allowed, the <b>entire count resets to 0</b> and waits for a new starting win. Once complete, <b>Reverse Mode is enabled</b> and EA switches to LIVE.
               </div>
 
               <!-- Current mode indicator -->
@@ -4576,143 +4578,197 @@ function dlsOnTradeSettled(netPnl){
 
     if(dlsSetting === 3){
       // ─── Setting 3: Loss + Profit Mix (must start with a LOSS) ───────────
-      // Rules:
-      //  • Counting only starts when the FIRST trade of a new cycle is a LOSS
-      //  • Once started: count losses toward lossTarget, count profits toward profitTarget
-      //  • If profitTarget = 0 → profits are ignored (any profit doesn't reset or count)
-      //  • When lossCount >= lossTarget AND (profitTarget === 0 OR profitCount >= profitTarget)
-      //    → switch to LIVE
-      //  • If a profit arrives BEFORE counting has started → ignored (no reset, no count)
+      //
+      // BREAKER RULE (only active when profitTarget > 0):
+      //   At any point if profitCount EXCEEDS profitTarget → FULL RESET to 0.
+      //   This means profits must never outnumber the allowed max before
+      //   the required losses are in. The moment the (profTarget+1)th profit
+      //   arrives, everything wipes and we wait for the next starting loss.
+      //
+      // FLOW:
+      //   • Not started yet + LOSS  → start counting (loss = 1, profit = 0)
+      //   • Not started yet + WIN   → ignore (waiting for first loss)
+      //   • Started + LOSS          → increment lossCount
+      //   • Started + WIN, profTarget=0 → ignore win entirely
+      //   • Started + WIN, profTarget>0 → increment profitCount
+      //       └─ if profitCount > profitTarget → BREAKER: full reset
+      //   • After any increment: if lossCount>=lossTarget AND profReady → SWITCH
 
-      const lossTarget  = dlsGetLossStreak();
-      const profTarget  = dlsGetStreakProfitCount();  // 0 = ignore profits
+      const lossTarget = dlsGetLossStreak();
+      const profTarget = dlsGetStreakProfitCount();   // 0 = ignore profits
 
       if(netPnl < 0){
-        // LOSS trade
+        // ── LOSS trade ──
         if(!dlsS3Started){
-          // First trade must be a loss to start counting
+          // First trade is a loss → begin counting
           dlsS3Started     = true;
           dlsConsecLosses  = 1;
           dlsS3ProfitCount = 0;
           dlsUpdateStreakDisplay();
           dlsSetStatus(
-            '📉 S3 counting started with LOSS · Losses: 1/' + lossTarget +
-            (profTarget > 0 ? ' · Profits: 0/' + profTarget : ' · Profits ignored'), 'demo'
+            '📉 S3 started · Loss 1/' + lossTarget +
+            (profTarget > 0 ? ' · Profit 0/' + profTarget : ' · Profits ignored'), 'demo'
           );
         } else {
           dlsConsecLosses++;
           dlsUpdateStreakDisplay();
           dlsSetStatus(
-            '📉 S3 Loss #' + dlsConsecLosses + '/' + lossTarget +
-            (profTarget > 0 ? ' · Profits: ' + dlsS3ProfitCount + '/' + profTarget : ''), 'demo'
+            '📉 S3 Loss ' + dlsConsecLosses + '/' + lossTarget +
+            (profTarget > 0 ? ' · Profit ' + dlsS3ProfitCount + '/' + profTarget : ''), 'demo'
           );
         }
       } else {
-        // WIN trade
+        // ── WIN trade ──
         if(!dlsS3Started){
-          // Counting hasn't started yet — a win before the first loss → ignore entirely
-          dlsSetStatus('⏸ S3 Waiting for first LOSS to start counting (win ignored)…', 'demo');
+          // Before counting starts: win is ignored — wait for first loss
+          dlsSetStatus('⏸ S3 Waiting for first LOSS to begin (win ignored)…', 'demo');
         } else if(profTarget === 0){
-          // Profit counting is disabled — wins are completely ignored while counting
+          // Profit counting disabled — wins silently ignored
           dlsSetStatus(
-            '✅ S3 Win (not counted) · Still waiting: Losses ' + dlsConsecLosses + '/' + lossTarget, 'demo'
+            '✅ S3 Win ignored · Losses: ' + dlsConsecLosses + '/' + lossTarget, 'demo'
           );
         } else {
-          // Count this profit
+          // Profit counting active — increment then check breaker
           dlsS3ProfitCount++;
           dlsUpdateStreakDisplay();
+
+          if(dlsS3ProfitCount > profTarget){
+            // ── BREAKER: too many profits — full reset ──
+            const oldL = dlsConsecLosses;
+            const oldP = dlsS3ProfitCount;
+            dlsS3Started     = false;
+            dlsConsecLosses  = 0;
+            dlsS3ProfitCount = 0;
+            dlsUpdateStreakDisplay();
+            dlsSetStatus(
+              '🔁 S3 RESET — profit #' + oldP + ' exceeded limit of ' + profTarget +
+              ' (had ' + oldL + ' losses) · Waiting for new starting LOSS…', 'demo'
+            );
+            toast('🔁 S3 breaker fired — profit overflow, count reset to 0', 'warn');
+            dlsSaveState();
+            return;   // stop here — don't check switch condition after reset
+          }
+
           dlsSetStatus(
-            '✅ S3 Profit #' + dlsS3ProfitCount + '/' + profTarget +
+            '✅ S3 Profit ' + dlsS3ProfitCount + '/' + profTarget +
             ' · Losses: ' + dlsConsecLosses + '/' + lossTarget, 'demo'
           );
         }
       }
 
-      // ── Check if both targets have been met ──
-      const lossReady  = dlsConsecLosses  >= lossTarget;
-      const profReady  = (profTarget === 0) || (dlsS3ProfitCount >= profTarget);
-
-      if(dlsS3Started && lossReady && profReady){
-        dlsSetStatus(
-          '🔴 S3 Target met — ' + dlsConsecLosses + ' losses' +
-          (profTarget > 0 ? ' + ' + dlsS3ProfitCount + ' profits' : '') +
-          ' · Switching to LIVE…', 'switching'
-        );
-        _dlsDoSwitch('demo', 'live');
+      // ── Check if both targets met (only when counting is active) ──
+      if(dlsS3Started){
+        const lossReady = dlsConsecLosses  >= lossTarget;
+        const profReady = (profTarget === 0) || (dlsS3ProfitCount >= profTarget);
+        if(lossReady && profReady){
+          dlsSetStatus(
+            '🔴 S3 Complete — ' + dlsConsecLosses + ' losses' +
+            (profTarget > 0 ? ' + ' + dlsS3ProfitCount + ' profits' : '') +
+            ' · Switching to LIVE…', 'switching'
+          );
+          _dlsDoSwitch('demo', 'live');
+        }
       }
 
     } else if(dlsSetting === 4){
       // ─── Setting 4: Win + Loss Mix (must start with a WIN) ───────────────
-      // Rules:
-      //  • Counting only starts when the FIRST trade of a new cycle is a WIN
-      //  • Once started: count wins toward winTarget, count losses toward lossTarget
-      //  • If lossTarget = 0 → losses are ignored (any loss doesn't reset or count)
-      //  • When winCount >= winTarget AND (lossTarget === 0 OR lossCount >= lossTarget)
-      //    → enable Reverse Mode + switch to LIVE
-      //  • If a loss arrives BEFORE counting has started → ignored
+      //
+      // BREAKER RULE (only active when lossTarget > 0):
+      //   At any point if lossCount EXCEEDS lossTarget → FULL RESET to 0.
+      //   The moment the (lossTarget+1)th loss arrives, everything wipes
+      //   and we wait for the next starting win.
+      //
+      // FLOW:
+      //   • Not started yet + WIN   → start counting (win = 1, loss = 0)
+      //   • Not started yet + LOSS  → ignore (waiting for first win)
+      //   • Started + WIN           → increment winCount
+      //   • Started + LOSS, lossTarget=0 → ignore loss entirely
+      //   • Started + LOSS, lossTarget>0 → increment lossCount
+      //       └─ if lossCount > lossTarget → BREAKER: full reset
+      //   • After any increment: if winCount>=winTarget AND lossReady → SWITCH + Reverse
 
-      const winTarget   = dlsGetWinStreak();
-      const lossTarget  = dlsGetWinStreakLossCount();   // 0 = ignore losses
+      const winTarget  = dlsGetWinStreak();
+      const lossTarget = dlsGetWinStreakLossCount();   // 0 = ignore losses
 
       if(netPnl > 0){
-        // WIN trade
+        // ── WIN trade ──
         if(!dlsS4Started){
-          // First trade must be a win to start counting
-          dlsS4Started    = true;
-          dlsConsecWins   = 1;
-          dlsS4LossCount  = 0;
+          // First trade is a win → begin counting
+          dlsS4Started   = true;
+          dlsConsecWins  = 1;
+          dlsS4LossCount = 0;
           dlsUpdateWinStreakDisplay();
           dlsSetStatus(
-            '📈 S4 counting started with WIN · Wins: 1/' + winTarget +
-            (lossTarget > 0 ? ' · Losses: 0/' + lossTarget : ' · Losses ignored'), 'demo'
+            '📈 S4 started · Win 1/' + winTarget +
+            (lossTarget > 0 ? ' · Loss 0/' + lossTarget : ' · Losses ignored'), 'demo'
           );
         } else {
           dlsConsecWins++;
           dlsUpdateWinStreakDisplay();
           dlsSetStatus(
-            '📈 S4 Win #' + dlsConsecWins + '/' + winTarget +
-            (lossTarget > 0 ? ' · Losses: ' + dlsS4LossCount + '/' + lossTarget : ''), 'demo'
+            '📈 S4 Win ' + dlsConsecWins + '/' + winTarget +
+            (lossTarget > 0 ? ' · Loss ' + dlsS4LossCount + '/' + lossTarget : ''), 'demo'
           );
         }
       } else {
-        // LOSS trade
+        // ── LOSS trade ──
         if(!dlsS4Started){
-          // Counting hasn't started yet — a loss before the first win → ignore
-          dlsSetStatus('⏸ S4 Waiting for first WIN to start counting (loss ignored)…', 'demo');
+          // Before counting starts: loss is ignored — wait for first win
+          dlsSetStatus('⏸ S4 Waiting for first WIN to begin (loss ignored)…', 'demo');
         } else if(lossTarget === 0){
-          // Loss counting disabled — losses are completely ignored
+          // Loss counting disabled — losses silently ignored
           dlsSetStatus(
-            '🔴 S4 Loss (not counted) · Still waiting: Wins ' + dlsConsecWins + '/' + winTarget, 'demo'
+            '🔴 S4 Loss ignored · Wins: ' + dlsConsecWins + '/' + winTarget, 'demo'
           );
         } else {
+          // Loss counting active — increment then check breaker
           dlsS4LossCount++;
           dlsUpdateWinStreakDisplay();
+
+          if(dlsS4LossCount > lossTarget){
+            // ── BREAKER: too many losses — full reset ──
+            const oldW = dlsConsecWins;
+            const oldL = dlsS4LossCount;
+            dlsS4Started   = false;
+            dlsConsecWins  = 0;
+            dlsS4LossCount = 0;
+            dlsUpdateWinStreakDisplay();
+            dlsSetStatus(
+              '🔁 S4 RESET — loss #' + oldL + ' exceeded limit of ' + lossTarget +
+              ' (had ' + oldW + ' wins) · Waiting for new starting WIN…', 'demo'
+            );
+            toast('🔁 S4 breaker fired — loss overflow, count reset to 0', 'warn');
+            dlsSaveState();
+            return;   // stop here — don't check switch condition after reset
+          }
+
           dlsSetStatus(
-            '🔴 S4 Loss #' + dlsS4LossCount + '/' + lossTarget +
+            '🔴 S4 Loss ' + dlsS4LossCount + '/' + lossTarget +
             ' · Wins: ' + dlsConsecWins + '/' + winTarget, 'demo'
           );
         }
       }
 
-      // ── Check if both targets have been met ──
-      const winReady   = dlsConsecWins  >= winTarget;
-      const lossReady  = (lossTarget === 0) || (dlsS4LossCount >= lossTarget);
-
-      if(dlsS4Started && winReady && lossReady){
-        dlsSetStatus(
-          '🟢 S4 Target met — ' + dlsConsecWins + ' wins' +
-          (lossTarget > 0 ? ' + ' + dlsS4LossCount + ' losses' : '') +
-          ' · Enabling Reverse Mode + switching to LIVE…', 'switching'
-        );
-        if(!reverseMode){
-          reverseMode = true;
-          const tog   = document.getElementById('reverseToggle');
-          const state = document.getElementById('reverseState');
-          if(tog)   tog.className = 'reverse-toggle on';
-          if(state) state.textContent = 'ON';
-          toast('⇄ Reverse Mode AUTO-ENABLED by Switch Engine (Setting 4)', 'info');
+      // ── Check if both targets met (only when counting is active) ──
+      if(dlsS4Started){
+        const winReady  = dlsConsecWins  >= winTarget;
+        const lossReady = (lossTarget === 0) || (dlsS4LossCount >= lossTarget);
+        if(winReady && lossReady){
+          dlsSetStatus(
+            '🟢 S4 Complete — ' + dlsConsecWins + ' wins' +
+            (lossTarget > 0 ? ' + ' + dlsS4LossCount + ' losses' : '') +
+            ' · Enabling Reverse Mode + switching to LIVE…', 'switching'
+          );
+          if(!reverseMode){
+            reverseMode = true;
+            const tog   = document.getElementById('reverseToggle');
+            const state = document.getElementById('reverseState');
+            if(tog)   tog.className = 'reverse-toggle on';
+            if(state) state.textContent = 'ON';
+            toast('⇄ Reverse Mode AUTO-ENABLED by Switch Engine (Setting 4)', 'info');
+          }
+          _dlsDoSwitch('demo', 'live');
         }
-        _dlsDoSwitch('demo', 'live');
       }
 
     } else {
