@@ -5294,6 +5294,14 @@ function _dlsDoSwitch(from, to){
   if(tog)   tog.className = 'auto-toggle off';
   if(state) state.textContent = 'OFF';
 
+  // ── PROFIT SNAPSHOT: capture live P&L NOW — BEFORE resetSession() wipes dlsLivePnl ──
+  // This must happen first. resetSession() calls dlsLivePnl = 0 internally when
+  // dlsEnabled is true, so capturing after that always records $0.00 (the bug).
+  // The correct pattern is: snapshot → reset → zero counters (capture-before-reset).
+  if(to === 'demo'){
+    psnapCapture(dlsLivePnl);
+  }
+
   // 2. Reset session stats / log for clean slate on new account
   resetSession();
 
@@ -5301,8 +5309,6 @@ function _dlsDoSwitch(from, to){
   if(to === 'live'){
     dlsLivePnl = 0;
   } else {
-    // ── PROFIT SNAPSHOT: capture live P&L before switching back to demo ──
-    psnapCapture(dlsLivePnl);
     dlsDemoPnl = 0;
     // Reset S3 state for fresh cycle
     dlsConsecLosses  = 0;
