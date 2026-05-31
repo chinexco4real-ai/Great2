@@ -477,7 +477,7 @@
   .psnap-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
   .psnap-title{font-size:11px;letter-spacing:2px;color:var(--green);text-transform:uppercase;font-weight:700;}
   .psnap-subtitle{font-size:10px;color:#7a8fae;font-family:'Share Tech Mono',monospace;font-weight:600;margin-bottom:9px;line-height:1.5;}
-  .psnap-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-bottom:10px;}
+  .psnap-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin-bottom:10px;}
   .psnap-box{background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:6px 4px;text-align:center;min-height:48px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;transition:all .3s;position:relative;}
   .psnap-box.filled-win{border-color:rgba(0,230,118,.5);background:rgba(0,230,118,.08);}
   .psnap-box.filled-loss{border-color:rgba(255,61,90,.4);background:rgba(255,61,90,.07);}
@@ -1278,9 +1278,9 @@
             <div class="psnap-header">
               <span class="psnap-title">📸 Live Profit Snapshot</span>
             </div>
-            <div class="psnap-subtitle">Captures LIVE P&amp;L before each switch back to demo. Up to 10 entries. Always visible regardless of account mode.</div>
+            <div class="psnap-subtitle">Captures LIVE P&amp;L before each switch back to demo. Up to 30 entries. Always visible regardless of account mode.</div>
 
-            <!-- 10 snapshot boxes: 2 rows of 5 -->
+            <!-- 30 snapshot boxes: 6 rows of 5 -->
             <div class="psnap-grid" id="psnapGrid">
               <!-- Rendered by JS -->
             </div>
@@ -5407,10 +5407,10 @@ function _dlsPostSwitchResume(){
 // ═══════════════════════════════════════════════════════════════════
 //  PROFIT SNAPSHOT ENGINE
 //  Captures live P&L every time we switch back to demo.
-//  Up to 10 slots. Manual reset + daily clock-time auto-reset.
+//  Up to 30 slots. Manual reset + daily clock-time auto-reset.
 // ═══════════════════════════════════════════════════════════════════
 
-const PSNAP_MAX       = 10;
+const PSNAP_MAX       = 30;
 let psnapSlots        = [];
 let psnapTimerEnabled = false;
 let psnapTimerRef     = null;   // setTimeout for next daily fire
