@@ -360,6 +360,19 @@
 
 
   /* ─── COOLDOWN TIMER ─── */
+  /* ─── PRESET SAVE / LOAD ─── */
+  .preset-panel{background:rgba(45,139,255,.05);border:1px solid rgba(45,139,255,.25);border-radius:9px;padding:13px 15px;margin-top:2px;}
+  .preset-panel .section-lbl{color:var(--accent2);font-size:11px;letter-spacing:2px;margin-bottom:10px;font-weight:700;}
+  .preset-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .btn-preset-save{padding:10px 6px;background:linear-gradient(135deg,rgba(0,240,255,.14),rgba(45,139,255,.1));border:1px solid rgba(0,240,255,.45);color:var(--accent2);border-radius:7px;font-family:'Orbitron',sans-serif;font-size:10px;font-weight:700;letter-spacing:1.2px;cursor:pointer;transition:all .2s;text-align:center;}
+  .btn-preset-save:hover{background:linear-gradient(135deg,rgba(0,240,255,.25),rgba(45,139,255,.18));border-color:var(--accent2);box-shadow:0 0 12px rgba(0,240,255,.3);transform:translateY(-1px);}
+  .btn-preset-load{padding:10px 6px;background:linear-gradient(135deg,rgba(0,230,118,.12),rgba(45,139,255,.08));border:1px solid rgba(0,230,118,.4);color:var(--green);border-radius:7px;font-family:'Orbitron',sans-serif;font-size:10px;font-weight:700;letter-spacing:1.2px;cursor:pointer;transition:all .2s;text-align:center;}
+  .btn-preset-load:hover{background:linear-gradient(135deg,rgba(0,230,118,.22),rgba(45,139,255,.12));border-color:var(--green);box-shadow:0 0 12px rgba(0,230,118,.3);transform:translateY(-1px);}
+  #presetFileInput{display:none;}
+  .preset-status{font-size:11px;color:#8ba4cc;font-family:'Share Tech Mono',monospace;margin-top:8px;min-height:16px;font-weight:600;text-align:center;transition:color .3s;}
+  .preset-status.ok{color:var(--green);}
+  .preset-status.err{color:var(--red);}
+
   .cooldown-section{background:rgba(245,197,24,.05);border:1px solid rgba(245,197,24,.2);border-radius:7px;padding:12px 14px;margin-top:9px;}
   .cooldown-section .section-lbl{color:var(--gold);font-size:11px;letter-spacing:2px;margin-bottom:9px;font-weight:700;}
   .cooldown-display{display:flex;align-items:center;gap:12px;margin-top:7px;}
@@ -730,6 +743,20 @@
             <label>Duration Value</label>
             <input type="number" id="cfgDuration" value="5" min="1"/>
             <span class="hint" id="durHint">e.g. 5 ticks</span>
+          </div>
+
+          <div class="section-div"></div>
+          <div class="preset-panel">
+            <div class="section-lbl">⚙ PRESET — SAVE / LOAD</div>
+            <div class="preset-btns">
+              <button class="btn-preset-save" onclick="presetSave()">💾 SAVE PRESET<br><span style="font-size:9px;opacity:.8;letter-spacing:.5px;">.txt file</span></button>
+              <label class="btn-preset-load" style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.5;gap:0;">
+                <span>📂 LOAD PRESET</span>
+                <span style="font-size:9px;opacity:.8;letter-spacing:.5px;">.txt file</span>
+                <input type="file" id="presetFileInput" accept=".txt" onchange="presetLoad(this)"/>
+              </label>
+            </div>
+            <div class="preset-status" id="presetStatus">No preset loaded</div>
           </div>
 
           <div class="section-div"></div>
@@ -1514,6 +1541,29 @@ function calcEMA(candleArr, period){
   return ema;
 }
 
+// ─── EMA FAST-SEED (works with any candle count ≥ 1) ─────────────────────────
+// Used by the EMA Trend Filter when fewer candles than the full period are
+// available (e.g. right after startup before the history preload completes).
+// Seeds the EMA from the SMA of whatever candles exist, then applies the
+// standard EMA smoothing.  This matches TradingView's "Pine Script EMA with
+// shorter initial history" behaviour and is the accepted industry approach for
+// cold-start / warm-up situations.  Once candles.length >= period the result
+// is identical to calcEMA(), so no separate switch is needed later.
+function calcEMAFast(candleArr, period){
+  if(!candleArr || candleArr.length < 1) return null;
+  period = Math.max(1, period);
+  const closes = candleArr.map(c => c.close);
+  const seedLen = Math.min(period, closes.length);
+  let sum = 0;
+  for(let i = 0; i < seedLen; i++) sum += closes[i];
+  let ema = sum / seedLen;           // SMA seed over available candles
+  const k = 2 / (period + 1);
+  for(let i = seedLen; i < closes.length; i++){
+    ema = closes[i] * k + ema * (1 - k);
+  }
+  return ema;
+}
+
 
 
 // ─── FILTER UI HELPERS ────────────────────────────
@@ -1669,7 +1719,227 @@ function loadState(){
   } catch(e){}
 }
 
-// ─── SAFE TRADE LOG TRIM ──────────────────────────
+// ─── PRESET SAVE / LOAD ───────────────────────────────────────────────────────
+// Saves every user-configurable setting to a plain .txt file (JSON inside).
+// The file can be loaded back on any device / browser — no localStorage needed.
+// Trade log, candle history and session stats are intentionally excluded so the
+// preset is purely a settings snapshot (portable between sessions and devices).
+//
+// Fields saved mirror saveState() cfg + filters + schedule + analysisCandleMode
+// + durType + tradeMode + reverseMode + DLS config inputs.
+
+function presetBuild(){
+  // Helper — read a checkbox element's checked state by id
+  function chkd(id){ const el=document.getElementById(id); return el ? el.checked : false; }
+
+  const preset = {
+    _presetVersion : 1,
+    _savedAt       : new Date().toISOString(),
+    tradeMode,
+    durType,
+    reverseMode,
+    analysisCandleMode,
+    analysisCandleTF,
+    cfg: {
+      symbol    : v('cfgSymbol'),
+      stake     : v('cfgStake'),
+      sl        : v('cfgSL'),
+      tp        : v('cfgTP'),
+      duration  : v('cfgDuration'),
+      minRange  : v('cfgMinRange'),
+      maxPos    : v('cfgMaxPos'),
+      cooldown  : v('cfgCooldown'),
+      counterWait: v('cfgCounterWait')
+    },
+    filters: {
+      ema          : filterEmaEnabled,
+      emaPeriod    : v('cfgEmaPeriod'),
+      candleClose  : filterCandleClose,
+      candle2      : filterCandle2,
+      emaTrend     : filterEmaTrend,
+      emaTrendPeriod: v('cfgEmaTrendPeriod')
+    },
+    schedule: {
+      enabled : scheduleEnabled,
+      start   : v('scheduleStart'),
+      end     : v('scheduleEnd')
+    },
+    dls: {
+      setting          : (()=>{ const el=document.getElementById('dlsThreshold'); return el ? (document.querySelector('.dls-tab.active')||{}).dataset?.setting || dlsSetting : dlsSetting; })(),
+      threshold        : v('dlsThreshold'),
+      liveThreshold    : v('dlsLiveThreshold'),
+      lossStreak       : v('dlsLossStreak'),
+      streakLiveProfit : v('dlsStreakLiveProfit'),
+      winStreak        : v('dlsWinStreak'),
+      winStreakLiveProfit: v('dlsWinStreakLiveProfit'),
+      winStreakLossCount: v('dlsWinStreakLossCount'),
+      streakProfitCount: v('dlsStreakProfitCount'),
+      timeExitEnabled  : chkd('dlsTimeExitEnabled'),
+      timeExitH        : v('dlsTimeExitH'),
+      timeExitM        : v('dlsTimeExitM')
+    }
+  };
+  return preset;
+}
+
+function presetSave(){
+  try {
+    const preset  = presetBuild();
+    const sym     = (v('cfgSymbol')||'EA').replace(/[^a-zA-Z0-9_]/g,'');
+    const now     = new Date();
+    const stamp   = now.getFullYear()+''+(now.getMonth()+1+'').padStart(2,'0')+(now.getDate()+'').padStart(2,'0')
+                    +'_'+(now.getHours()+'').padStart(2,'0')+(now.getMinutes()+'').padStart(2,'0');
+    const filename = 'CRT_EA_Preset_'+sym+'_'+stamp+'.txt';
+    const blob    = new Blob([JSON.stringify(preset, null, 2)], {type:'text/plain'});
+    const url     = URL.createObjectURL(blob);
+    const a       = document.createElement('a');
+    a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
+    _presetStatus('✓ Preset saved: '+filename,'ok');
+  } catch(e){
+    _presetStatus('✗ Save failed: '+e.message,'err');
+  }
+}
+
+function presetLoad(inputEl){
+  const file = inputEl.files[0];
+  if(!file){ return; }
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try {
+      const p = JSON.parse(e.target.result);
+      if(!p._presetVersion) throw new Error('Not a valid CRT EA preset file');
+
+      // ── Trade Mode ──
+      if(p.tradeMode){
+        const modeIdMap = { BUY_ONLY:'mBuy', SELL_ONLY:'mSell', BOTH:'mBoth' };
+        const btn = document.getElementById(modeIdMap[p.tradeMode]);
+        if(btn) btn.click();
+      }
+
+      // ── Dur Type ──
+      if(p.durType){
+        const cap = p.durType.charAt(0).toUpperCase()+p.durType.slice(1);
+        const dBtn = document.getElementById('d'+cap.slice(0,3));
+        if(dBtn) dBtn.click();
+      }
+
+      // ── Analysis Candle Mode & TF ──
+      if(p.analysisCandleMode){
+        const modeEl = document.getElementById(p.analysisCandleMode==='tick'?'acTick':'acCandle');
+        if(modeEl && typeof setAnalysisCandle==='function') setAnalysisCandle(p.analysisCandleMode, modeEl);
+      }
+      if(p.analysisCandleTF){
+        const tfMap = {'30s':'actf30s','1m':'actf1m','5m':'actf5m','15m':'actf15m'};
+        const tfEl = document.getElementById(tfMap[p.analysisCandleTF]);
+        if(tfEl && typeof setAnalysisTF==='function') setAnalysisTF(p.analysisCandleTF, tfEl);
+      }
+
+      // ── Reverse Mode ──
+      if(p.reverseMode !== undefined){
+        if(p.reverseMode !== reverseMode){
+          const rt = document.getElementById('reverseToggle');
+          if(rt) rt.click();
+        }
+      }
+
+      // ── Core Config ──
+      if(p.cfg){
+        const cm = p.cfg;
+        if(cm.symbol    !== undefined) setVal('cfgSymbol',     cm.symbol);
+        if(cm.stake     !== undefined) setVal('cfgStake',      cm.stake);
+        if(cm.sl        !== undefined) setVal('cfgSL',         cm.sl);
+        if(cm.tp        !== undefined) setVal('cfgTP',         cm.tp);
+        if(cm.duration  !== undefined) setVal('cfgDuration',   cm.duration);
+        if(cm.minRange  !== undefined) setVal('cfgMinRange',   cm.minRange);
+        if(cm.maxPos    !== undefined) setVal('cfgMaxPos',     cm.maxPos);
+        if(cm.cooldown  !== undefined) setVal('cfgCooldown',   cm.cooldown);
+        if(cm.counterWait!==undefined) setVal('cfgCounterWait',cm.counterWait);
+      }
+
+      // ── Filters ──
+      if(p.filters){
+        const f = p.filters;
+        if(f.emaPeriod     !== undefined) setVal('cfgEmaPeriod',     f.emaPeriod);
+        if(f.emaTrendPeriod!== undefined) setVal('cfgEmaTrendPeriod',f.emaTrendPeriod);
+        if(f.ema !== undefined){
+          filterEmaEnabled = !!f.ema;
+          const chk = document.getElementById('fEmaEnabled');
+          if(chk){ chk.checked = filterEmaEnabled; if(typeof onFilterChange==='function') onFilterChange(1, filterEmaEnabled); }
+        }
+        if(f.candleClose !== undefined){
+          filterCandleClose = !!f.candleClose;
+          const chk = document.getElementById('fCandleCloseEnabled');
+          if(chk){ chk.checked = filterCandleClose; if(typeof onFilterChange==='function') onFilterChange(2, filterCandleClose); }
+        }
+        if(f.candle2 !== undefined){
+          filterCandle2 = !!f.candle2;
+          const chk = document.getElementById('fCandle2Enabled');
+          if(chk){ chk.checked = filterCandle2; if(typeof onFilterChange==='function') onFilterChange(3, filterCandle2); }
+        }
+        if(f.emaTrend !== undefined){
+          filterEmaTrend = !!f.emaTrend;
+          const chk = document.getElementById('fEmaTrendEnabled');
+          if(chk){ chk.checked = filterEmaTrend; if(typeof onFilterChange==='function') onFilterChange(4, filterEmaTrend); }
+        }
+      }
+
+      // ── Schedule ──
+      if(p.schedule){
+        if(p.schedule.start){ setVal('scheduleStart', p.schedule.start); if(typeof _tpSeedFrom==='function') _tpSeedFrom('Start', p.schedule.start); }
+        if(p.schedule.end)  { setVal('scheduleEnd',   p.schedule.end);   if(typeof _tpSeedFrom==='function') _tpSeedFrom('End',   p.schedule.end);   }
+        if(p.schedule.enabled){
+          const chk = document.getElementById('scheduleEnabled');
+          if(chk && !chk.checked){ chk.checked=true; if(typeof onScheduleToggle==='function') onScheduleToggle(true); }
+        }
+      }
+
+      // ── DLS Config Inputs ──
+      if(p.dls){
+        const d = p.dls;
+        if(d.threshold          !== undefined) setVal('dlsThreshold',          d.threshold);
+        if(d.liveThreshold      !== undefined) setVal('dlsLiveThreshold',      d.liveThreshold);
+        if(d.lossStreak         !== undefined) setVal('dlsLossStreak',         d.lossStreak);
+        if(d.streakLiveProfit   !== undefined) setVal('dlsStreakLiveProfit',    d.streakLiveProfit);
+        if(d.winStreak          !== undefined) setVal('dlsWinStreak',          d.winStreak);
+        if(d.winStreakLiveProfit !== undefined) setVal('dlsWinStreakLiveProfit', d.winStreakLiveProfit);
+        if(d.winStreakLossCount  !== undefined) setVal('dlsWinStreakLossCount',  d.winStreakLossCount);
+        if(d.streakProfitCount   !== undefined) setVal('dlsStreakProfitCount',   d.streakProfitCount);
+        if(d.timeExitH          !== undefined) setVal('dlsTimeExitH',           d.timeExitH);
+        if(d.timeExitM          !== undefined) setVal('dlsTimeExitM',           d.timeExitM);
+        if(d.timeExitEnabled){
+          const chk = document.getElementById('dlsTimeExitEnabled');
+          if(chk && !chk.checked){ chk.checked=true; if(typeof dlsOnTimeExitToggle==='function') dlsOnTimeExitToggle(true); }
+        }
+        if(d.setting !== undefined && typeof dlsSelectSetting==='function') dlsSelectSetting(d.setting);
+      }
+
+      // Persist to localStorage so the restored values survive a refresh
+      saveState();
+
+      const savedAt = p._savedAt ? ' · Saved '+new Date(p._savedAt).toLocaleDateString() : '';
+      _presetStatus('✓ Preset loaded'+savedAt,'ok');
+      toast('📂 Preset loaded successfully','info');
+
+    } catch(err){
+      _presetStatus('✗ Load failed: '+err.message,'err');
+      toast('⚠ Preset load error: '+err.message,'info');
+    }
+    // Reset input so same file can be re-loaded if needed
+    inputEl.value = '';
+  };
+  reader.readAsText(file);
+}
+
+function _presetStatus(msg, cls){
+  const el = document.getElementById('presetStatus');
+  if(!el) return;
+  el.textContent = msg;
+  el.className = 'preset-status' + (cls ? ' '+cls : '');
+  // Fade back to neutral after 6 seconds
+  clearTimeout(el._fadeTimer);
+  el._fadeTimer = setTimeout(()=>{ el.textContent='No preset loaded'; el.className='preset-status'; }, 6000);
+}
 // Never drops unsettled (OPEN / ? / __settling__) entries.
 // Only trims settled entries beyond the 10-entry display cap.
 function _trimTradeLog(){
@@ -2400,14 +2670,21 @@ function onNewCandle(){
   // ── LAYER 5: FILTER 4 — EMA TREND FILTER ────────────────
   // RISE allowed only if current price > EMA (bullish trend)
   // FALL allowed only if current price < EMA (bearish trend)
+  //
+  // COLD-START FIX: Use calcEMAFast() instead of calcEMA().
+  // calcEMAFast seeds the EMA from whatever candles are already available
+  // (SMA of N candles, then standard EMA smoothing) so it returns a valid
+  // value from candle #1 onward.  This eliminates the ~1-hour wait that
+  // occurred because calcEMA() returned null until `trendPeriod` candles
+  // had accumulated.  The value converges to the fully-seeded EMA within
+  // a few candles once the history preload (ticks_history) has run.
   if(filterEmaTrend){
     const trendPeriod = parseInt(v('cfgEmaTrendPeriod')) || 200;
-    const trendEma = calcEMA(candles, trendPeriod);
+    const trendEma    = calcEMAFast(candles, trendPeriod);   // never null when candles≥1
     const currentPrice = signal.close;
     if(trendEma === null){
-      // Not enough candles yet — block all signals
-      isBullish = false;
-      isBearish = false;
+      // Truly no candles yet (edge-case before first tick) — skip filter, don't block
+      // Do NOT set isBullish/isBearish to false here; let the other filters decide.
     } else {
       if(isBullish) isBullish = (currentPrice > trendEma);   // price above EMA → bullish trend only
       if(isBearish) isBearish = (currentPrice < trendEma);   // price below EMA → bearish trend only
@@ -3260,14 +3537,126 @@ function clearLog(){
 }
 
 // ─── TICK FEED (always-on after login) ────────────
+// ─── HISTORICAL CANDLE PRELOAD ────────────────────────────────────────────────
+// Fetches up to `count` completed OHLC candles from Deriv's ticks_history API
+// and seeds the `candles[]` array before the live tick feed begins.
+// This eliminates the EMA warm-up delay: the EMA Trend Filter (and EMA
+// Wick-Cross filter) are ready immediately on the first live candle close.
+//
+// Deriv ticks_history with style:"candles" returns completed OHLC bars.
+// We request (trendPeriod + 10) candles so even a 200-period EMA is fully
+// seeded.  The last entry from the API is the still-forming current candle —
+// we discard it and only keep closed bars, matching the behaviour of
+// live candle-close processing.
+//
+// References:
+//   https://developers.deriv.com/docs/data/ticks-history/
+//   https://developers.deriv.com/comparison/ticks-history/
+function preloadHistoricalCandles(sym, granularitySec, callback){
+  const trendPeriod  = parseInt(v('cfgEmaTrendPeriod')) || 200;
+  const wickPeriod   = parseInt(v('cfgEmaPeriod'))      || 50;
+  const neededPeriod = Math.max(trendPeriod, wickPeriod);
+  // Request enough candles to fully seed the longest EMA period + buffer
+  const count = neededPeriod + 20;
+
+  const req = {
+    ticks_history : sym,
+    style         : 'candles',
+    granularity   : granularitySec,
+    count         : count,
+    end           : 'latest',
+    adjust_start_time: 1
+  };
+
+  // One-shot message handler — intercepts only the candles history response
+  // then hands back control to the normal ws.onmessage pipeline.
+  const originalOnMessage = ws.onmessage;
+
+  function historyHandler(evt){
+    const msg = JSON.parse(evt.data);
+
+    if(msg.msg_type !== 'candles'){
+      // Not our response yet — pass through to the normal handler
+      originalOnMessage(evt);
+      return;
+    }
+
+    // Restore normal message handler before doing anything else
+    ws.onmessage = originalOnMessage;
+
+    if(msg.error){
+      console.warn('[preload] ticks_history error:', msg.error.message,
+                   '— EA will build EMA from live candles (calcEMAFast will handle this gracefully)');
+      callback();
+      return;
+    }
+
+    const raw = (msg.candles || []);
+    // Drop the last entry — it is the still-forming current candle.
+    // We only want fully closed OHLC bars for EMA seeding.
+    const closed = raw.slice(0, raw.length - 1);
+
+    if(closed.length > 0){
+      // Map Deriv candle format {open,high,low,close,epoch} → internal format
+      candles = closed.map(c => ({
+        open  : parseFloat(c.open),
+        high  : parseFloat(c.high),
+        low   : parseFloat(c.low),
+        close : parseFloat(c.close),
+        epoch : c.epoch
+      }));
+      // Keep within the rolling 200-candle window the rest of the EA uses
+      if(candles.length > 200) candles = candles.slice(-200);
+      document.getElementById('tickerCandles').textContent = candles.length;
+      toast('📊 EMA seeded with '+candles.length+' historical candles — ready to trade','info');
+      console.log('[preload] Loaded', candles.length, 'historical candles for', sym);
+    } else {
+      console.warn('[preload] No closed candles returned — EA will build from live data');
+    }
+    callback();
+  }
+
+  ws.onmessage = historyHandler;
+  send(req);
+}
+
 function startTickFeed(){
   const sym = v('cfgSymbol');
   candles=[];
   currentCandle=null;
   tickCount=0;
-  subscribeTicks(sym);
-  setBotStatus('Live feed: '+sym+' · BUY or SELL to trade','');
-  toast('Live feed started on '+sym,'info');
+
+  setBotStatus('⏳ Loading historical candles for EMA seed…','');
+
+  // Determine granularity in seconds from the selected analysis timeframe.
+  // In tick-mode we use 60s candles for the EMA history preload (1-min bars
+  // give a good EMA approximation; live tick-candles then take over).
+  const granSec = (analysisCandleMode === 'candle') ? getAnalysisCandleSeconds() : 60;
+
+  // Preload historical candles first, then start the live tick subscription.
+  // If the preload fails or times out, the live feed still starts — calcEMAFast
+  // guarantees the EMA filter never blocks trading even with zero history.
+  const PRELOAD_TIMEOUT = 8000; // ms — fallback if Deriv doesn't respond
+  let preloadDone = false;
+
+  const timeoutId = setTimeout(()=>{
+    if(!preloadDone){
+      preloadDone = true;
+      console.warn('[preload] Timeout — starting live feed without history');
+      toast('⚠ History preload timed out — building EMA from live candles','info');
+      subscribeTicks(sym);
+      setBotStatus('Live feed: '+sym+' · BUY or SELL to trade','');
+    }
+  }, PRELOAD_TIMEOUT);
+
+  preloadHistoricalCandles(sym, granSec, ()=>{
+    if(preloadDone) return;   // timeout already fired
+    preloadDone = true;
+    clearTimeout(timeoutId);
+    subscribeTicks(sym);
+    setBotStatus('Live feed: '+sym+' · BUY or SELL to trade','');
+    toast('Live feed started on '+sym,'info');
+  });
 }
 
 // ─── MANUAL TRADE (BUY / SELL buttons) ────────────
