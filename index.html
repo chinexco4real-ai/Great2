@@ -1089,47 +1089,87 @@
                 <input type="number" id="dlsLiveThreshold" value="10" min="0.01" step="0.01"/>
               </div>
 
-              <!-- Setting 3: Consecutive loss streak input -->
+              <!-- ══ SETTING 3 INPUTS ══ -->
+              <!-- S3: Number of losses required -->
               <div class="dls-token-row" id="dlsStreakRow" style="display:none;">
-                <label>Consecutive Losses to Switch Demo → Live</label>
+                <label>№ of Losses Required <span style="color:var(--gold);font-size:10px;">(must start with a loss)</span></label>
                 <input type="number" id="dlsLossStreak" value="3" min="1" max="50" step="1"/>
-                <span style="font-size:10px;color:#8ba4cc;font-family:'Share Tech Mono',monospace;margin-top:3px;">Default: 3 straight losses triggers switch to LIVE</span>
+                <span style="font-size:10px;color:#8ba4cc;font-family:'Share Tech Mono',monospace;margin-top:3px;">Counting starts only when the <b>first trade is a LOSS</b></span>
               </div>
 
-              <!-- Setting 3: Live profit target to switch back -->
+              <!-- S3: Number of profits allowed in between (0 = off) -->
+              <div class="dls-token-row" id="dlsStreakProfitCountRow" style="display:none;">
+                <label>№ of Profits Allowed In-Between <span style="color:#8ba4cc;font-size:10px;">(0 = not required)</span></label>
+                <input type="number" id="dlsStreakProfitCount" value="0" min="0" max="50" step="1"/>
+                <span style="font-size:10px;color:#8ba4cc;font-family:'Share Tech Mono',monospace;margin-top:3px;">Wins between losses are allowed. Set 0 to ignore profits entirely.</span>
+              </div>
+
+              <!-- S3: Live profit target ($) to switch back -->
               <div class="dls-token-row" id="dlsStreakLiveProfitRow" style="display:none;">
-                <label>Profit Target ($) — live→demo</label>
+                <label>Profit Target ($) on LIVE → back to Demo</label>
                 <input type="number" id="dlsStreakLiveProfit" value="10" min="0.01" step="0.01"/>
-                <span style="font-size:10px;color:#8ba4cc;font-family:'Share Tech Mono',monospace;margin-top:3px;">Switch back to DEMO once this profit is reached on LIVE</span>
+                <span style="font-size:10px;color:#8ba4cc;font-family:'Share Tech Mono',monospace;margin-top:3px;">Switch back to DEMO once this $ profit is reached on LIVE</span>
               </div>
 
-              <!-- Streak counter display (Setting 3 only) -->
+              <!-- S3: Progress counters display -->
               <div id="dlsStreakDisplay" style="display:none;margin-bottom:8px;">
-                <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 11px;background:rgba(245,197,24,.07);border:1px solid rgba(245,197,24,.25);border-radius:6px;">
-                  <span style="font-size:11px;color:#8ba4cc;letter-spacing:1px;font-weight:700;text-transform:uppercase;">Consecutive Losses</span>
-                  <span style="font-family:'Orbitron',sans-serif;font-size:15px;font-weight:700;color:var(--gold);" id="dlsStreakCounter">0</span>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 11px;background:rgba(245,197,24,.07);border:1px solid rgba(245,197,24,.25);border-radius:6px;gap:10px;">
+                  <div style="display:flex;flex-direction:column;align-items:center;flex:1;">
+                    <span style="font-size:9px;color:#8ba4cc;letter-spacing:1px;font-weight:700;text-transform:uppercase;margin-bottom:3px;">Losses</span>
+                    <span style="font-family:'Orbitron',sans-serif;font-size:15px;font-weight:700;color:var(--gold);" id="dlsStreakCounter">0</span>
+                  </div>
+                  <div style="width:1px;background:rgba(245,197,24,.2);align-self:stretch;"></div>
+                  <div style="display:flex;flex-direction:column;align-items:center;flex:1;">
+                    <span style="font-size:9px;color:#8ba4cc;letter-spacing:1px;font-weight:700;text-transform:uppercase;margin-bottom:3px;">Profits</span>
+                    <span style="font-family:'Orbitron',sans-serif;font-size:15px;font-weight:700;color:var(--green);" id="dlsStreakProfitCounter">0</span>
+                  </div>
+                  <div style="width:1px;background:rgba(245,197,24,.2);align-self:stretch;"></div>
+                  <div style="display:flex;flex-direction:column;align-items:center;flex:1;">
+                    <span style="font-size:9px;color:#8ba4cc;letter-spacing:1px;font-weight:700;text-transform:uppercase;margin-bottom:3px;">Started</span>
+                    <span style="font-family:'Orbitron',sans-serif;font-size:12px;font-weight:700;" id="dlsStreakStartedBadge" style="color:#7a8fae;">—</span>
+                  </div>
                 </div>
               </div>
 
-              <!-- Setting 4: Consecutive win streak input -->
+              <!-- ══ SETTING 4 INPUTS ══ -->
+              <!-- S4: Number of wins required -->
               <div class="dls-token-row" id="dlsWinStreakRow" style="display:none;">
-                <label>Consecutive Profits to Switch Demo → Live</label>
+                <label>№ of Profits Required <span style="color:var(--green);font-size:10px;">(must start with a win)</span></label>
                 <input type="number" id="dlsWinStreak" value="3" min="1" max="50" step="1"/>
-                <span style="font-size:10px;color:#8ba4cc;font-family:'Share Tech Mono',monospace;margin-top:3px;">Default: 3 straight wins triggers Reverse Mode + switch to LIVE</span>
+                <span style="font-size:10px;color:#8ba4cc;font-family:'Share Tech Mono',monospace;margin-top:3px;">Counting starts only when the <b>first trade is a WIN</b></span>
               </div>
 
-              <!-- Setting 4: Live profit target to switch back + disable reverse -->
+              <!-- S4: Number of losses allowed in between (0 = off) -->
+              <div class="dls-token-row" id="dlsWinStreakLossCountRow" style="display:none;">
+                <label>№ of Losses Allowed In-Between <span style="color:#8ba4cc;font-size:10px;">(0 = not required)</span></label>
+                <input type="number" id="dlsWinStreakLossCount" value="0" min="0" max="50" step="1"/>
+                <span style="font-size:10px;color:#8ba4cc;font-family:'Share Tech Mono',monospace;margin-top:3px;">Losses between wins are allowed. Set 0 to ignore losses entirely.</span>
+              </div>
+
+              <!-- S4: Live profit target ($) to switch back + disable reverse -->
               <div class="dls-token-row" id="dlsWinStreakLiveProfitRow" style="display:none;">
-                <label>Profit Target ($) — live→demo (disables Reverse)</label>
+                <label>Profit Target ($) on LIVE → back to Demo <span style="color:var(--accent2);font-size:10px;">(disables Reverse)</span></label>
                 <input type="number" id="dlsWinStreakLiveProfit" value="10" min="0.01" step="0.01"/>
-                <span style="font-size:10px;color:#8ba4cc;font-family:'Share Tech Mono',monospace;margin-top:3px;">Switch back to DEMO &amp; disable Reverse Mode once this profit is hit on LIVE</span>
+                <span style="font-size:10px;color:#8ba4cc;font-family:'Share Tech Mono',monospace;margin-top:3px;">Switch back to DEMO &amp; disable Reverse Mode once this $ profit is hit on LIVE</span>
               </div>
 
-              <!-- Win streak counter display (Setting 4 only) -->
+              <!-- S4: Progress counters display -->
               <div id="dlsWinStreakDisplay" style="display:none;margin-bottom:8px;">
-                <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 11px;background:rgba(0,230,118,.07);border:1px solid rgba(0,230,118,.25);border-radius:6px;">
-                  <span style="font-size:11px;color:#8ba4cc;letter-spacing:1px;font-weight:700;text-transform:uppercase;">Consecutive Wins</span>
-                  <span style="font-family:'Orbitron',sans-serif;font-size:15px;font-weight:700;color:var(--green);" id="dlsWinStreakCounter">0</span>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 11px;background:rgba(0,230,118,.07);border:1px solid rgba(0,230,118,.25);border-radius:6px;gap:10px;">
+                  <div style="display:flex;flex-direction:column;align-items:center;flex:1;">
+                    <span style="font-size:9px;color:#8ba4cc;letter-spacing:1px;font-weight:700;text-transform:uppercase;margin-bottom:3px;">Wins</span>
+                    <span style="font-family:'Orbitron',sans-serif;font-size:15px;font-weight:700;color:var(--green);" id="dlsWinStreakCounter">0</span>
+                  </div>
+                  <div style="width:1px;background:rgba(0,230,118,.2);align-self:stretch;"></div>
+                  <div style="display:flex;flex-direction:column;align-items:center;flex:1;">
+                    <span style="font-size:9px;color:#8ba4cc;letter-spacing:1px;font-weight:700;text-transform:uppercase;margin-bottom:3px;">Losses</span>
+                    <span style="font-family:'Orbitron',sans-serif;font-size:15px;font-weight:700;color:var(--gold);" id="dlsWinStreakLossCounter">0</span>
+                  </div>
+                  <div style="width:1px;background:rgba(0,230,118,.2);align-self:stretch;"></div>
+                  <div style="display:flex;flex-direction:column;align-items:center;flex:1;">
+                    <span style="font-size:9px;color:#8ba4cc;letter-spacing:1px;font-weight:700;text-transform:uppercase;margin-bottom:3px;">Started</span>
+                    <span style="font-family:'Orbitron',sans-serif;font-size:12px;font-weight:700;" id="dlsWinStreakStartedBadge">—</span>
+                  </div>
                 </div>
               </div>
 
@@ -1141,10 +1181,10 @@
                 <b>Setting 2 — Profit:</b> When Net P/L on DEMO reaches +threshold, EA enables Reverse Mode, resets session &amp; switches to LIVE. When LIVE Net P/L reaches +live-threshold, EA disables Reverse Mode, resets &amp; switches back to DEMO. Cycle repeats.
               </div>
               <div class="dls-hint" id="dlsHint3" style="display:none;">
-                <b>Setting 3 — Loss Streak:</b> After N consecutive straight losses on DEMO, switch to LIVE. When LIVE profit target is reached, reset streak &amp; switch back to DEMO. Streak counter resets on every switch.
+                <b>Setting 3 — Loss + Profit Mix:</b> Counting starts <b>only when the first trade is a LOSS</b>. Set your required № of losses and optionally a № of profits allowed in between (0 = ignore profits). Once both counts are met (started with a loss), the EA switches to LIVE. Example: 4 losses + 2 profits = takes 4 losses AND 2 profits in any order — but counting never starts on a win.
               </div>
               <div class="dls-hint" id="dlsHint4" style="display:none;">
-                <b>Setting 4 — Win Streak + Reverse:</b> After N consecutive profits on DEMO, <b>enable Reverse Mode</b> and switch to LIVE. When LIVE profit target is reached, <b>disable Reverse Mode</b> and switch back to DEMO. Win streak counter resets on every switch.
+                <b>Setting 4 — Win + Loss Mix + Reverse:</b> Counting starts <b>only when the first trade is a WIN</b>. Set your required № of wins and optionally a № of losses allowed in between (0 = ignore losses). Once both counts are met (started with a win), the EA <b>enables Reverse Mode</b> and switches to LIVE. When LIVE profit target is hit, <b>Reverse Mode is disabled</b> and EA returns to DEMO.
               </div>
 
               <!-- Current mode indicator -->
@@ -4139,11 +4179,15 @@ let dlsSwitching      = false;   // true while mid-switch (prevent double trigge
 let dlsLiveToken      = '';      // live account token (entered by user)
 let dlsDemoToken      = '';      // demo account token (entered by user on connect)
 
-// Setting 3: consecutive loss streak tracker
-let dlsConsecLosses   = 0;       // running count of consecutive losses on DEMO (Setting 3)
+// Setting 3: loss+profit mix tracker
+let dlsConsecLosses   = 0;       // count of qualifying losses (S3)
+let dlsS3ProfitCount  = 0;       // count of qualifying profits in-between (S3)
+let dlsS3Started      = false;   // true once first trade was a loss (S3 counting active)
 
-// Setting 4: consecutive win streak tracker
-let dlsConsecWins     = 0;       // running count of consecutive wins on DEMO (Setting 4)
+// Setting 4: win+loss mix tracker
+let dlsConsecWins     = 0;       // count of qualifying wins (S4)
+let dlsS4LossCount    = 0;       // count of qualifying losses in-between (S4)
+let dlsS4Started      = false;   // true once first trade was a win (S4 counting active)
 
 // PNL accumulators per leg — reset on every switch
 // These are separate from the EA stats so the switch can measure
@@ -4164,32 +4208,57 @@ function dlsGetThreshold(){ return parseFloat(document.getElementById('dlsThresh
 function dlsGetLiveThreshold(){ return parseFloat(document.getElementById('dlsLiveThreshold').value) || 10; }
 function dlsGetLossStreak(){ return parseInt(document.getElementById('dlsLossStreak').value) || 3; }
 function dlsGetStreakLiveProfit(){ return parseFloat(document.getElementById('dlsStreakLiveProfit').value) || 10; }
+function dlsGetStreakProfitCount(){ return parseInt(document.getElementById('dlsStreakProfitCount').value) || 0; }
 
 // Setting 4 helpers
 function dlsGetWinStreak(){ return parseInt(document.getElementById('dlsWinStreak').value) || 3; }
 function dlsGetWinStreakLiveProfit(){ return parseFloat(document.getElementById('dlsWinStreakLiveProfit').value) || 10; }
+function dlsGetWinStreakLossCount(){ return parseInt(document.getElementById('dlsWinStreakLossCount').value) || 0; }
 
-// Update the win streak counter display (Setting 4)
-function dlsUpdateWinStreakDisplay(){
-  const el = document.getElementById('dlsWinStreakCounter');
-  if(!el) return;
-  el.textContent = dlsConsecWins;
-  const target = dlsGetWinStreak();
-  if(dlsConsecWins === 0) el.style.color = 'var(--muted)';
-  else if(dlsConsecWins >= target) el.style.color = 'var(--accent2)';
-  else el.style.color = 'var(--green)';
+// ── Setting 3 display updater ──────────────────────────────────────
+function dlsUpdateStreakDisplay(){
+  const lossEl    = document.getElementById('dlsStreakCounter');
+  const profEl    = document.getElementById('dlsStreakProfitCounter');
+  const startEl   = document.getElementById('dlsStreakStartedBadge');
+  const lossTarget = dlsGetLossStreak();
+  const profTarget = dlsGetStreakProfitCount();
+  if(lossEl){
+    lossEl.textContent = dlsConsecLosses;
+    lossEl.style.color = dlsConsecLosses === 0 ? 'var(--muted)'
+                        : dlsConsecLosses >= lossTarget ? 'var(--accent2)' : 'var(--gold)';
+  }
+  if(profEl){
+    profEl.textContent = dlsS3ProfitCount;
+    profEl.style.color = profTarget === 0 ? 'var(--muted)'
+                        : dlsS3ProfitCount >= profTarget ? 'var(--accent2)' : 'var(--green)';
+  }
+  if(startEl){
+    startEl.textContent = dlsS3Started ? '✓ LOSS' : '—';
+    startEl.style.color = dlsS3Started ? 'var(--gold)' : '#7a8fae';
+  }
 }
 
-// Update the streak counter display (Setting 3)
-function dlsUpdateStreakDisplay(){
-  const el = document.getElementById('dlsStreakCounter');
-  if(!el) return;
-  el.textContent = dlsConsecLosses;
-  const target = dlsGetLossStreak();
-  // Color: green when 0, grades to red as it approaches target
-  if(dlsConsecLosses === 0) el.style.color = 'var(--green)';
-  else if(dlsConsecLosses >= target) el.style.color = 'var(--red)';
-  else el.style.color = 'var(--gold)';
+// ── Setting 4 display updater ──────────────────────────────────────
+function dlsUpdateWinStreakDisplay(){
+  const winEl     = document.getElementById('dlsWinStreakCounter');
+  const lossEl    = document.getElementById('dlsWinStreakLossCounter');
+  const startEl   = document.getElementById('dlsWinStreakStartedBadge');
+  const winTarget  = dlsGetWinStreak();
+  const lossTarget = dlsGetWinStreakLossCount();
+  if(winEl){
+    winEl.textContent = dlsConsecWins;
+    winEl.style.color = dlsConsecWins === 0 ? 'var(--muted)'
+                       : dlsConsecWins >= winTarget ? 'var(--accent2)' : 'var(--green)';
+  }
+  if(lossEl){
+    lossEl.textContent = dlsS4LossCount;
+    lossEl.style.color = lossTarget === 0 ? 'var(--muted)'
+                        : dlsS4LossCount >= lossTarget ? 'var(--accent2)' : 'var(--gold)';
+  }
+  if(startEl){
+    startEl.textContent = dlsS4Started ? '✓ WIN' : '—';
+    startEl.style.color = dlsS4Started ? 'var(--green)' : '#7a8fae';
+  }
 }
 
 // ── Time Exit helpers ────────────────────────────────────────────
@@ -4381,25 +4450,43 @@ function dlsSelectSetting(n){
     if(h3) h3.style.display = '';
     if(threshRow)     threshRow.style.display     = 'none';
     if(liveThreshRow) liveThreshRow.style.display = 'none';
-    if(streakRow)     streakRow.style.display      = '';
-    if(streakLiveRow) streakLiveRow.style.display  = '';
-    if(streakDisp)    streakDisp.style.display      = '';
+    // S3 rows
+    const s3streak     = document.getElementById('dlsStreakRow');
+    const s3profcount  = document.getElementById('dlsStreakProfitCountRow');
+    const s3live       = document.getElementById('dlsStreakLiveProfitRow');
+    const s3disp       = document.getElementById('dlsStreakDisplay');
+    if(s3streak)    s3streak.style.display    = '';
+    if(s3profcount) s3profcount.style.display = '';
+    if(s3live)      s3live.style.display      = '';
+    if(s3disp)      s3disp.style.display      = '';
     dlsUpdateStreakDisplay();
+    // S4 rows hidden
     if(winStreakRow)      winStreakRow.style.display      = 'none';
     if(winStreakLiveRow)  winStreakLiveRow.style.display  = 'none';
     if(winStreakDisp)     winStreakDisp.style.display      = 'none';
+    const s4losscount = document.getElementById('dlsWinStreakLossCountRow');
+    if(s4losscount) s4losscount.style.display = 'none';
   } else {
     // Setting 4
     if(t4) t4.classList.add('active');
     if(h4) h4.style.display = '';
     if(threshRow)     threshRow.style.display     = 'none';
     if(liveThreshRow) liveThreshRow.style.display = 'none';
-    if(streakRow)     streakRow.style.display      = 'none';
-    if(streakLiveRow) streakLiveRow.style.display  = 'none';
-    if(streakDisp)    streakDisp.style.display      = 'none';
+    // S3 rows hidden
+    const s3streak     = document.getElementById('dlsStreakRow');
+    const s3profcount  = document.getElementById('dlsStreakProfitCountRow');
+    const s3live       = document.getElementById('dlsStreakLiveProfitRow');
+    const s3disp       = document.getElementById('dlsStreakDisplay');
+    if(s3streak)    s3streak.style.display    = 'none';
+    if(s3profcount) s3profcount.style.display = 'none';
+    if(s3live)      s3live.style.display      = 'none';
+    if(s3disp)      s3disp.style.display      = 'none';
+    // S4 rows
     if(winStreakRow)      winStreakRow.style.display      = '';
     if(winStreakLiveRow)  winStreakLiveRow.style.display  = '';
     if(winStreakDisp)     winStreakDisp.style.display      = '';
+    const s4losscount = document.getElementById('dlsWinStreakLossCountRow');
+    if(s4losscount) s4losscount.style.display = '';
     dlsUpdateWinStreakDisplay();
   }
   dlsSaveState();
@@ -4435,16 +4522,28 @@ function onDlsToggle(checked){
     dlsCurrentMode = _dlsDetectCurrentMode();
     dlsDemoPnl = 0;
     dlsLivePnl = 0;
-    dlsConsecLosses = 0;
-    dlsConsecWins = 0;
+    dlsConsecLosses  = 0;
+    dlsS3ProfitCount = 0;
+    dlsS3Started     = false;
+    dlsConsecWins   = 0;
+    dlsS4LossCount  = 0;
+    dlsS4Started    = false;
     dlsSwitching = false;
     dlsUpdateStreakDisplay();
     dlsUpdateWinStreakDisplay();
 
     const modeLabel = dlsCurrentMode === 'demo' ? 'DEMO' : 'LIVE';
     let settingDesc = 'Setting ' + dlsSetting + ' active';
-    if(dlsSetting === 3) settingDesc = 'Setting 3 · Streak target: ' + dlsGetLossStreak() + ' losses';
-    if(dlsSetting === 4) settingDesc = 'Setting 4 · Win streak target: ' + dlsGetWinStreak() + ' wins';
+    if(dlsSetting === 3){
+      const lossT = dlsGetLossStreak();
+      const profT = dlsGetStreakProfitCount();
+      settingDesc = 'S3 · ' + lossT + ' losses' + (profT > 0 ? ' + ' + profT + ' profits' : '') + ' (starts with loss)';
+    }
+    if(dlsSetting === 4){
+      const winT  = dlsGetWinStreak();
+      const lossT = dlsGetWinStreakLossCount();
+      settingDesc = 'S4 · ' + winT + ' wins' + (lossT > 0 ? ' + ' + lossT + ' losses' : '') + ' (starts with win)';
+    }
     dlsSetStatus('✅ Switch engine armed · Currently on ' + modeLabel + ' · ' + settingDesc + '.', dlsCurrentMode);
     toast('🔄 Auto Switch ENABLED · Setting ' + dlsSetting + ' · ' + modeLabel + ' account active', 'info');
   } else {
@@ -4476,62 +4575,146 @@ function dlsOnTradeSettled(netPnl){
     dlsUpdateIndicator();
 
     if(dlsSetting === 3){
-      // Setting 3: track consecutive losses on DEMO
+      // ─── Setting 3: Loss + Profit Mix (must start with a LOSS) ───────────
+      // Rules:
+      //  • Counting only starts when the FIRST trade of a new cycle is a LOSS
+      //  • Once started: count losses toward lossTarget, count profits toward profitTarget
+      //  • If profitTarget = 0 → profits are ignored (any profit doesn't reset or count)
+      //  • When lossCount >= lossTarget AND (profitTarget === 0 OR profitCount >= profitTarget)
+      //    → switch to LIVE
+      //  • If a profit arrives BEFORE counting has started → ignored (no reset, no count)
+
+      const lossTarget  = dlsGetLossStreak();
+      const profTarget  = dlsGetStreakProfitCount();  // 0 = ignore profits
+
       if(netPnl < 0){
-        dlsConsecLosses++;
-        dlsUpdateStreakDisplay();
-        const target = dlsGetLossStreak();
-        dlsSetStatus(
-          '📉 Loss streak: ' + dlsConsecLosses + ' / ' + target + ' consecutive losses on DEMO', 'demo'
-        );
-        if(dlsConsecLosses >= target){
+        // LOSS trade
+        if(!dlsS3Started){
+          // First trade must be a loss to start counting
+          dlsS3Started     = true;
+          dlsConsecLosses  = 1;
+          dlsS3ProfitCount = 0;
+          dlsUpdateStreakDisplay();
           dlsSetStatus(
-            '🔴 ' + dlsConsecLosses + ' straight losses reached · Switching to LIVE…', 'switching'
+            '📉 S3 counting started with LOSS · Losses: 1/' + lossTarget +
+            (profTarget > 0 ? ' · Profits: 0/' + profTarget : ' · Profits ignored'), 'demo'
           );
-          _dlsDoSwitch('demo', 'live');
+        } else {
+          dlsConsecLosses++;
+          dlsUpdateStreakDisplay();
+          dlsSetStatus(
+            '📉 S3 Loss #' + dlsConsecLosses + '/' + lossTarget +
+            (profTarget > 0 ? ' · Profits: ' + dlsS3ProfitCount + '/' + profTarget : ''), 'demo'
+          );
         }
       } else {
-        // Win on DEMO resets the consecutive loss streak
-        const prev = dlsConsecLosses;
-        dlsConsecLosses = 0;
-        dlsUpdateStreakDisplay();
-        if(prev > 0){
-          dlsSetStatus('✅ Win on DEMO — loss streak reset (was ' + prev + ')', 'demo');
+        // WIN trade
+        if(!dlsS3Started){
+          // Counting hasn't started yet — a win before the first loss → ignore entirely
+          dlsSetStatus('⏸ S3 Waiting for first LOSS to start counting (win ignored)…', 'demo');
+        } else if(profTarget === 0){
+          // Profit counting is disabled — wins are completely ignored while counting
+          dlsSetStatus(
+            '✅ S3 Win (not counted) · Still waiting: Losses ' + dlsConsecLosses + '/' + lossTarget, 'demo'
+          );
+        } else {
+          // Count this profit
+          dlsS3ProfitCount++;
+          dlsUpdateStreakDisplay();
+          dlsSetStatus(
+            '✅ S3 Profit #' + dlsS3ProfitCount + '/' + profTarget +
+            ' · Losses: ' + dlsConsecLosses + '/' + lossTarget, 'demo'
+          );
         }
       }
+
+      // ── Check if both targets have been met ──
+      const lossReady  = dlsConsecLosses  >= lossTarget;
+      const profReady  = (profTarget === 0) || (dlsS3ProfitCount >= profTarget);
+
+      if(dlsS3Started && lossReady && profReady){
+        dlsSetStatus(
+          '🔴 S3 Target met — ' + dlsConsecLosses + ' losses' +
+          (profTarget > 0 ? ' + ' + dlsS3ProfitCount + ' profits' : '') +
+          ' · Switching to LIVE…', 'switching'
+        );
+        _dlsDoSwitch('demo', 'live');
+      }
+
     } else if(dlsSetting === 4){
-      // Setting 4: track consecutive wins on DEMO → enable Reverse + switch to LIVE
+      // ─── Setting 4: Win + Loss Mix (must start with a WIN) ───────────────
+      // Rules:
+      //  • Counting only starts when the FIRST trade of a new cycle is a WIN
+      //  • Once started: count wins toward winTarget, count losses toward lossTarget
+      //  • If lossTarget = 0 → losses are ignored (any loss doesn't reset or count)
+      //  • When winCount >= winTarget AND (lossTarget === 0 OR lossCount >= lossTarget)
+      //    → enable Reverse Mode + switch to LIVE
+      //  • If a loss arrives BEFORE counting has started → ignored
+
+      const winTarget   = dlsGetWinStreak();
+      const lossTarget  = dlsGetWinStreakLossCount();   // 0 = ignore losses
+
       if(netPnl > 0){
-        dlsConsecWins++;
-        dlsUpdateWinStreakDisplay();
-        const target = dlsGetWinStreak();
-        dlsSetStatus(
-          '📈 Win streak: ' + dlsConsecWins + ' / ' + target + ' consecutive wins on DEMO', 'demo'
-        );
-        if(dlsConsecWins >= target){
+        // WIN trade
+        if(!dlsS4Started){
+          // First trade must be a win to start counting
+          dlsS4Started    = true;
+          dlsConsecWins   = 1;
+          dlsS4LossCount  = 0;
+          dlsUpdateWinStreakDisplay();
           dlsSetStatus(
-            '🟢 ' + dlsConsecWins + ' straight wins reached · Enabling Reverse Mode + switching to LIVE…', 'switching'
+            '📈 S4 counting started with WIN · Wins: 1/' + winTarget +
+            (lossTarget > 0 ? ' · Losses: 0/' + lossTarget : ' · Losses ignored'), 'demo'
           );
-          // Enable Reverse Mode before switching
-          if(!reverseMode){
-            reverseMode = true;
-            const tog   = document.getElementById('reverseToggle');
-            const state = document.getElementById('reverseState');
-            if(tog)   tog.className = 'reverse-toggle on';
-            if(state) state.textContent = 'ON';
-            toast('⇄ Reverse Mode AUTO-ENABLED by Switch Engine (Setting 4)', 'info');
-          }
-          _dlsDoSwitch('demo', 'live');
+        } else {
+          dlsConsecWins++;
+          dlsUpdateWinStreakDisplay();
+          dlsSetStatus(
+            '📈 S4 Win #' + dlsConsecWins + '/' + winTarget +
+            (lossTarget > 0 ? ' · Losses: ' + dlsS4LossCount + '/' + lossTarget : ''), 'demo'
+          );
         }
       } else {
-        // Loss on DEMO resets the consecutive win streak
-        const prev = dlsConsecWins;
-        dlsConsecWins = 0;
-        dlsUpdateWinStreakDisplay();
-        if(prev > 0){
-          dlsSetStatus('🔴 Loss on DEMO — win streak reset (was ' + prev + ')', 'demo');
+        // LOSS trade
+        if(!dlsS4Started){
+          // Counting hasn't started yet — a loss before the first win → ignore
+          dlsSetStatus('⏸ S4 Waiting for first WIN to start counting (loss ignored)…', 'demo');
+        } else if(lossTarget === 0){
+          // Loss counting disabled — losses are completely ignored
+          dlsSetStatus(
+            '🔴 S4 Loss (not counted) · Still waiting: Wins ' + dlsConsecWins + '/' + winTarget, 'demo'
+          );
+        } else {
+          dlsS4LossCount++;
+          dlsUpdateWinStreakDisplay();
+          dlsSetStatus(
+            '🔴 S4 Loss #' + dlsS4LossCount + '/' + lossTarget +
+            ' · Wins: ' + dlsConsecWins + '/' + winTarget, 'demo'
+          );
         }
       }
+
+      // ── Check if both targets have been met ──
+      const winReady   = dlsConsecWins  >= winTarget;
+      const lossReady  = (lossTarget === 0) || (dlsS4LossCount >= lossTarget);
+
+      if(dlsS4Started && winReady && lossReady){
+        dlsSetStatus(
+          '🟢 S4 Target met — ' + dlsConsecWins + ' wins' +
+          (lossTarget > 0 ? ' + ' + dlsS4LossCount + ' losses' : '') +
+          ' · Enabling Reverse Mode + switching to LIVE…', 'switching'
+        );
+        if(!reverseMode){
+          reverseMode = true;
+          const tog   = document.getElementById('reverseToggle');
+          const state = document.getElementById('reverseState');
+          if(tog)   tog.className = 'reverse-toggle on';
+          if(state) state.textContent = 'ON';
+          toast('⇄ Reverse Mode AUTO-ENABLED by Switch Engine (Setting 4)', 'info');
+        }
+        _dlsDoSwitch('demo', 'live');
+      }
+
     } else {
       _dlsCheckDemoThreshold();
     }
@@ -4676,11 +4859,15 @@ function _dlsDoSwitch(from, to){
     // ── PROFIT SNAPSHOT: capture live P&L before switching back to demo ──
     psnapCapture(dlsLivePnl);
     dlsDemoPnl = 0;
-    // Reset consecutive loss streak when returning to demo (fresh start)
-    dlsConsecLosses = 0;
+    // Reset S3 state for fresh cycle
+    dlsConsecLosses  = 0;
+    dlsS3ProfitCount = 0;
+    dlsS3Started     = false;
     dlsUpdateStreakDisplay();
-    // Reset consecutive win streak when returning to demo (fresh start)
-    dlsConsecWins = 0;
+    // Reset S4 state for fresh cycle
+    dlsConsecWins   = 0;
+    dlsS4LossCount  = 0;
+    dlsS4Started    = false;
     dlsUpdateWinStreakDisplay();
     // Only increment cycle counter when returning to demo (one full cycle)
     dlsCycleCount++;
@@ -4974,9 +5161,15 @@ function dlsSaveState(){
       lossStreak:   dlsGetLossStreak(),
       streakLiveProfit: dlsGetStreakLiveProfit(),
       consecLosses: dlsConsecLosses,
+      s3ProfitCount: dlsS3ProfitCount,
+      s3Started:     dlsS3Started,
       consecWins:   dlsConsecWins,
+      s4LossCount:  dlsS4LossCount,
+      s4Started:    dlsS4Started,
       winStreak:    dlsGetWinStreak(),
       winStreakLiveProfit: dlsGetWinStreakLiveProfit(),
+      winStreakLossCount: dlsGetWinStreakLossCount(),
+      streakProfitCount: dlsGetStreakProfitCount(),
       timeExitEnabled: dlsTimeExitEnabled,
       timeExitH: parseInt(document.getElementById('dlsTimeExitH').value) || 0,
       timeExitM: parseInt(document.getElementById('dlsTimeExitM').value) || 30
@@ -4996,10 +5189,16 @@ function dlsLoadState(){
     if(s.liveThreshold) { const el = document.getElementById('dlsLiveThreshold'); if(el) el.value = s.liveThreshold; }
     if(s.lossStreak)    { const el = document.getElementById('dlsLossStreak');    if(el) el.value = s.lossStreak; }
     if(s.streakLiveProfit){ const el = document.getElementById('dlsStreakLiveProfit'); if(el) el.value = s.streakLiveProfit; }
-    if(s.consecLosses !== undefined){ dlsConsecLosses = s.consecLosses; dlsUpdateStreakDisplay(); }
-    if(s.consecWins   !== undefined){ dlsConsecWins   = s.consecWins;   dlsUpdateWinStreakDisplay(); }
-    if(s.winStreak)    { const el = document.getElementById('dlsWinStreak');          if(el) el.value = s.winStreak; }
+    if(s.consecLosses  !== undefined){ dlsConsecLosses  = s.consecLosses;  dlsUpdateStreakDisplay(); }
+    if(s.s3ProfitCount !== undefined){ dlsS3ProfitCount = s.s3ProfitCount; dlsUpdateStreakDisplay(); }
+    if(s.s3Started     !== undefined){ dlsS3Started     = s.s3Started;     dlsUpdateStreakDisplay(); }
+    if(s.consecWins    !== undefined){ dlsConsecWins    = s.consecWins;    dlsUpdateWinStreakDisplay(); }
+    if(s.s4LossCount   !== undefined){ dlsS4LossCount   = s.s4LossCount;   dlsUpdateWinStreakDisplay(); }
+    if(s.s4Started     !== undefined){ dlsS4Started     = s.s4Started;     dlsUpdateWinStreakDisplay(); }
+    if(s.winStreak)         { const el = document.getElementById('dlsWinStreak');          if(el) el.value = s.winStreak; }
     if(s.winStreakLiveProfit){ const el = document.getElementById('dlsWinStreakLiveProfit'); if(el) el.value = s.winStreakLiveProfit; }
+    if(s.winStreakLossCount !== undefined){ const el = document.getElementById('dlsWinStreakLossCount'); if(el) el.value = s.winStreakLossCount; }
+    if(s.streakProfitCount  !== undefined){ const el = document.getElementById('dlsStreakProfitCount');  if(el) el.value = s.streakProfitCount; }
     if(s.timeExitH !== undefined){ const el = document.getElementById('dlsTimeExitH'); if(el) el.value = s.timeExitH; }
     if(s.timeExitM !== undefined){ const el = document.getElementById('dlsTimeExitM'); if(el) el.value = s.timeExitM; }
     if(s.timeExitEnabled){
@@ -5114,8 +5313,8 @@ window.doLogout = function(){
   // ── DLS numeric fields — save DLS state immediately ──
   const DLS_NUMERIC_IDS = new Set([
     'dlsThreshold','dlsLiveThreshold',
-    'dlsLossStreak','dlsStreakLiveProfit',
-    'dlsWinStreak','dlsWinStreakLiveProfit',
+    'dlsLossStreak','dlsStreakLiveProfit','dlsStreakProfitCount',
+    'dlsWinStreak','dlsWinStreakLiveProfit','dlsWinStreakLossCount',
     'dlsTimeExitH','dlsTimeExitM'
   ]);
 
@@ -5163,11 +5362,13 @@ window.doLogout = function(){
           _dlsStartTimeExit();
         }
         // Refresh streak status label if streak target changed
-        if(id === 'dlsLossStreak' && dlsSetting === 3 && dlsEnabled){
-          dlsSetStatus('Setting 3 · Streak target updated: ' + dlsGetLossStreak() + ' losses · Current: ' + dlsConsecLosses, 'demo');
+        if((id === 'dlsLossStreak' || id === 'dlsStreakProfitCount') && dlsSetting === 3 && dlsEnabled){
+          const lT = dlsGetLossStreak(); const pT = dlsGetStreakProfitCount();
+          dlsSetStatus('S3 targets updated · Losses: ' + lT + (pT > 0 ? ' · Profits: ' + pT : ' · Profits ignored') + ' · Current losses: ' + dlsConsecLosses, 'demo');
         }
-        if(id === 'dlsWinStreak' && dlsSetting === 4 && dlsEnabled){
-          dlsSetStatus('Setting 4 · Win streak target updated: ' + dlsGetWinStreak() + ' wins · Current: ' + dlsConsecWins, 'demo');
+        if((id === 'dlsWinStreak' || id === 'dlsWinStreakLossCount') && dlsSetting === 4 && dlsEnabled){
+          const wT = dlsGetWinStreak(); const lT = dlsGetWinStreakLossCount();
+          dlsSetStatus('S4 targets updated · Wins: ' + wT + (lT > 0 ? ' · Losses: ' + lT : ' · Losses ignored') + ' · Current wins: ' + dlsConsecWins, 'demo');
         }
       }, 300);
       return;
