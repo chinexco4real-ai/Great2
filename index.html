@@ -2220,6 +2220,7 @@ function handleMsg(msg, isLoginFlow){
     // ── Auto-detect account type from Deriv's is_virtual flag ──
     // is_virtual === 1 → Demo account  |  0 → Real/Live account
     const isDemo       = acc.is_virtual === 1 || acc.is_virtual === true;
+    window._dlsLastIsVirtual = isDemo;   // FIX v16: cache for reliable mode detection
     const acctTypeLabel = isDemo ? '⚠ DEMO' : '● LIVE';
     const acctTypeBadge = document.getElementById('acctTypeBadge');
     if(acctTypeBadge){
@@ -3659,6 +3660,72 @@ function startTickFeed(){
   });
 }
 
+// ─── MARKET SWITCH: full feed restart with history preload ────────────────────
+// FIX v16: This is the single authoritative function for changing the active
+// market symbol at runtime (after login).  It replaces the old pattern of
+// calling bare subscribeTicks() on symbol change, which left candles[] empty
+// and made every new market start without EMA history.
+//
+// What it does — in order:
+//   1. Forgets the current tick subscription (clean slate)
+//   2. Clears candles[], currentCandle, and tick counter so old-market data
+//      is never accidentally used for the new market's EMA
+//   3. Calls preloadHistoricalCandles() for the new symbol — same granularity
+//      logic as startTickFeed() — to seed the EMA immediately
+//   4. Calls subscribeTicks() once the preload resolves (or times out after 8 s)
+//   5. Updates bot status bar to reflect the new symbol
+//
+// Called from:
+//   • cfgSymbol <select> change (DOMContentLoaded listener)
+//   • subscribeSymbol() in the settings panel live-change handler
+//   • Anywhere else that needs to hot-swap the market mid-session
+function restartFeedForSymbol(sym){
+  if(!ws || ws.readyState !== 1) return;
+
+  // 1. Cancel the existing tick subscription before anything else
+  send({ forget_all: 'ticks' });
+
+  // 2. Clear stale candle data — must happen BEFORE the preload so the array
+  //    is empty if the preload fails (calcEMAFast handles empty gracefully)
+  candles = [];
+  currentCandle = null;
+  tickCount = 0;
+  emaValue = null;   // invalidate cached EMA so filters don't use stale value
+  document.getElementById('tickerCandles').textContent = '0';
+
+  setBotStatus('⏳ Loading history for ' + sym + '…', '');
+  toast('📡 Switching to ' + sym + ' — loading candle history…', 'info');
+
+  // 3. Determine granularity (same logic as startTickFeed)
+  const granSec = (analysisCandleMode === 'candle') ? getAnalysisCandleSeconds() : 60;
+
+  const PRELOAD_TIMEOUT = 8000;
+  let done = false;
+
+  const tid = setTimeout(()=>{
+    if(!done){
+      done = true;
+      console.warn('[restartFeed] History preload timed out for', sym, '— starting live feed without history');
+      toast('⚠ History preload timed out — EMA will build from live candles', 'info');
+      subscribeTicks(sym);
+      setBotStatus('Live feed: ' + sym + ' · BUY or SELL to trade', '');
+    }
+  }, PRELOAD_TIMEOUT);
+
+  // 4. Preload then subscribe
+  preloadHistoricalCandles(sym, granSec, ()=>{
+    if(done) return;   // timeout already fired
+    done = true;
+    clearTimeout(tid);
+    subscribeTicks(sym);
+    setBotStatus('Live feed: ' + sym + ' · BUY or SELL to trade', '');
+    if(autoBot && botRunning){
+      const acLabel = analysisCandleMode === 'tick' ? 'TICK' : 'CANDLE·' + analysisCandleTF;
+      setBotStatus('⚡ Auto CRT active · ' + tradeMode + ' · ' + sym + ' · AC:' + acLabel, 'running');
+    }
+  });
+}
+
 // ─── MANUAL TRADE (BUY / SELL buttons) ────────────
 function manualTrade(contractType){
   if(!ws||ws.readyState!==1){ toast('Not connected','info'); return; }
@@ -3825,9 +3892,11 @@ document.addEventListener('DOMContentLoaded', ()=>{
   if(symSel){
     symSel.addEventListener('change', ()=>{
       if(ws && ws.readyState===1){
-        candles=[]; currentCandle=null; tickCount=0;
-        subscribeTicks(symSel.value);
-        toast('Switched to '+symSel.value,'info');
+        // FIX v16: call the full restart (preload history + subscribe) instead of
+        // bare subscribeTicks() so EMA Trend and EMA Wick-Cross filters have
+        // seeded history immediately on the new market — not just after enough
+        // live candles accumulate.
+        restartFeedForSymbol(symSel.value);
       }
     });
   }
@@ -4909,6 +4978,12 @@ function onDlsToggle(checked){
       return;
     }
 
+    // FIX v16: Re-read tokens from inputs every time engine is armed.
+    // This covers the case where the user types tokens AFTER the page loaded
+    // or changes them between arm cycles.
+    dlsDemoToken = document.getElementById('apiTokenInput').value.trim();
+    dlsLiveToken = document.getElementById('liveTokenInput').value.trim();
+
     // Start in demo mode — re-confirm current active account
     dlsCurrentMode = _dlsDetectCurrentMode();
     dlsDemoPnl = 0;
@@ -4947,12 +5022,20 @@ function onDlsToggle(checked){
   dlsSaveState();
 }
 
-// Detect whether the currently authorized account is demo or live
-// from the account type badge rendered after authorize response.
+// Detect whether the currently authorized account is demo or live.
+// FIX v16: Use the cached is_virtual flag from the last authorize response
+// (window._dlsLastIsVirtual) instead of reading the DOM badge.
+// The DOM badge can still reflect the OLD account during the WS handshake window.
+// The is_virtual flag is set synchronously inside handleMsg(authorize) before
+// _dlsPostSwitchResume() is called, so it is always current at detection time.
 function _dlsDetectCurrentMode(){
+  if(typeof window._dlsLastIsVirtual === 'boolean'){
+    return window._dlsLastIsVirtual ? 'demo' : 'live';
+  }
+  // Fallback: read DOM badge (covers cases where _dlsLastIsVirtual not yet set)
   const badge = document.getElementById('acctTypeBadge');
   if(badge && badge.classList.contains('is-live')) return 'live';
-  return 'demo'; // default to demo
+  return 'demo';
 }
 
 // ── Per-trade PNL hook ──────────────────────────────────────────
@@ -5274,9 +5357,32 @@ function _dlsCheckLiveThreshold(){
 
 // ── Core switch function ─────────────────────────────────────────
 // from: 'demo'|'live'  to: 'demo'|'live'
+//
+// FIX v16 — Durable switch rewrite.
+// Root causes of the old flop:
+//   (A) dlsSwitching was cleared BEFORE authorize response → double-trigger possible
+//   (B) dlsCurrentMode was set BEFORE WS confirmed auth → mode/UI mismatch on fail
+//   (C) "Switched ✅" toast + status fired at 600 ms, before Deriv even replied
+//   (D) _dlsDetectCurrentMode() read the DOM badge, which still showed old account
+//       during the WS handshake window → armed-mode detected wrong account
+//   (E) Token freshness: dlsLiveToken/dlsDemoToken not re-read at switch time,
+//       so if user typed tokens after enabling DLS they were stale.
+// Fix: dlsSwitching stays TRUE until _dlsPostSwitchResume() confirms authorize.
+//      dlsCurrentMode is set inside _dlsPostSwitchResume after Deriv confirms.
+//      UI "✅ Switched" feedback only fires after real authorization.
+//      Tokens re-read from inputs at switch time (always fresh).
+// ─────────────────────────────────────────────────────────────────
 function _dlsDoSwitch(from, to){
   if(dlsSwitching) return;   // guard against re-entry
   dlsSwitching = true;
+
+  // Always re-read tokens from the live inputs — user may have changed them
+  // after arming, and the cached values could be stale.
+  const freshDemoToken = document.getElementById('apiTokenInput').value.trim() || dlsDemoToken;
+  const freshLiveToken = document.getElementById('liveTokenInput').value.trim() || dlsLiveToken;
+  // Update caches so the rest of the engine stays consistent
+  dlsDemoToken = freshDemoToken;
+  dlsLiveToken = freshLiveToken;
 
   const targetToken = (to === 'live') ? dlsLiveToken : dlsDemoToken;
   if(!targetToken){
@@ -5329,79 +5435,137 @@ function _dlsDoSwitch(from, to){
   // a new one will start after reconnect completes (in _dlsPostSwitchResume)
   _dlsClearTimeExit();
 
-  // 4. Update mode
-  dlsCurrentMode = to;
-  dlsUpdateIndicator();
-
-  // 5. Disconnect current WS and reconnect with new token
+  // 4. NOTE: dlsCurrentMode is intentionally NOT updated here.
+  //    It will be set to `to` inside _dlsPostSwitchResume() only after
+  //    Deriv sends a successful authorize response for the new token.
+  //    This prevents the UI from showing LIVE when the WS is still connecting.
+  //    Show "switching" indicator instead.
   dlsSetStatus('🔄 Reconnecting to ' + to.toUpperCase() + ' account…', 'switching');
   toast('🔄 Switching to ' + to.toUpperCase() + ' account…', 'info');
+  // Keep the mode indicator in "switching" animation state while waiting
+  const ind = document.getElementById('dlsModeIndicator');
+  const lbl = document.getElementById('dlsModeLbl');
+  if(ind){ ind.className = 'dls-mode-indicator idle'; }
+  if(lbl){ lbl.textContent = 'SWITCHING…'; }
+
+  // 5. Disconnect current WS and reconnect with new token
 
   // Close current ws without triggering reconnect (we'll reconnect ourselves)
   _intentionalDisconnect = true;
   if(_reconnectTimer){ clearTimeout(_reconnectTimer); _reconnectTimer = null; }
   if(ws){ try{ ws.close(); }catch(e){} ws = null; }
 
+  // Store the target mode so _dlsPostSwitchResume knows what was requested
+  _dlsPendingSwitchTarget  = to;
+  _dlsPendingRestoreAutoBot = wasAutoBot;
+  // dlsSwitching remains TRUE — cleared only inside _dlsPostSwitchResume
+  // after authorize confirms the correct account type.
+
   // Small delay to let WS close cleanly
   setTimeout(()=>{
     _intentionalDisconnect = false;
-    apiToken = targetToken;
+    apiToken  = targetToken;
     serverUrl = 'wss://ws.derivws.com/websockets/v3?app_id=116948';
-
-    // Update the connection bar input to show active token (masked)
-    // DO NOT update apiTokenInput — the demo token stays there for reference;
-    // instead we swap apiToken variable only.
 
     setLoginStatus('Connecting to ' + to.toUpperCase() + '…', '');
     connectWS(false);   // reconnect flow (not login flow, preserves UI state)
 
-    // After connect + authorize completes, restore auto-bot if it was running
-    // We hook into the authorize response flow via a one-time flag.
-    _dlsPendingRestoreAutoBot = wasAutoBot;
-    dlsSwitching = false;
-
-    dlsSetStatus(
-      '✅ Switched to ' + to.toUpperCase() + ' · Cycle #' + dlsCycleCount +
-      ' · Waiting for next threshold…',
-      to
-    );
-    toast('✅ Now trading on ' + to.toUpperCase() + ' account', 'info');
-    dlsSaveState();
+    // Safety fallback: if authorize never fires within 15 s, release the lock
+    // so the engine is not permanently frozen.
+    if(_dlsSwitchWatchdog) clearTimeout(_dlsSwitchWatchdog);
+    _dlsSwitchWatchdog = setTimeout(()=>{
+      if(dlsSwitching){
+        console.warn('[DLS] Switch watchdog fired — authorize not confirmed in 15 s. Releasing lock.');
+        dlsSwitching = false;
+        _dlsPendingSwitchTarget = null;
+        dlsSetStatus('⚠ Switch timeout — please check connection and re-arm.', '');
+      }
+    }, 15000);
   }, 600);
 }
 
-// Flag: after a DLS-triggered reconnect, restore auto-bot once connected
+// Pending state flags — kept separate so they survive the 600 ms timeout
 let _dlsPendingRestoreAutoBot = false;
+let _dlsPendingSwitchTarget   = null;   // 'demo' | 'live' | null
+let _dlsSwitchWatchdog        = null;   // setTimeout handle for safety fallback
 
-// Called from within authorize success handler to resume bot after switch
+// Called from within authorize success handler to confirm & complete the switch.
+// This is the ONLY place dlsCurrentMode is updated and dlsSwitching is cleared.
+// Every UI element that reflects the active account is updated here atomically,
+// so no partial-update window exists where some panels show DEMO and others LIVE.
 function _dlsPostSwitchResume(){
-  if(_dlsPendingRestoreAutoBot && dlsEnabled){
+  if(!_dlsPendingSwitchTarget) return;   // not a DLS-triggered reconnect
+
+  // Cancel the watchdog — we got a real authorize response
+  if(_dlsSwitchWatchdog){ clearTimeout(_dlsSwitchWatchdog); _dlsSwitchWatchdog = null; }
+
+  const confirmedTo = _dlsPendingSwitchTarget;
+  _dlsPendingSwitchTarget = null;
+
+  // ── Verify Deriv's authorize response matches what we requested ──
+  // _dlsDetectCurrentMode() reads the DOM badge that was just set by
+  // handleMsg(authorize) moments ago — at this point it's the new account.
+  const detectedMode = _dlsDetectCurrentMode();
+  if(detectedMode !== confirmedTo){
+    // Wrong account connected — could be token mix-up or Deriv error.
+    // Abort: leave dlsCurrentMode as-is, release lock, alert user.
+    dlsSwitching = false;
     _dlsPendingRestoreAutoBot = false;
-    setTimeout(()=>{
-      if(!eaHalted && dlsEnabled){
-        autoBot    = true;
-        botRunning = true;
-        const tog   = document.getElementById('autoToggle');
-        const state = document.getElementById('autoState');
-        if(tog)   tog.className = 'auto-toggle on';
-        if(state) state.textContent = 'ON';
-        const acLabel = analysisCandleMode==='tick' ? 'TICK' : 'CANDLE·'+analysisCandleTF;
-        setBotStatus('⚡ Auto CRT active · '+tradeMode+' · '+v('cfgSymbol')+' · AC:'+acLabel, 'running');
-        toast('⚡ Auto CRT resumed on ' + dlsCurrentMode.toUpperCase() + ' account', 'info');
-      }
-      // Start the time-exit countdown now that we are confirmed live and trading
-      if(dlsEnabled && dlsTimeExitEnabled && dlsCurrentMode === 'live'){
-        _dlsStartTimeExit();
-        const ms = dlsGetTimeExitMs();
-        if(ms > 0){
-          const h = Math.floor(ms / 3600000);
-          const m = Math.floor((ms % 3600000) / 60000);
-          const label = (h > 0 ? h + 'h ' : '') + m + 'm';
-          toast('⏱ Live Time Exit armed · Force-switch in ' + label, 'info');
-        }
-      }
-    }, 1500);
+    dlsSetStatus(
+      '⚠ Switch mismatch! Expected ' + confirmedTo.toUpperCase() +
+      ' but Deriv authorized ' + detectedMode.toUpperCase() +
+      ' — check tokens and re-arm.', ''
+    );
+    toast('⚠ DLS switch mismatch — check tokens!', 'info');
+    return;
   }
+
+  // ── All clear: commit the mode change atomically ──
+  dlsCurrentMode = confirmedTo;
+
+  // Update every account-type UI element at once — no partial-update window
+  dlsUpdateIndicator();  // DLS panel mode indicator
+
+  // Release the switch lock — engine is now stable on the new account
+  dlsSwitching = false;
+
+  // Final status + toast — fires only after confirmed auth
+  dlsSetStatus(
+    '✅ Switched to ' + confirmedTo.toUpperCase() + ' · Cycle #' + dlsCycleCount +
+    ' · Waiting for next threshold…',
+    confirmedTo
+  );
+  toast('✅ Now trading on ' + confirmedTo.toUpperCase() + ' account', 'info');
+  dlsSaveState();
+
+  // Restore auto-bot if it was running before the switch
+  const wasAutoBot = _dlsPendingRestoreAutoBot;
+  _dlsPendingRestoreAutoBot = false;
+
+  setTimeout(()=>{
+    if(wasAutoBot && !eaHalted && dlsEnabled){
+      autoBot    = true;
+      botRunning = true;
+      const tog   = document.getElementById('autoToggle');
+      const state = document.getElementById('autoState');
+      if(tog)   tog.className = 'auto-toggle on';
+      if(state) state.textContent = 'ON';
+      const acLabel = analysisCandleMode==='tick' ? 'TICK' : 'CANDLE·'+analysisCandleTF;
+      setBotStatus('⚡ Auto CRT active · '+tradeMode+' · '+v('cfgSymbol')+' · AC:'+acLabel, 'running');
+      toast('⚡ Auto CRT resumed on ' + confirmedTo.toUpperCase() + ' account', 'info');
+    }
+    // Start the time-exit countdown now that we are confirmed live and trading
+    if(dlsEnabled && dlsTimeExitEnabled && dlsCurrentMode === 'live'){
+      _dlsStartTimeExit();
+      const ms = dlsGetTimeExitMs();
+      if(ms > 0){
+        const h = Math.floor(ms / 3600000);
+        const m = Math.floor((ms % 3600000) / 60000);
+        const label = (h > 0 ? h + 'h ' : '') + m + 'm';
+        toast('⏱ Live Time Exit armed · Force-switch in ' + label, 'info');
+      }
+    }
+  }, 800);
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -5890,14 +6054,13 @@ window.doLogout = function(){
     }
   }
 
-  // ── Subscribe symbol helper (if not already defined upstream) ──
+  // ── Subscribe symbol helper — now delegates to restartFeedForSymbol ──
+  // FIX v16: The old subscribeSymbol() only sent a bare ticks subscription.
+  // It never called preloadHistoricalCandles(), so every market switch started
+  // with an empty candles[] array and the EMA filters had no history to work from.
+  // restartFeedForSymbol() does the full reset + history preload + subscribe.
   function subscribeSymbol(sym){
-    if(!ws || ws.readyState !== 1) return;
-    if(subscriptionId){
-      send({ forget: subscriptionId });
-      subscriptionId = null;
-    }
-    send({ ticks: sym, subscribe: 1 });
+    restartFeedForSymbol(sym);
   }
 
   // ── Attach delegated listeners ─────────────────────────────
