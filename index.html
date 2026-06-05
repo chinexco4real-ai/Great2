@@ -399,6 +399,8 @@
   .counter-slider::before{content:'';position:absolute;height:16px;width:16px;left:2px;top:2px;background:#4a5a78;border-radius:50%;transition:all .25s;}
   .counter-switch input:checked + .counter-slider{background:rgba(255,140,0,.18);border-color:#ff8c00;}
   .counter-switch input:checked + .counter-slider::before{transform:translateX(22px);background:#ff8c00;box-shadow:0 0 6px rgba(255,140,0,.5);}
+  #alwaysCounterEnabled:checked + .counter-slider{background:rgba(255,61,90,.18)!important;border-color:#ff3d5a!important;}
+  #alwaysCounterEnabled:checked + .counter-slider::before{background:#ff3d5a!important;box-shadow:0 0 6px rgba(255,61,90,.5)!important;}
   .counter-status-box{background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:9px 12px;font-family:'Share Tech Mono',monospace;font-size:11px;color:#8ba4cc;font-weight:600;line-height:1.7;min-height:38px;margin-top:8px;transition:border-color .3s,color .3s;}
   .counter-status-box.watching{border-color:rgba(255,140,0,.4);color:#ff8c00;}
   .counter-status-box.fired   {border-color:rgba(255,61,90,.4);color:#ff7090;}
@@ -978,11 +980,31 @@
                 <input type="number" id="cfgCounterWait" value="3" min="0.1" max="60" step="0.1"
                        style="font-size:12px;padding:6px 9px;width:70px;"/>
               </div>
-              <div style="font-size:10px;color:#8ba4cc;line-height:1.6;margin-bottom:8px;font-family:'Share Tech Mono',monospace;">
+
+              <!-- ── Always Counter sub-toggle ── -->
+              <div style="background:rgba(255,61,90,.06);border:1px solid rgba(255,61,90,.2);border-radius:7px;padding:10px 12px;margin-bottom:8px;">
+                <div class="counter-toggle-row" style="margin-bottom:6px;">
+                  <span style="font-size:11px;letter-spacing:1px;color:#ff7090;font-weight:700;text-transform:uppercase;">Always Counter (P/L Ignored)</span>
+                  <label class="counter-switch">
+                    <input type="checkbox" id="alwaysCounterEnabled" onchange="onAlwaysCounterToggle(this.checked)"/>
+                    <span class="counter-slider" style=""></span>
+                  </label>
+                </div>
+                <div id="alwaysCounterDesc" style="font-size:10px;color:#8ba4cc;line-height:1.6;font-family:'Share Tech Mono',monospace;">
+                  When <span style="color:#ff7090;">ON</span>: After wait time, EA opens opposite position <span style="color:#ff8c00;">regardless of profit or loss.</span><br>
+                  Both trades close at the original trade's same duration.<br>
+                  <span style="color:#aaa;">Example: 1min trade opens → wait 30s → opposite placed → both close at 1min mark.</span>
+                </div>
+                <div id="alwaysCounterDesc_off" style="font-size:10px;color:#8ba4cc;line-height:1.6;font-family:'Share Tech Mono',monospace;display:none;">
+                  When <span style="color:var(--green);">OFF</span>: Standard mode — counter only fires on <span style="color:#ff7090;">Loss</span>. Profit = no action.
+                </div>
+              </div>
+
+              <div id="standardCounterDesc" style="font-size:10px;color:#8ba4cc;line-height:1.6;margin-bottom:8px;font-family:'Share Tech Mono',monospace;">
                 After a trade opens, the counter filter waits the set time then checks P/L.<br>
                 ▸ Decimals = fraction of a minute: <span style="color:#ff8c00;">1.5 = 1m 30s · 2.3 = 2m 18s · 0.5 = 30s</span><br>
                 ▸ <span style="color:var(--green);">Profit</span> → ignored, no counter trade.<br>
-                ▸ <span style="color:#ff7090;">Loss</span> → counter trade placed immediately at remaining expiry of original trade.<br>
+                ▸ <span style="color:#ff7090;">Loss</span> → counter trade placed using full duration of original trade.<br>
                 <span style="color:#ff8c00;">Counter trades are never themselves countered.</span>
               </div>
               <div class="counter-status-box" id="counterStatusBox">Waiting for next trade…</div>
@@ -1482,6 +1504,7 @@ const _settledContracts = new Set();
 
 // ── SMART COUNTER FILTER STATE ──────────────────────
 let counterFilterEnabled = false;   // master toggle
+let alwaysCounterEnabled = false;   // sub-toggle: fire counter regardless of P/L
 // Map of contractId -> { timer, dir, logId } for pending counter checks
 const counterPendingMap = {};       // contractId -> setTimeout handle
 
@@ -1749,7 +1772,8 @@ function presetBuild(){
       minRange  : v('cfgMinRange'),
       maxPos    : v('cfgMaxPos'),
       cooldown  : v('cfgCooldown'),
-      counterWait: v('cfgCounterWait')
+      counterWait: v('cfgCounterWait'),
+      alwaysCounter: alwaysCounterEnabled
     },
     filters: {
       ema          : filterEmaEnabled,
@@ -1855,6 +1879,11 @@ function presetLoad(inputEl){
         if(cm.maxPos    !== undefined) setVal('cfgMaxPos',     cm.maxPos);
         if(cm.cooldown  !== undefined) setVal('cfgCooldown',   cm.cooldown);
         if(cm.counterWait!==undefined) setVal('cfgCounterWait',cm.counterWait);
+        if(cm.alwaysCounter !== undefined){
+          alwaysCounterEnabled = !!cm.alwaysCounter;
+          const acChk = document.getElementById('alwaysCounterEnabled');
+          if(acChk){ acChk.checked = alwaysCounterEnabled; syncAlwaysCounterUI(alwaysCounterEnabled); }
+        }
       }
 
       // ── Filters ──
@@ -4359,10 +4388,36 @@ function onCounterFilterToggle(enabled){
   if(!enabled){
     Object.keys(counterPendingMap).forEach(cancelCounterCheck);
     setCounterStatus('Counter filter disabled.', '');
+    // Also reset always-counter toggle so state is clean on re-enable
+    alwaysCounterEnabled = false;
+    const acChk = document.getElementById('alwaysCounterEnabled');
+    if(acChk) acChk.checked = false;
+    syncAlwaysCounterUI(false);
   } else {
     setCounterStatus('Waiting for next trade…', '');
     toast('⚡ Counter Filter ON','info');
   }
+}
+
+function onAlwaysCounterToggle(enabled){
+  alwaysCounterEnabled = enabled;
+  syncAlwaysCounterUI(enabled);
+  if(enabled){
+    toast('🔴 Always Counter ON — opposite trade fires regardless of P/L', 'info');
+    setCounterStatus('Always Counter active — fires on EVERY trade after wait time.', 'watching');
+  } else {
+    toast('Always Counter OFF — standard loss-only mode', 'info');
+    setCounterStatus('Standard mode — counter fires on Loss only.', '');
+  }
+}
+
+function syncAlwaysCounterUI(enabled){
+  const descOn  = document.getElementById('alwaysCounterDesc');
+  const descOff = document.getElementById('alwaysCounterDesc_off');
+  const stdDesc = document.getElementById('standardCounterDesc');
+  if(descOn)  descOn.style.display  = enabled ? 'block' : 'none';
+  if(descOff) descOff.style.display = enabled ? 'none'  : 'block';
+  if(stdDesc) stdDesc.style.display = enabled ? 'none'  : 'block';
 }
 
 // Called by handleBuyResponse immediately after position is stored.
@@ -4415,8 +4470,8 @@ function scheduleCounterCheck(cid){
   }
 
   const dir = pos.dir; // 'buy' or 'sell'
-
-  setCounterStatus(`⏳ Watching ${dir.toUpperCase()} #${cid} — checking in ${waitLabel}…`, 'watching');
+  const modeLabel = alwaysCounterEnabled ? ' [Always Counter]' : ' [Loss-only]';
+  setCounterStatus(`⏳ Watching ${dir.toUpperCase()} #${cid} — checking in ${waitLabel}…${modeLabel}`, 'watching');
 
   const handle = setTimeout(()=>{
     delete counterPendingMap[cid];
@@ -4470,8 +4525,8 @@ function runCounterCheck(cid){
 
   const pnl = pos.currentPnl;  // live floating P/L streamed by Deriv POC
 
-  if(pnl >= 0){
-    // Profitable — do nothing
+  if(pnl >= 0 && !alwaysCounterEnabled){
+    // Profitable and always-counter is OFF — do nothing
     setCounterStatus(`✅ #${cid} in profit (${pnl >= 0 ? '+' : ''}${fmtAmount(Math.abs(pnl))}) — no counter trade.`, 'ok');
     return;
   }
@@ -4489,14 +4544,18 @@ function runCounterCheck(cid){
   }
 
   // ── All guards passed — fire counter trade ──────────────────────────────────
+  const pnlSign  = pnl >= 0 ? '+' : '';
+  const pnlLabel = `${pnlSign}${fmtAmount(Math.abs(pnl))}`;
+  const fireReason = alwaysCounterEnabled
+    ? (pnl >= 0 ? `profit ${pnlLabel} — Always Counter ON` : `loss ${pnlLabel} — Always Counter ON`)
+    : `loss ${pnlLabel}`;
   setCounterStatus(
-    `🔴 #${cid} in loss (${fmtAmount(Math.abs(pnl))}) — firing ${counterType} counter (orig: ${pos.dir.toUpperCase()})…`,
+    `🔴 #${cid} in ${fireReason} — firing ${counterType} counter (orig: ${pos.dir.toUpperCase()})…`,
     'fired'
   );
-  const remSec   = pos.expiryMs ? Math.max(5, Math.round((pos.expiryMs - Date.now()) / 1000)) : null;
-  const remLabel = remSec
-    ? ` (syncing to remaining ${remSec >= 60 ? Math.floor(remSec/60)+'m '+(remSec%60)+'s' : remSec+'s'})`
-    : '';
+  const _cfgDur  = parseInt(v('cfgDuration')) || 5;
+  const _cfgUnit = durType === 'ticks' ? 'tick' : durType === 'seconds' ? 's' : 'm';
+  const remLabel = ` (${_cfgDur}${_cfgUnit} full duration)`;
 
   // Build a log entry for the counter trade.
   // The badge (CBUY/CSELL) must be the OPPOSITE of what the user saw (signalDir).
@@ -4527,66 +4586,35 @@ function runCounterCheck(cid){
   updateStats();
 
   // Place the counter trade — mark it so it can never itself be countered
-  placeCounterTrade(counterType, symbol, stake, sl, tp, logEntry.id, pos.expiryMs);
+  placeCounterTrade(counterType, symbol, stake, sl, tp, logEntry.id);
 
-  toast(`⚡ Counter ${_counterBadge} placed vs ${_origSignalDir} loss${remLabel}`, 'info');
+  const toastReason = alwaysCounterEnabled ? 'Always Counter' : 'loss';
+  toast(`⚡ Counter ${_counterBadge} placed vs ${_origSignalDir} ${toastReason}${remLabel}`, 'info');
 }
 
 // Like placeTrade but stamps isCounter=true on the resulting position.
-// originExpiryMs: the expiryMs of the original trade — counter must close at the same time.
-//
-// SYNC STRATEGY:
-//   remMs = time left on original trade at the moment this function runs.
-//   We subtract a 1-second network buffer for the proposal→buy round-trip so
-//   that by the time Deriv actually starts the counter contract it expires at
-//   the same wall-clock second as the original.
-//   Math.floor (not round) prevents ever rounding UP past the original expiry.
-//   Minimum enforced at 5 s so Deriv doesn't reject too-short contracts.
+// Duration: always uses the exact configured duration (cfgDuration + durType).
+// The counter trade is a fresh full-length trade — no sync to original expiry.
 // Set of log IDs that belong to counter trades — populated when counter proposal
 // is sent, BEFORE the buy response arrives. Used as a hard guard in
 // handleBuyResponse to stamp isCounter=true even if passthrough is lost.
 const counterLogIdSet = new Set();
 
-function placeCounterTrade(contractType, symbol, stake, slAmt, tpAmt, logId, originExpiryMs){
+function placeCounterTrade(contractType, symbol, stake, slAmt, tpAmt, logId){
   stats.totalTrades++;
   // Register this logId as a counter trade IMMEDIATELY — before proposal is sent.
   // This ensures handleBuyResponse can mark isCounter=true even if
   // echo_req.passthrough.is_counter is somehow absent.
   if(logId) counterLogIdSet.add(logId);
 
-  // Network round-trip compensation: proposal → server → buy confirmation takes
-  // roughly 0.5–1 s. Deduct 1 s so the counter contract expires at the same
-  // second as the original rather than 1 s after it.
-  const NETWORK_BUFFER_MS = 1000;
-
-  let dur, durUnit;
-  if(durType === 'ticks'){
-    // Tick contracts: can't sync to wall-clock expiry, use configured duration
-    dur     = parseInt(v('cfgDuration')) || 5;
-    durUnit = 't';
-  } else {
-    // Remaining ms on original trade, minus network buffer, floored to avoid
-    // rounding up past the original expiry.
-    // GUARD: if fewer than 5 s remain after the network buffer is deducted,
-    // abort rather than clamping up — a floored-up duration would cause the
-    // counter to outlive the original trade.
-    const rawRemMs = originExpiryMs ? originExpiryMs - Date.now() - NETWORK_BUFFER_MS : null;
-    if(rawRemMs !== null && rawRemMs < 5000){
-      // Not enough margin — placing a counter now would overshoot the original expiry.
-      setCounterStatus('⚠ Counter aborted — insufficient time remaining to sync expiry.', 'ok');
-      toast('⚠ Counter aborted: too close to original expiry to place safely.', 'warn');
-      return;
-    }
-    const remMs = (rawRemMs !== null && rawRemMs > 0) ? rawRemMs : null;
-    if(remMs){
-      dur     = Math.floor(remMs / 1000); // floor: never round up past original expiry
-      durUnit = 's';                      // always seconds for exact sync
-    } else {
-      // Fallback: use configured duration (no expiry info available)
-      dur     = parseInt(v('cfgDuration')) || 5;
-      durUnit = durType === 'seconds' ? 's' : 'm';
-    }
-  }
+  // ── COUNTER DURATION: always use the exact configured duration ───────────────
+  // The counter trade uses the same duration setting as any normal trade.
+  // No timestamp math — no remaining-time sync — no network buffer offsets.
+  // If the user set 1 minute, the counter gets a full 1 minute from NOW.
+  const cfgDur  = parseInt(v('cfgDuration')) || 5;
+  const cfgUnit = durType === 'ticks' ? 't' : durType === 'seconds' ? 's' : 'm';
+  const dur     = cfgDur;
+  const durUnit = cfgUnit;
 
   // Use payoutCurrency confirmed by payout_currencies — same as placeTrade
   const tradeAmount = parseFloat(parseFloat(stake).toFixed(2));
