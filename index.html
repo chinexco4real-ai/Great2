@@ -160,6 +160,9 @@
   .mode-btn.active.buy{background:rgba(45,139,255,.18);border-color:var(--accent);color:#6ab5ff;}
   .mode-btn.active.sell{background:rgba(255,61,90,.15);border-color:var(--red);color:#ff7090;}
   .mode-btn.active.both{background:rgba(245,197,24,.12);border-color:var(--gold);color:#f5d060;}
+  .mode-btn.active.higher{background:rgba(0,230,118,.15);border-color:var(--green);color:var(--green);}
+  .mode-btn.active.lower{background:rgba(255,61,90,.14);border-color:var(--red);color:#ff7090;}
+  .mode-btn.active.both-hl{background:rgba(0,240,255,.12);border-color:var(--accent2);color:var(--accent2);}
 
   /* ─── BOT / TRADE BUTTONS ─── */
   .bot-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px;}
@@ -253,6 +256,8 @@
   .pos-dir{font-family:'Orbitron',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;padding:4px 11px;border-radius:5px;}
   .pos-dir.buy{color:#6ab5ff;background:rgba(45,139,255,.15);border:1px solid var(--accent);}
   .pos-dir.sell{color:#ff7090;background:rgba(255,61,90,.12);border:1px solid var(--red);}
+  .pos-dir.higher{color:var(--green);background:rgba(0,230,118,.15);border:1px solid var(--green);}
+  .pos-dir.lower{color:#ff7090;background:rgba(255,61,90,.14);border:1px solid var(--red);}
   .pos-details{flex:1;font-size:12px;color:#8ba4cc;font-family:'Share Tech Mono',monospace;line-height:1.8;font-weight:600;}
   .pos-timer{font-family:'Share Tech Mono',monospace;font-size:12px;font-weight:700;letter-spacing:1px;padding:3px 8px;border-radius:5px;background:rgba(0,230,118,.08);border:1px solid rgba(0,230,118,.2);color:var(--green);min-width:52px;text-align:center;transition:color .3s,background .3s,border-color .3s;}
   .pos-timer.warn{color:#ffc107;background:rgba(255,193,7,.1);border-color:rgba(255,193,7,.3);}
@@ -283,6 +288,84 @@
   .acndl-tf-row{display:none;gap:6px;flex-wrap:wrap;}
   .acndl-tf-row.visible{display:flex;}
   .acndl-badge{font-size:11px;color:var(--accent2);background:rgba(0,240,255,.12);border:1px solid rgba(0,240,255,.25);border-radius:4px;padding:3px 8px;letter-spacing:1px;font-family:'Share Tech Mono',monospace;font-weight:700;}
+
+  /* ─── HIGHER / LOWER CONTRACT STYLES ─── */
+  .hl-section{background:linear-gradient(135deg,rgba(0,240,255,.05),rgba(45,139,255,.03));border:1px solid rgba(0,240,255,.28);border-radius:10px;padding:14px 15px;margin-top:9px;}
+  .hl-section .section-lbl{color:var(--accent2);font-size:11px;letter-spacing:2px;margin-bottom:10px;font-weight:700;}
+  .hl-contract-tabs{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:11px;}
+  .hl-tab{padding:9px 4px;background:var(--bg3);border:1px solid var(--border2);color:#7a8fae;border-radius:6px;font-size:12px;letter-spacing:.8px;cursor:pointer;text-align:center;transition:all .2s;font-family:'Rajdhani',sans-serif;font-weight:700;}
+  .hl-tab:hover{color:var(--text);border-color:#3a5580;}
+  .hl-tab.active.higher{background:rgba(0,230,118,.15);border-color:var(--green);color:var(--green);}
+  .hl-tab.active.lower{background:rgba(255,61,90,.14);border-color:var(--red);color:#ff7090;}
+  .hl-tab.active.both-hl{background:rgba(245,197,24,.12);border-color:var(--gold);color:var(--gold);}
+  .barrier-row{display:flex;flex-direction:column;gap:5px;margin-bottom:10px;}
+  .barrier-row label{font-size:12px;letter-spacing:1px;color:#8ba4cc;text-transform:uppercase;font-weight:700;}
+  .barrier-input-wrap{display:grid;grid-template-columns:1fr auto;gap:7px;align-items:center;}
+  .barrier-input-wrap input{background:var(--bg3);border:1px solid var(--border2);color:var(--white);padding:9px 11px;border-radius:6px;font-family:'Share Tech Mono',monospace;font-size:13px;font-weight:600;outline:none;width:100%;transition:border .2s,box-shadow .2s;}
+  .barrier-input-wrap input:focus{border-color:var(--accent2);box-shadow:0 0 0 2px rgba(0,240,255,.15);}
+  .barrier-pct-badge{font-family:'Orbitron',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;color:var(--accent2);background:rgba(0,240,255,.12);border:1px solid rgba(0,240,255,.3);border-radius:5px;padding:4px 8px;white-space:nowrap;}
+  /* ─── PAYOUT PREVIEW BADGE ─── */
+  .payout-preview-badge{
+    display:inline-flex;align-items:center;gap:4px;
+    font-family:'Orbitron',sans-serif;font-size:11px;font-weight:700;letter-spacing:.8px;
+    padding:4px 9px;border-radius:5px;white-space:nowrap;
+    border:1px solid rgba(245,197,24,.4);
+    background:rgba(245,197,24,.10);
+    color:var(--gold);
+    transition:all .3s;
+    position:relative;
+    cursor:default;
+  }
+  .payout-preview-badge.loading{
+    color:#8ba4cc;border-color:rgba(122,143,174,.3);background:rgba(122,143,174,.06);
+    animation:ppPulse 1s ease-in-out infinite;
+  }
+  .payout-preview-badge.high{
+    color:#00e676;border-color:rgba(0,230,118,.5);background:rgba(0,230,118,.12);
+    box-shadow:0 0 8px rgba(0,230,118,.2);
+  }
+  .payout-preview-badge.mid{
+    color:var(--gold);border-color:rgba(245,197,24,.5);background:rgba(245,197,24,.12);
+  }
+  .payout-preview-badge.low{
+    color:#ff8c00;border-color:rgba(255,140,0,.45);background:rgba(255,140,0,.10);
+  }
+  .payout-preview-badge.error{
+    color:#ff7090;border-color:rgba(255,61,90,.35);background:rgba(255,61,90,.08);
+    font-size:9px;letter-spacing:.5px;
+  }
+  @keyframes ppPulse{0%,100%{opacity:.5}50%{opacity:1}}
+  .barrier-display{display:flex;align-items:center;justify-content:space-between;padding:8px 11px;background:rgba(0,0,0,.2);border:1px solid var(--border2);border-radius:6px;margin-bottom:10px;transition:border-color .2s;}
+  .barrier-display.ready{border-color:rgba(0,240,255,.35);}
+  .bd-lbl{font-size:10px;letter-spacing:1.5px;color:#8ba4cc;text-transform:uppercase;font-weight:700;}
+  .bd-val{font-family:'Share Tech Mono',monospace;font-size:14px;font-weight:700;color:var(--accent2);letter-spacing:1px;}
+  .bd-val.above{color:var(--green);}
+  .bd-val.below{color:#ff7090;}
+  .hl-trade-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px;}
+  .btn-higher{padding:16px 4px;background:linear-gradient(135deg,#00e676,#00a854);color:#000;border:none;border-radius:7px;font-family:'Orbitron',sans-serif;font-size:11px;font-weight:700;letter-spacing:1.5px;cursor:pointer;transition:all .2s;box-shadow:0 0 14px rgba(0,230,118,.35);}
+  .btn-higher:hover:not(:disabled){filter:brightness(1.12);transform:translateY(-2px);box-shadow:0 6px 22px rgba(0,230,118,.55);}
+  .btn-higher:disabled{opacity:.35;cursor:not-allowed;transform:none;box-shadow:none;}
+  .btn-lower{padding:16px 4px;background:linear-gradient(135deg,#ff3d5a,#cc0030);color:#fff;border:none;border-radius:7px;font-family:'Orbitron',sans-serif;font-size:11px;font-weight:700;letter-spacing:1.5px;cursor:pointer;transition:all .2s;box-shadow:0 0 14px rgba(255,61,90,.35);}
+  .btn-lower:hover:not(:disabled){filter:brightness(1.15);transform:translateY(-2px);box-shadow:0 6px 22px rgba(255,61,90,.55);}
+  .btn-lower:disabled{opacity:.35;cursor:not-allowed;transform:none;box-shadow:none;}
+  .hl-auto-toggle{display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,rgba(0,240,255,.08),rgba(45,139,255,.06));border:2px solid rgba(0,240,255,.4);border-radius:10px;padding:12px 14px;margin-top:9px;cursor:pointer;transition:all .3s;}
+  .hl-auto-toggle:hover{border-color:var(--accent2);box-shadow:0 0 20px rgba(0,240,255,.25);}
+  .hl-auto-toggle .at-lbl{font-size:12px;letter-spacing:1.5px;color:var(--accent2);text-transform:uppercase;font-weight:700;}
+  .hl-auto-toggle .at-state{font-family:'Orbitron',sans-serif;font-size:13px;letter-spacing:1px;font-weight:900;color:#777;}
+  .hl-auto-toggle.on{border-color:var(--accent2);background:linear-gradient(135deg,rgba(0,240,255,.18),rgba(45,139,255,.1));box-shadow:0 0 28px rgba(0,240,255,.4);}
+  .hl-auto-toggle.on .at-lbl{color:var(--accent2);text-shadow:0 0 12px rgba(0,240,255,.6);}
+  .hl-auto-toggle.on .at-state{color:var(--accent2);text-shadow:0 0 12px rgba(0,240,255,.8);}
+  .hl-auto-toggle.locked{opacity:.45;cursor:not-allowed;border-color:rgba(122,143,174,.25);background:rgba(122,143,174,.04);}
+  .hl-auto-toggle.locked .at-lbl{color:#7a8fae;}
+  .auto-toggle.locked{opacity:.45;cursor:not-allowed;border-color:rgba(122,143,174,.25) !important;background:rgba(122,143,174,.04) !important;box-shadow:none !important;}
+  .auto-toggle.locked .at-lbl{color:#7a8fae !important;text-shadow:none !important;}
+  .hl-status{margin-top:8px;padding:10px 12px;background:var(--bg3);border-radius:6px;border-left:3px solid var(--border2);font-size:11px;color:#8ba4cc;font-family:'Share Tech Mono',monospace;word-break:break-all;min-height:36px;font-weight:600;line-height:1.5;transition:border-left-color .2s,color .2s;}
+  .hl-status.running{border-left-color:var(--accent2);color:var(--accent2);}
+  .hl-status.higher{border-left-color:var(--green);color:var(--green);}
+  .hl-status.lower{border-left-color:var(--red);color:#ff7090;}
+  .hl-status.error{border-left-color:var(--red);color:#ff7090;}
+  .tag-higher{color:var(--green);background:rgba(0,230,118,.15);padding:2px 8px;border-radius:3px;font-size:11px;letter-spacing:.5px;font-weight:700;}
+  .tag-lower{color:#ff7090;background:rgba(255,61,90,.14);padding:2px 8px;border-radius:3px;font-size:11px;letter-spacing:.5px;font-weight:700;}
 
   /* ─── TOAST ─── */
   #toast{position:fixed;bottom:28px;right:28px;z-index:9998;display:flex;flex-direction:column;gap:9px;pointer-events:none;}
@@ -388,7 +471,29 @@
   .cooldown-status{font-family:'Share Tech Mono',monospace;font-size:12px;color:#8ba4cc;font-weight:600;}
   .cooldown-status.active{color:#ff8c00;}
 
-  /* ─── SMART COUNTER FILTER ─── */
+  /* ─── AUTO-CLOSE SECTION ─── */
+  .aclose-section{background:rgba(0,230,118,.04);border:1px solid rgba(0,230,118,.25);border-radius:9px;padding:13px 15px;margin-top:9px;}
+  .aclose-section .section-lbl{color:var(--green);font-size:11px;letter-spacing:2px;margin-bottom:10px;font-weight:700;}
+  .aclose-rule{background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:10px 13px;margin-bottom:8px;transition:border-color .2s,background .2s;}
+  .aclose-rule:last-child{margin-bottom:0;}
+  .aclose-rule.enabled{border-color:rgba(0,230,118,.4);background:rgba(0,230,118,.04);}
+  .aclose-rule-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:0;}
+  .aclose-rule-header .ar-name{font-size:12px;letter-spacing:.8px;font-weight:700;color:var(--text);}
+  .aclose-rule-body{margin-top:9px;display:none;}
+  .aclose-rule.enabled .aclose-rule-body{display:block;}
+  .aclose-switch{position:relative;width:38px;height:20px;flex-shrink:0;}
+  .aclose-switch input{opacity:0;width:0;height:0;}
+  .aclose-slider{position:absolute;inset:0;background:#1e2a42;border:1px solid var(--border2);border-radius:20px;cursor:pointer;transition:all .25s;}
+  .aclose-slider::before{content:'';position:absolute;height:14px;width:14px;left:2px;top:2px;background:#4a5a78;border-radius:50%;transition:all .25s;}
+  .aclose-switch input:checked + .aclose-slider{background:rgba(0,230,118,.2);border-color:var(--green);}
+  .aclose-switch input:checked + .aclose-slider::before{transform:translateX(18px);background:var(--green);box-shadow:0 0 6px rgba(0,230,118,.5);}
+  .aclose-input-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+  .aclose-input-row label{font-size:11px;letter-spacing:.8px;color:#8ba4cc;font-weight:700;white-space:nowrap;}
+  .aclose-input-row input{background:var(--bg2);border:1px solid var(--border2);color:var(--white);padding:7px 10px;border-radius:6px;font-family:'Share Tech Mono',monospace;font-size:13px;font-weight:700;outline:none;width:90px;transition:border .2s;}
+  .aclose-input-row input:focus{border-color:var(--green);box-shadow:0 0 0 2px rgba(0,230,118,.12);}
+  .aclose-status{font-size:10px;font-family:'Share Tech Mono',monospace;color:#8ba4cc;font-weight:600;line-height:1.5;margin-top:4px;padding:5px 8px;background:rgba(0,0,0,.2);border-radius:4px;min-height:20px;}
+  .aclose-status.active{color:var(--green);}
+  .aclose-status.fired{color:var(--gold);}
   .counter-section{background:rgba(255,140,0,.05);border:1px solid rgba(255,140,0,.25);border-radius:9px;padding:13px 15px;margin-top:9px;}
   .counter-section .section-lbl{color:#ff8c00;font-size:11px;letter-spacing:2px;margin-bottom:10px;font-weight:700;}
   .counter-toggle-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
@@ -664,7 +769,65 @@
           <div class="mode-btns">
             <div class="mode-btn buy active" onclick="setMode('BUY_ONLY',this)" id="mBuy">BUY ONLY</div>
             <div class="mode-btn sell" onclick="setMode('SELL_ONLY',this)" id="mSell">SELL ONLY</div>
-            <div class="mode-btn both" onclick="setMode('BOTH',this)" id="mBoth" style="grid-column:1/-1;">BUY & SELL</div>
+            <div class="mode-btn both" onclick="setMode('BOTH',this)" id="mBoth" style="grid-column:1/-1;">BUY &amp; SELL</div>
+            <div class="mode-btn higher" onclick="setMode('HIGHER_ONLY',this)" id="mHigher">HIGHER ONLY</div>
+            <div class="mode-btn lower" onclick="setMode('LOWER_ONLY',this)" id="mLower">LOWER ONLY</div>
+            <div class="mode-btn both-hl" onclick="setMode('BOTH_HL',this)" id="mBothHL" style="grid-column:1/-1;">HIGHER &amp; LOWER</div>
+          </div>
+
+          <!-- ── BARRIER CONFIG — shown only when HL mode is selected ── -->
+          <div id="barrierSection" style="display:none;background:rgba(0,240,255,.04);border:1px solid rgba(0,240,255,.2);border-radius:8px;padding:12px 14px;margin-bottom:13px;">
+            <div class="section-lbl" style="color:var(--accent2);margin-bottom:9px;">🎯 Barrier Configuration</div>
+
+            <!-- ── UNIVERSAL OFFSET — syncs both HIGHER and LOWER ── -->
+            <div style="background:rgba(0,240,255,.06);border:1px solid rgba(0,240,255,.3);border-radius:8px;padding:11px 13px;margin-bottom:10px;">
+              <div style="font-size:10px;letter-spacing:2px;color:var(--accent2);text-transform:uppercase;font-weight:700;margin-bottom:9px;">⟺ Barrier Offset (pips)</div>
+              <div style="display:grid;grid-template-columns:1fr auto;gap:9px;align-items:center;">
+                <input type="number" id="hlBarrierUniversal" value="0.5" min="0.01" max="9999" step="0.01"
+                  oninput="syncUniversalOffset(this.value)"
+                  style="background:var(--bg3);border:1px solid rgba(0,240,255,.4);color:var(--white);padding:10px 12px;border-radius:6px;font-family:'Share Tech Mono',monospace;font-size:16px;font-weight:700;outline:none;width:100%;transition:border .2s,box-shadow .2s;"
+                  placeholder="e.g. 0.50"/>
+                <span class="payout-preview-badge loading" id="payoutBadgeUniversal"
+                  title="Live payout % for this offset — same for both HIGHER and LOWER on this market"
+                  style="font-size:13px;padding:8px 12px;">—</span>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-top:7px;">
+                <span style="font-size:10px;color:#8ba4cc;font-weight:700;">▲ HIGHER &amp; ▼ LOWER both use this offset</span>
+                <div style="display:flex;gap:6px;">
+                  <span class="barrier-pct-badge" id="hlBarrierHighBadge" style="color:var(--green);font-size:10px;padding:2px 7px;">+0.50</span>
+                  <span class="barrier-pct-badge" id="hlBarrierLowBadge"  style="color:#ff7090;font-size:10px;padding:2px 7px;">−0.50</span>
+                </div>
+              </div>
+            </div>
+            <!-- Hidden inputs kept for all downstream JS that reads hlBarrierHigh / hlBarrierLow -->
+            <input type="hidden" id="hlBarrierHigh" value="0.5"/>
+            <input type="hidden" id="hlBarrierLow"  value="0.5"/>
+            <!-- Hidden payout badge aliases so _firePayoutPreviews still resolves both ids -->
+            <span id="payoutBadgeHigh" style="display:none;"></span>
+            <span id="payoutBadgeLow"  style="display:none;"></span>
+
+            <!-- Live display: current price + both calculated barriers -->
+            <div class="barrier-display" id="hlBarrierDisplay" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:9px 11px;">
+              <div style="text-align:center;">
+                <div class="bd-lbl" style="color:var(--green);">HIGHER Barrier</div>
+                <div class="bd-val above" id="hlBarrierHighVal" style="color:var(--green);">—</div>
+              </div>
+              <div style="text-align:center;">
+                <div class="bd-lbl">Spot Price</div>
+                <div style="font-family:'Share Tech Mono',monospace;font-size:13px;color:var(--white);font-weight:700;" id="hlCurrentPriceRef">—</div>
+              </div>
+              <div style="text-align:center;">
+                <div class="bd-lbl" style="color:#ff7090;">LOWER Barrier</div>
+                <div class="bd-val below" id="hlBarrierLowVal" style="color:#ff7090;">—</div>
+              </div>
+            </div>
+            <!-- keep legacy id so old JS refs don't crash -->
+            <span id="hlBarrierVal" style="display:none;"></span>
+            <span id="hlBarrierPct" style="display:none;"></span>
+            <span id="hlBarrierPctBadge" style="display:none;"></span>
+            <span id="hlBarrierHint" style="display:none;"></span>
+
+            <div class="hint" style="margin-top:8px;color:#f5a623;">⚠ Higher/Lower uses Seconds or Minutes only — Ticks are auto-converted to Seconds (min 5s)</div>
           </div>
 
           <div class="ctrl-row">
@@ -767,7 +930,11 @@
             <button class="btn-rise" id="btnBuy" onclick="manualTrade('CALL')" disabled>▲ BUY<br><span style="font-size:9px;letter-spacing:1px;opacity:.8;">RISE</span></button>
             <button class="btn-fall" id="btnSell" onclick="manualTrade('PUT')" disabled>▼ SELL<br><span style="font-size:9px;letter-spacing:1px;opacity:.8;">FALL</span></button>
           </div>
-          <div class="trade-btn-label">Deriv Rise &amp; Fall · Instant Execution</div>
+          <div class="trade-btns" id="hlManualBtns" style="margin-top:8px;display:none;">
+            <button class="btn-higher" id="btnHigher" onclick="manualHLTrade('CALL')" disabled>▲ HIGHER<br><span style="font-size:9px;letter-spacing:1px;opacity:.8;">ABOVE BARRIER</span></button>
+            <button class="btn-lower" id="btnLower" onclick="manualHLTrade('PUT')" disabled>▼ LOWER<br><span style="font-size:9px;letter-spacing:1px;opacity:.8;">BELOW BARRIER</span></button>
+          </div>
+          <div class="trade-btn-label" id="tradeTypeLabel">Deriv Rise &amp; Fall · Instant Execution</div>
 
           <div class="section-div"></div>
           <div class="section-lbl">Auto CRT Bot</div>
@@ -1011,12 +1178,56 @@
             </div>
           </div>
 
+          <!-- ─── AUTO-CLOSE ENGINE ─── -->
+          <div class="aclose-section">
+            <div class="section-lbl">⚡ Auto-Close Engine</div>
+
+            <!-- Rule 1: Profit Target -->
+            <div class="aclose-rule" id="acRule1">
+              <div class="aclose-rule-header">
+                <span class="ar-name">💰 Rule 1 — Profit Target</span>
+                <label class="aclose-switch">
+                  <input type="checkbox" id="acRule1Enabled" onchange="acToggleRule(1,this.checked)"/>
+                  <span class="aclose-slider"></span>
+                </label>
+              </div>
+              <div class="aclose-rule-body">
+                <div class="aclose-input-row">
+                  <label>Close when profit ≥</label>
+                  <input type="number" id="acProfitTarget" value="0.50" min="0.01" step="0.01" placeholder="e.g. 0.50"/>
+                  <span style="font-size:11px;color:#8ba4cc;font-weight:700;">USD</span>
+                </div>
+                <div class="aclose-status" id="acRule1Status">Monitoring live P&L on open positions…</div>
+              </div>
+            </div>
+
+            <!-- Rule 2: Time Guard -->
+            <div class="aclose-rule" id="acRule2">
+              <div class="aclose-rule-header">
+                <span class="ar-name">⏱ Rule 2 — Time Guard</span>
+                <label class="aclose-switch">
+                  <input type="checkbox" id="acRule2Enabled" onchange="acToggleRule(2,this.checked)"/>
+                  <span class="aclose-slider"></span>
+                </label>
+              </div>
+              <div class="aclose-rule-body">
+                <div class="aclose-input-row">
+                  <label>Close when ≤</label>
+                  <input type="number" id="acTimeGuard" value="16" min="15" step="1" placeholder="e.g. 16"/>
+                  <span style="font-size:11px;color:#8ba4cc;font-weight:700;">sec left</span>
+                </div>
+                <div style="font-size:10px;color:#8ba4cc;font-family:'Share Tech Mono',monospace;margin-bottom:5px;line-height:1.5;">
+                  Closes regardless of P&L. Rule 1 fires first if both enabled.
+                </div>
+                <div class="aclose-status" id="acRule2Status">Monitoring expiry time on open positions…</div>
+              </div>
+            </div>
+          </div>
+
           <div class="bot-status" id="botStatus">Connect wallet — then BUY / SELL or enable Auto CRT.</div>
         </div>
       </div>
     </div>
-
-    <!-- ─── CENTER: TICKER + POSITIONS + LOG ─── -->
     <div class="center-col">
       <!-- MARKET TICKER -->
       <div class="market-ticker panel">
@@ -1628,7 +1839,8 @@ function saveState(){
       cfg: {
         symbol: v('cfgSymbol'), minRange: v('cfgMinRange'), maxPos: v('cfgMaxPos'),
         stake: v('cfgStake'), sl: v('cfgSL'), tp: v('cfgTP'),
-        duration: v('cfgDuration')
+        duration: v('cfgDuration'),
+        hlBarrierOffset: parseFloat(document.getElementById('hlBarrierUniversal')?.value) || 0.5
       },
       schedule: {
         enabled: scheduleEnabled,
@@ -1655,7 +1867,7 @@ function loadState(){
     if(s.tradeMode && s.tradeMode !== 'SIGNAL'){
       tradeMode = s.tradeMode;
       // Map mode to button id
-      const modeIdMap = { BUY_ONLY:'mBuy', SELL_ONLY:'mSell', BOTH:'mBoth' };
+      const modeIdMap = { BUY_ONLY:'mBuy', SELL_ONLY:'mSell', BOTH:'mBoth', HIGHER_ONLY:'mHigher', LOWER_ONLY:'mLower', BOTH_HL:'mBothHL' };
       const btnId = modeIdMap[s.tradeMode];
       if(btnId){ const btn=document.getElementById(btnId); if(btn) btn.click(); }
     }
@@ -1679,6 +1891,15 @@ function loadState(){
       setVal('cfgSL', s.cfg.sl);
       setVal('cfgTP', s.cfg.tp);
       setVal('cfgDuration', s.cfg.duration);
+      // Restore barrier offset — survives disconnect/reconnect
+      if(s.cfg.hlBarrierOffset && s.cfg.hlBarrierOffset > 0){
+        const univEl = document.getElementById('hlBarrierUniversal');
+        if(univEl) univEl.value = s.cfg.hlBarrierOffset;
+        const hi = document.getElementById('hlBarrierHigh');
+        const lo = document.getElementById('hlBarrierLow');
+        if(hi) hi.value = s.cfg.hlBarrierOffset;
+        if(lo) lo.value = s.cfg.hlBarrierOffset;
+      }
     }
     // Restore analysis candle settings
     if(s.analysisCandleMode){
@@ -1836,7 +2057,7 @@ function presetLoad(inputEl){
 
       // ── Trade Mode ──
       if(p.tradeMode){
-        const modeIdMap = { BUY_ONLY:'mBuy', SELL_ONLY:'mSell', BOTH:'mBoth' };
+        const modeIdMap = { BUY_ONLY:'mBuy', SELL_ONLY:'mSell', BOTH:'mBoth', HIGHER_ONLY:'mHigher', LOWER_ONLY:'mLower', BOTH_HL:'mBothHL' };
         const btn = document.getElementById(modeIdMap[p.tradeMode]);
         if(btn) btn.click();
       }
@@ -2379,6 +2600,13 @@ function handleMsg(msg, isLoginFlow){
     if(msg.error){
       const errMsg = msg.error.message || 'Proposal error';
       const usedCcy = payoutCurrency || accountCurrency;
+      // ── If this was a payout preview, just mark badge as error — don't toast ──
+      const pt = msg.echo_req && msg.echo_req.passthrough;
+      if(pt && pt.payout_preview){
+        const badge = document.getElementById(pt.payout_preview_badge);
+        if(badge){ badge.textContent = 'N/A'; badge.className = 'payout-preview-badge error'; }
+        return;
+      }
       setBotStatus('Trade error: ' + errMsg, 'error');
       toast('Trade failed [ccy:'+usedCcy+']: ' + errMsg, 'info');
       const logId = msg.echo_req && msg.echo_req.passthrough && msg.echo_req.passthrough.log_id;
@@ -2396,6 +2624,30 @@ function handleMsg(msg, isLoginFlow){
     }
     const p = msg.proposal;
     if(p && p.id){
+      // ── Payout preview — don't buy, just update badge ────────────────────
+      const pt = msg.echo_req && msg.echo_req.passthrough;
+      if(pt && pt.payout_preview){
+        const badgeId = pt.payout_preview_badge;
+        const badge   = document.getElementById(badgeId);
+        if(badge){
+          // Deriv returns payout_percent (e.g. 200 for 200%)
+          // or we can compute: (payout / stake - 1) * 100
+          let pct = null;
+          if(typeof p.payout_percent === 'number'){
+            pct = p.payout_percent;
+          } else if(typeof p.payout === 'number' && typeof p.ask_price === 'number' && p.ask_price > 0){
+            pct = Math.round(((p.payout / p.ask_price) - 1) * 100);
+          }
+          if(pct !== null && !isNaN(pct) && pct >= 0){
+            badge.textContent = pct + '%';
+            badge.className   = 'payout-preview-badge ' + (pct >= 180 ? 'high' : pct >= 100 ? 'mid' : 'low');
+          } else {
+            badge.textContent = '—';
+            badge.className   = 'payout-preview-badge loading';
+          }
+        }
+        return;  // never fall through to buy for preview proposals
+      }
       send({
         buy:         p.id,
         price:       p.ask_price,
@@ -2724,11 +2976,20 @@ function onNewCandle(){
 
   const symbol = v('cfgSymbol');
 
+  // ── DISPATCH: Rise/Fall modes ──
   if(isBullish && (tradeMode==='BUY_ONLY'||tradeMode==='BOTH')){
     processBuySignal(signal, symbol);
   }
   if(isBearish && (tradeMode==='SELL_ONLY'||tradeMode==='BOTH')){
     processSellSignal(signal, symbol);
+  }
+
+  // ── DISPATCH: Higher/Lower modes — same CRT logic, barrier contract ──
+  if(isBullish && (tradeMode==='HIGHER_ONLY'||tradeMode==='BOTH_HL')){
+    processHLSignal('CALL', signal, symbol);
+  }
+  if(isBearish && (tradeMode==='LOWER_ONLY'||tradeMode==='BOTH_HL')){
+    processHLSignal('PUT', signal, symbol);
   }
 
   updateStats();
@@ -2971,8 +3232,8 @@ function handleBuyResponse(buy, echo_req){
   // Fallback (log not found): use opposite of actual contract_type.
   // ══════════════════════════════════════════════════════════════════════════
   const _le        = tradeLog.find(l => l.id === logId);
-  const _signalDir = (_le && (_le.dir === 'BUY' || _le.dir === 'SELL'))
-    ? _le.dir
+  const _signalDir = (_le && (_le.dir === 'BUY' || _le.dir === 'SELL' || _le.dir === 'HIGHER' || _le.dir === 'LOWER'))
+    ? (_le.dir === 'HIGHER' ? 'BUY' : _le.dir === 'LOWER' ? 'SELL' : _le.dir)
     : (_contractDir === 'call' ? 'BUY' : 'SELL');  // fallback only
 
   // counterDir: strict opposite of signal intent — the only correct source
@@ -2981,12 +3242,16 @@ function handleBuyResponse(buy, echo_req){
   // Display direction: use le.dir (the log entry) as the primary source of truth.
   // buy.contract_type is unreliable — Deriv returns it as undefined on some responses.
   // le.dir is always set correctly at signal time before any API call is made.
-  //   BUY / CBUY  → 'buy'
+  //   BUY / CBUY   → 'buy'
   //   SELL / CSELL → 'sell'
+  //   HIGHER       → 'higher'   (HL barrier contract — CALL above barrier)
+  //   LOWER        → 'lower'    (HL barrier contract — PUT below barrier)
   // Fallback to _contractDir only if le is missing entirely.
   let _displayDir;
   if(le && (le.dir === 'BUY' || le.dir === 'CBUY'))        _displayDir = 'buy';
   else if(le && (le.dir === 'SELL' || le.dir === 'CSELL')) _displayDir = 'sell';
+  else if(le && le.dir === 'HIGHER')                        _displayDir = 'higher';
+  else if(le && le.dir === 'LOWER')                         _displayDir = 'lower';
   else _displayDir = _contractDir === 'call' ? 'buy' : 'sell';
 
   openPositions[String(contractId)] = {
@@ -3437,8 +3702,14 @@ function renderPositions(){
     const p      = openPositions[cid];
     const pnlCls = p.currentPnl > 0 ? 'tag-win' : p.currentPnl < 0 ? 'tag-loss' : 'tag-open';
     const cd     = fmtCountdown(p);
+    // Build direction label — HIGHER/LOWER get their own display text and CSS class
+    let dirLabel, dirCls;
+    if(p.dir === 'higher')      { dirLabel = '▲ HIGHER'; dirCls = 'higher'; }
+    else if(p.dir === 'lower')  { dirLabel = '▼ LOWER';  dirCls = 'lower';  }
+    else if(p.dir === 'buy')    { dirLabel = 'BUY';       dirCls = 'buy';    }
+    else                        { dirLabel = 'SELL';      dirCls = 'sell';   }
     return `<div class="pos-item">
-      <span class="pos-dir ${p.dir}">${p.dir.toUpperCase()}</span>
+      <span class="pos-dir ${dirCls}">${dirLabel}</span>
       <div class="pos-details">
         <span style="color:var(--accent2)">${p.symbol}</span> · ${fmtAmount(p.stake)}<br>
         <span style="font-size:10px;color:var(--muted);">@ ${p.openTime}</span>
@@ -3888,21 +4159,23 @@ function startCooldown(){
 function toggleAutoBot(){
   if(!ws||ws.readyState!==1){ toast('Connect first','info'); return; }
   if(eaHalted){ toast('EA halted — reset session first','info'); return; }
-  autoBot = !autoBot;
+
+  autoBot    = !autoBot;
   botRunning = autoBot;
-  const tog = document.getElementById('autoToggle');
+  const tog   = document.getElementById('autoToggle');
   const state = document.getElementById('autoState');
+
   if(autoBot){
-    tog.className='auto-toggle on';
-    state.textContent='ON';
+    tog.className     = 'auto-toggle on';
+    state.textContent = 'ON';
     const acLabel = analysisCandleMode==='tick' ? 'TICK' : 'CANDLE·'+analysisCandleTF;
-    setBotStatus('⚡ Auto CRT active · '+tradeMode+' · '+v('cfgSymbol')+' · AC:'+acLabel,'running');
-    toast('Auto CRT bot ON','info');
+    setBotStatus('⚡ Auto CRT · '+tradeMode+' · '+v('cfgSymbol')+' · AC:'+acLabel,'running');
+    toast('⚡ Auto CRT ON','info');
   } else {
-    tog.className='auto-toggle off';
-    state.textContent='OFF';
+    tog.className     = 'auto-toggle off';
+    state.textContent = 'OFF';
     setBotStatus('Auto CRT stopped · Manual trade active','');
-    toast('Auto CRT bot OFF','info');
+    toast('⚡ Auto CRT OFF','info');
   }
 }
 
@@ -3939,6 +4212,36 @@ function setMode(mode, el){
   tradeMode = mode;
   document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));
   el.classList.add('active');
+
+  // ── Show/hide barrier config and HL manual buttons ──
+  const isHL = (mode === 'HIGHER_ONLY' || mode === 'LOWER_ONLY' || mode === 'BOTH_HL');
+  const barrierSec  = document.getElementById('barrierSection');
+  const hlManual    = document.getElementById('hlManualBtns');
+  const riseBtn     = document.getElementById('btnBuy');
+  const fallBtn     = document.getElementById('btnSell');
+  const higherBtn   = document.getElementById('btnHigher');
+  const lowerBtn    = document.getElementById('btnLower');
+  const lbl         = document.getElementById('tradeTypeLabel');
+
+  if(barrierSec) barrierSec.style.display = isHL ? '' : 'none';
+  if(hlManual)   hlManual.style.display   = isHL ? '' : 'none';
+
+  // Rise/Fall buttons: always visible but only enabled in non-HL modes
+  const connected = ws && ws.readyState === 1;
+  if(riseBtn) riseBtn.disabled = !connected || isHL;
+  if(fallBtn) fallBtn.disabled = !connected || isHL;
+  if(higherBtn) higherBtn.disabled = !connected || !isHL;
+  if(lowerBtn)  lowerBtn.disabled  = !connected || !isHL;
+
+  // Update label under manual buttons
+  if(lbl){
+    if(isHL) lbl.textContent = 'Deriv Higher & Lower · Barrier Contract';
+    else     lbl.textContent = 'Deriv Rise & Fall · Instant Execution';
+  }
+
+  // Update barrier display for new mode
+  if(isHL) updateBarrierDisplay();
+
   if(autoBot){
     const acLabel = analysisCandleMode==='tick' ? 'TICK' : 'CANDLE·'+analysisCandleTF;
     setBotStatus('⚡ Auto CRT · '+tradeMode+' · '+v('cfgSymbol')+' · AC:'+acLabel,'running');
@@ -3953,6 +4256,9 @@ function setDurType(type, el){
   const hints = {ticks:'e.g. 5 ticks',seconds:'e.g. 30 seconds',minutes:'e.g. 1 minute'};
   document.getElementById('durHint').textContent = hints[type]||'';
   saveState();
+  // Refresh payout preview — duration unit affects payout % on Deriv
+  const isHL = (tradeMode === 'HIGHER_ONLY' || tradeMode === 'LOWER_ONLY' || tradeMode === 'BOTH_HL');
+  if(isHL && typeof _schedulePayoutPreview === 'function') _schedulePayoutPreview();
 }
 
 // ─── ANALYSIS CANDLE CONTROLS ─────────────────────
@@ -4237,7 +4543,7 @@ function _forceAutoBotOn(){
   botRunning = true;
   const tog   = document.getElementById('autoToggle');
   const state = document.getElementById('autoState');
-  if(tog)   tog.className   = 'auto-toggle on';
+  if(tog)   tog.className    = 'auto-toggle on';
   if(state) state.textContent = 'ON';
   const acLabel = analysisCandleMode==='tick' ? 'TICK' : 'CANDLE·'+analysisCandleTF;
   setBotStatus('⚡ Auto CRT · '+tradeMode+' · '+v('cfgSymbol')+' · AC:'+acLabel,'running');
@@ -4249,7 +4555,7 @@ function _forceAutoBotOff(){
   botRunning = false;
   const tog   = document.getElementById('autoToggle');
   const state = document.getElementById('autoState');
-  if(tog)   tog.className   = 'auto-toggle off';
+  if(tog)   tog.className    = 'auto-toggle off';
   if(state) state.textContent = 'OFF';
   setBotStatus('Auto CRT paused by schedule','');
 }
@@ -5863,6 +6169,362 @@ function dlsLoadState(){
 //  END DEMO ↔ LIVE AUTO SWITCH ENGINE
 // ═══════════════════════════════════════════════════════════════════
 
+// ═══════════════════════════════════════════════════════════════════
+//  HIGHER / LOWER CONTRACT ENGINE  (v19 — unified with CRT auto-bot)
+//  tradeMode drives everything: HIGHER_ONLY | LOWER_ONLY | BOTH_HL
+//  No separate bot toggle — CRT Auto-Trade fires HL when HL mode active
+// ═══════════════════════════════════════════════════════════════════
+
+let hlLastPrice = null;   // Last tick price for barrier calculation
+let hlPipSize   = 2;      // Decimal precision for the active symbol
+
+// ── Keep hlLastPrice fresh on every tick ────────────────────────
+// Patch handleTick non-destructively
+const _origHandleTick = handleTick;
+window.handleTick = function(tick){
+  _origHandleTick(tick);
+  hlLastPrice = parseFloat(tick.quote);
+  hlPipSize   = tick.pip_size || 2;
+  updateBarrierDisplay();
+};
+
+// ── Barrier pip offset → absolute price ──────────────────────────
+// Input is a direct signed pip offset (e.g. +0.50 or -0.30), NOT % of price.
+// This matches what Deriv expects: barrier = spot + offset.
+// The offset is also sent as-is in the proposal (as the relative barrier string).
+// ── Universal offset — sets both hlBarrierHigh and hlBarrierLow ──────────
+function syncUniversalOffset(val){
+  const v = parseFloat(val);
+  if(isNaN(v) || v <= 0) return;
+  const hi = document.getElementById('hlBarrierHigh');
+  const lo = document.getElementById('hlBarrierLow');
+  if(hi) hi.value = v;
+  if(lo) lo.value = v;
+  updateBarrierDisplay();
+  saveState();
+}
+
+function calcBarrier(basePrice, pipOffset){
+  if(basePrice === null || basePrice === undefined || isNaN(basePrice)) return null;
+  const barrier = basePrice + parseFloat(pipOffset || 0);
+  return parseFloat(barrier.toFixed(hlPipSize));
+}
+
+// ── Live barrier display (called on every tick + every pip input) ──
+function updateBarrierDisplay(){
+  const isHL = (tradeMode === 'HIGHER_ONLY' || tradeMode === 'LOWER_ONLY' || tradeMode === 'BOTH_HL');
+  if(!isHL) return;
+
+  const highOffset = Math.abs(parseFloat(document.getElementById('hlBarrierHigh')?.value) || 0.5);
+  const lowOffset  = Math.abs(parseFloat(document.getElementById('hlBarrierLow')?.value)  || 0.5);
+
+  // Keep universal input in sync (takes the HIGH value as source of truth)
+  const univEl = document.getElementById('hlBarrierUniversal');
+  if(univEl && parseFloat(univEl.value) !== highOffset) univEl.value = highOffset;
+
+  // Update offset badges
+  const highBadge = document.getElementById('hlBarrierHighBadge');
+  const lowBadge  = document.getElementById('hlBarrierLowBadge');
+  if(highBadge) highBadge.textContent = '+' + highOffset.toFixed(2);
+  if(lowBadge)  lowBadge.textContent  = '−' + lowOffset.toFixed(2);
+
+  const priceEl    = document.getElementById('hlCurrentPriceRef');
+  const highValEl  = document.getElementById('hlBarrierHighVal');
+  const lowValEl   = document.getElementById('hlBarrierLowVal');
+  const dispEl     = document.getElementById('hlBarrierDisplay');
+
+  if(hlLastPrice === null){
+    if(highValEl) highValEl.textContent = '—';
+    if(lowValEl)  lowValEl.textContent  = '—';
+    if(priceEl)   priceEl.textContent   = '—';
+    if(dispEl)    dispEl.classList.remove('ready');
+    return;
+  }
+
+  const highBarrier = calcBarrier(hlLastPrice,  highOffset);
+  const lowBarrier  = calcBarrier(hlLastPrice, -lowOffset);
+
+  if(highValEl) highValEl.textContent = highBarrier !== null ? highBarrier.toFixed(hlPipSize) : '—';
+  if(lowValEl)  lowValEl.textContent  = lowBarrier  !== null ? lowBarrier.toFixed(hlPipSize)  : '—';
+  if(priceEl)   priceEl.textContent   = hlLastPrice.toFixed(hlPipSize);
+  if(dispEl)    dispEl.classList.add('ready');
+
+  // ── Fire live payout preview proposals (debounced) ──────────────────────
+  _schedulePayoutPreview();
+}
+
+// ── Payout preview — fires a real Deriv proposal just for payout% ───────
+// Uses basis:'stake' amount:1 so it's a tiny read-only quote.
+// We intercept the response in the proposal handler and never buy.
+let _ppTimer = null;
+function _schedulePayoutPreview(){
+  if(_ppTimer) clearTimeout(_ppTimer);
+  _ppTimer = setTimeout(_firePayoutPreviews, 600); // 600ms debounce
+}
+
+function _firePayoutPreviews(){
+  if(!ws || ws.readyState !== 1) return;
+  if(hlLastPrice === null) return;
+
+  const symbol  = v('cfgSymbol');
+  const propCcy = payoutCurrency || accountCurrency || 'USD';
+
+  // Duration — mirrors placeHLTrade logic
+  let dur = parseInt(v('cfgDuration')) || 5;
+  let durUnit;
+  if(durType === 'ticks' || durType === 'seconds'){
+    dur = Math.max(5, dur);
+    durUnit = 's';
+  } else {
+    dur = Math.max(1, dur);
+    durUnit = 'm';
+  }
+
+  const offset = Math.abs(parseFloat(document.getElementById('hlBarrierHigh')?.value) || 0.5);
+
+  // Set universal badge to loading
+  const uBadge = document.getElementById('payoutBadgeUniversal');
+  if(uBadge){ uBadge.textContent = '…'; uBadge.className = 'payout-preview-badge loading'; }
+
+  // Fire a single CALL proposal — payout is symmetric for same offset on synthetics
+  const sign = '+' + offset.toFixed(hlPipSize);
+  send({
+    proposal:      1,
+    amount:        1,
+    basis:         'stake',
+    contract_type: 'CALL',
+    currency:      propCcy,
+    duration:      dur,
+    duration_unit: durUnit,
+    symbol:        symbol,
+    barrier:       sign,
+    passthrough:   { payout_preview: true, payout_preview_badge: 'payoutBadgeUniversal' }
+  });
+}
+
+// ── Send a Higher/Lower proposal to Deriv WebSocket ─────────────
+// contractType: 'CALL' = price finishes ABOVE barrier (Higher)
+//               'PUT'  = price finishes BELOW barrier (Lower)
+//
+// BARRIER FORMAT FIX (v19 patch):
+// Deriv API requires a RELATIVE barrier (signed offset from spot) for contracts
+// under 24 hours — e.g. "+0.50" or "-0.30" — NOT an absolute price string.
+// Synthetic Indices accept both, but using relative is correct for ALL symbols.
+// Sending an absolute price (e.g. "8030.30") causes silent rejections on
+// non-synthetic symbols and inconsistent behaviour on synthetics.
+// Reference: https://developers.deriv.com/docs/higherlower
+//            https://github.com/deriv-com/deriv-api/blob/master/docs/DerivAPI.md
+function placeHLTrade(contractType, logId){
+  if(!ws || ws.readyState !== 1){ toast('Not connected','info'); return; }
+  if(hlLastPrice === null){ toast('⚠ No price yet — try again','info'); return; }
+
+  // ── Read the correct offset for this contract direction ──────────────────
+  // CALL (HIGHER) always uses a positive offset → barrier ABOVE spot.
+  // PUT  (LOWER)  always uses a negative offset → barrier BELOW spot.
+  // Each has its own input so BOTH_HL can fire both simultaneously.
+  let pipOffset;
+  if(contractType === 'CALL'){
+    pipOffset = Math.abs(parseFloat(document.getElementById('hlBarrierHigh')?.value) || 0.5);
+  } else {
+    pipOffset = -Math.abs(parseFloat(document.getElementById('hlBarrierLow')?.value) || 0.5);
+  }
+
+  const barrier = calcBarrier(hlLastPrice, pipOffset);
+  if(barrier === null){ toast('⚠ Could not calculate barrier','info'); return; }
+
+  // ── Compute signed relative offset from spot ──────────────────────────────
+  const offset = parseFloat((barrier - hlLastPrice).toFixed(hlPipSize));
+
+  // ── Guard: barrier too close to spot (< 1 pip) → Deriv rejects ───────────
+  const minDistance = Math.pow(10, -hlPipSize);
+  if(Math.abs(offset) < minDistance){
+    toast('⚠ Barrier too close to spot — increase offset for '+(contractType==='CALL'?'HIGHER':'LOWER'),'info');
+    return;
+  }
+
+  // ── Build signed relative barrier string e.g. "+0.50" or "-0.30" ─────────
+  const sign       = offset >= 0 ? '+' : '';
+  const barrierStr = sign + offset.toFixed(hlPipSize);
+
+  // ── Duration validation ───────────────────────────────────────────────────
+  let dur     = parseInt(v('cfgDuration')) || 5;
+  let durUnit;
+  if(durType === 'ticks'){
+    dur     = Math.max(5, dur);
+    durUnit = 's';
+    toast('ℹ Higher/Lower uses seconds — converted to '+dur+'s','info');
+  } else if(durType === 'seconds'){
+    dur     = Math.max(5, dur);
+    durUnit = 's';
+  } else {
+    dur     = Math.max(1, dur);
+    durUnit = 'm';
+  }
+
+  const symbol      = v('cfgSymbol');
+  const stake       = parseFloat(v('cfgStake')) || 1;
+  const proposalCcy = payoutCurrency || accountCurrency;
+
+  stats.totalTrades++;
+
+  send({
+    proposal:      1,
+    amount:        parseFloat(stake.toFixed(2)),
+    basis:         'stake',
+    contract_type: contractType,
+    currency:      proposalCcy,
+    duration:      dur,
+    duration_unit: durUnit,
+    symbol:        symbol,
+    barrier:       barrierStr,   // relative signed offset e.g. "+0.50" or "-0.30"
+    passthrough:   { log_id: logId, hl_trade: true, hl_barrier: barrier, hl_barrier_pct: pipOffset }
+  });
+}
+
+// ── Auto-signal handler called from onNewCandle ──────────────────
+// Mirrors processBuySignal / processSellSignal but for barrier contracts
+function processHLSignal(contractType, candle, symbol){
+  if(hlLastPrice === null) return;
+  if(isCoolingDown()){ toast('⏱ Cooldown active — HL signal skipped','info'); return; }
+
+  // ── Apply reverse mode — same as Rise/Fall signals ──
+  const finalType = applyReverse(contractType);
+  const wasReversed = finalType !== contractType;
+
+  const maxPos = parseInt(v('cfgMaxPos')) || 1;
+  if(countAll() >= maxPos){
+    setBotStatus('HL skipped — max positions reached','');
+    toast('⛔ Max positions reached — HL signal blocked silently','info');
+    return;
+  }
+
+  // ── Read offset for this direction — each has its own input ────
+  let pipOffset;
+  if(finalType === 'CALL'){
+    pipOffset = Math.abs(parseFloat(document.getElementById('hlBarrierHigh')?.value) || 0.5);
+  } else {
+    pipOffset = -Math.abs(parseFloat(document.getElementById('hlBarrierLow')?.value) || 0.5);
+  }
+  const barrier  = calcBarrier(hlLastPrice, pipOffset);
+  const dir      = finalType === 'CALL' ? 'HIGHER' : 'LOWER';
+  const mktLabel = getMarketLabel(symbol);
+
+  stats.totalSignals++;
+  if(finalType === 'CALL') stats.buySigs++; else stats.sellSigs++;
+  stats.lastSignal = dir;
+  stats.lastTime   = new Date().toLocaleTimeString();
+
+  const logEntry = {
+    id:         Date.now(),
+    time:       new Date().toLocaleTimeString(),
+    dir:        dir,
+    entry:      hlLastPrice.toFixed(hlPipSize),
+    market:     mktLabel,
+    result:     'OPEN',
+    pnl:        '—',
+    contractId: null,
+    _hlBarrier: barrier,
+    _hlPct:     pipOffset
+  };
+  tradeLog.unshift(logEntry);
+  _trimTradeLog();
+  rebuildLog();
+
+  const barrierLabel = barrier !== null ? barrier.toFixed(hlPipSize) : '?';
+  const reversedNote = wasReversed ? ' [REVERSED]' : '';
+  toast('🎯 CRT → '+dir+reversedNote+' · Barrier: '+barrierLabel, finalType === 'CALL' ? 'buy' : 'sell');
+
+  placeHLTrade(finalType, logEntry.id);
+  startCooldown();
+  updateStats(); saveState();
+}
+
+// ── Manual Higher/Lower trade buttons ───────────────────────────
+function manualHLTrade(contractType){
+  if(!ws || ws.readyState !== 1){ toast('Not connected','info'); return; }
+  if(eaHalted){ toast('EA halted — reset session first','info'); return; }
+  if(isCoolingDown()){ toast('⏱ Cooldown active — wait before next trade','info'); return; }
+  if(hlLastPrice === null){ toast('⚠ Awaiting first price tick…','info'); return; }
+
+  processHLSignal(contractType, null, v('cfgSymbol'));
+}
+
+// ── enableTradeButtons — also enable/disable HL buttons by mode ──
+const _origEnableTradeButtons = enableTradeButtons;
+window.enableTradeButtons = function(enabled){
+  _origEnableTradeButtons(enabled);
+  const isHL      = (tradeMode === 'HIGHER_ONLY' || tradeMode === 'LOWER_ONLY' || tradeMode === 'BOTH_HL');
+  const btnHigher = document.getElementById('btnHigher');
+  const btnLower  = document.getElementById('btnLower');
+  const btnBuy    = document.getElementById('btnBuy');
+  const btnSell   = document.getElementById('btnSell');
+  // Rise/Fall buttons disabled when HL mode is active
+  if(btnBuy)    btnBuy.disabled    = !enabled || isHL;
+  if(btnSell)   btnSell.disabled   = !enabled || isHL;
+  // HL buttons enabled only when HL mode is active
+  if(btnHigher) btnHigher.disabled = !enabled || !isHL;
+  if(btnLower)  btnLower.disabled  = !enabled || !isHL;
+  // Show/hide barrier section and HL button row
+  const barrierSec = document.getElementById('barrierSection');
+  const hlManual   = document.getElementById('hlManualBtns');
+  const lbl        = document.getElementById('tradeTypeLabel');
+  if(barrierSec) barrierSec.style.display = isHL ? '' : 'none';
+  if(hlManual)   hlManual.style.display   = isHL ? '' : 'none';
+  if(lbl)        lbl.textContent = isHL ? 'Deriv Higher & Lower · Barrier Contract' : 'Deriv Rise & Fall · Instant Execution';
+  if(isHL) updateBarrierDisplay();
+};
+
+// ── rebuildLog — show HIGHER/LOWER tags + barrier in entry col ───
+const _origRebuildLog = rebuildLog;
+window.rebuildLog = function(){
+  const tbody = document.getElementById('logBody');
+  if(!tbody) return;
+  tbody.innerHTML = tradeLog.map((l, idx) => {
+    const sn = idx + 1;
+    const isGhost = !!l._ghost;
+    let dirTag;
+    if(l.dir === 'BUY')         dirTag = '<span class="tag-buy">BUY</span>';
+    else if(l.dir === 'SELL')   dirTag = '<span class="tag-sell">SELL</span>';
+    else if(l.dir === 'CBUY')   dirTag = '<span class="tag-cbuy">C·BUY</span>';
+    else if(l.dir === 'CSELL')  dirTag = '<span class="tag-csell">C·SELL</span>';
+    else if(l.dir === 'HIGHER') dirTag = '<span class="tag-higher">HIGHER</span>';
+    else if(l.dir === 'LOWER')  dirTag = '<span class="tag-lower">LOWER</span>';
+    else dirTag = '<span style="color:#8ba4cc;font-size:10px;letter-spacing:1px;">GHOST</span>';
+
+    const entryDisplay = (l.dir === 'HIGHER' || l.dir === 'LOWER') && l._hlBarrier
+      ? l.entry + '<br><span style="font-size:9px;color:'+(l.dir==='HIGHER'?'var(--green)':'#ff7090')+';">Barr:'+l._hlBarrier+'</span>'
+      : l.entry;
+
+    const resCls     = l.result==='WIN'?'tag-win':l.result==='LOSS'?'tag-loss':l.result==='OPEN'||l.result==='?'?'tag-open':l.result==='FAILED'?'tag-failed':'';
+    const resDisplay = l.result === '?' ? '?' : l.result;
+    const pnlCls     = l.pnl && l.pnl.startsWith('+') ? 'tag-win' : l.pnl && l.pnl !== '—' ? 'tag-loss' : '';
+    const rowStyle   = isGhost ? 'opacity:0.65;background:rgba(255,193,7,0.04);border-left:2px solid rgba(255,193,7,0.4);' : '';
+    const ghostTip   = isGhost ? 'title="⚠️ Silent trade — recovered from Deriv broker history."' : '';
+    return `<tr style="${rowStyle}" ${ghostTip}>
+      <td style="color:#8ba4cc;font-size:11px;letter-spacing:.5px;">${isGhost ? '👻' : sn}</td>
+      <td>${l.time}</td><td>${dirTag}</td><td>${entryDisplay}</td>
+      <td>${l.market||'—'}</td>
+      <td class="${resCls}" title="${l.result==='?'?'Result unknown – re-polling…':l.result==='FAILED'?(l._failReason||'Trade rejected by broker'):''}">
+        ${resDisplay}</td>
+      <td class="${pnlCls}">${l.pnl}</td>
+    </tr>`;
+  }).join('');
+};
+
+// ── On DOMContentLoaded: init barrier display ────────────────────
+document.addEventListener('DOMContentLoaded', function(){
+  const isHL = (tradeMode === 'HIGHER_ONLY' || tradeMode === 'LOWER_ONLY' || tradeMode === 'BOTH_HL');
+  const barrierSec = document.getElementById('barrierSection');
+  const hlManual   = document.getElementById('hlManualBtns');
+  if(barrierSec) barrierSec.style.display = isHL ? '' : 'none';
+  if(hlManual)   hlManual.style.display   = isHL ? '' : 'none';
+  updateBarrierDisplay();
+});
+
+// ═══════════════════════════════════════════════════════════════════
+//  END HIGHER / LOWER CONTRACT ENGINE
+// ═══════════════════════════════════════════════════════════════════
+
 window.addEventListener('load', ()=>{
   const saved = loadSavedToken();
   if(saved){
@@ -6106,6 +6768,9 @@ window.doLogout = function(){
         const acLabel = analysisCandleMode==='tick' ? 'TICK' : 'CANDLE·'+analysisCandleTF;
         setBotStatus('⚡ Auto CRT · '+tradeMode+' · '+v('cfgSymbol')+' · AC:'+acLabel,'running');
       }
+      // Refresh payout preview when symbol changes (each market has its own payout)
+      const isHL = (tradeMode === 'HIGHER_ONLY' || tradeMode === 'LOWER_ONLY' || tradeMode === 'BOTH_HL');
+      if(isHL && typeof _schedulePayoutPreview === 'function') _schedulePayoutPreview();
     });
   });
 
@@ -6134,6 +6799,9 @@ window.doLogout = function(){
                  : durType === 'seconds' ? 'second' + (val === 1 ? '' : 's')
                  : 'minute' + (val === 1 ? '' : 's');
       hint.textContent = 'e.g. ' + val + ' ' + unit;
+      // Payout changes with duration — refresh preview if in HL mode
+      const isHL = (tradeMode === 'HIGHER_ONLY' || tradeMode === 'LOWER_ONLY' || tradeMode === 'BOTH_HL');
+      if(isHL && typeof _schedulePayoutPreview === 'function') _schedulePayoutPreview();
     });
   }
 
@@ -6160,6 +6828,181 @@ window.doLogout = function(){
 //  END LIVE INPUT UPDATE ENGINE
 // ═══════════════════════════════════════════════════════════════════
 
+// ═══════════════════════════════════════════════════════════════════
+//  AUTO-CLOSE ENGINE
+//  Rule 1: Close when live profit ≥ profit target (USD)
+//  Rule 2: Close when time remaining ≤ time guard (seconds)
+//  Priority: Rule 1 fires first. Rule 2 fires only if Rule 1 hasn't.
+//  Both send a real Deriv sell request — this is an intentional
+//  early-exit feature, not the same as the SL/TP display-only guards.
+// ═══════════════════════════════════════════════════════════════════
+
+let acRule1Active = false;  // profit target enabled
+let acRule2Active = false;  // time guard enabled
+
+// Track which positions have already been auto-closed to prevent double-fire
+const _acFiredSet = new Set();
+
+function acToggleRule(rule, enabled){
+  if(rule === 1){
+    acRule1Active = enabled;
+    document.getElementById('acRule1').classList.toggle('enabled', enabled);
+    document.getElementById('acRule1Status').textContent = enabled
+      ? 'Monitoring live P&L on open positions…'
+      : 'Rule 1 disabled.';
+  } else {
+    acRule2Active = enabled;
+    document.getElementById('acRule2').classList.toggle('enabled', enabled);
+    document.getElementById('acRule2Status').textContent = enabled
+      ? 'Monitoring expiry time on open positions…'
+      : 'Rule 2 disabled.';
+  }
+  acSaveState();
+}
+
+// ── Save/restore auto-close settings with main state ─────────────
+function acSaveState(){
+  try {
+    localStorage.setItem('crt_ac_settings', JSON.stringify({
+      rule1: acRule1Active,
+      rule2: acRule2Active,
+      profitTarget: document.getElementById('acProfitTarget')?.value || '0.50',
+      timeGuard:    document.getElementById('acTimeGuard')?.value    || '16'
+    }));
+  } catch(e){}
+}
+
+function acLoadState(){
+  try {
+    const raw = localStorage.getItem('crt_ac_settings');
+    if(!raw) return;
+    const s = JSON.parse(raw);
+    const pt = document.getElementById('acProfitTarget');
+    const tg = document.getElementById('acTimeGuard');
+    if(pt && s.profitTarget) pt.value = s.profitTarget;
+    if(tg && s.timeGuard)    tg.value = s.timeGuard;
+    if(s.rule1){ document.getElementById('acRule1Enabled').checked = true; acToggleRule(1, true); }
+    if(s.rule2){ document.getElementById('acRule2Enabled').checked = true; acToggleRule(2, true); }
+  } catch(e){}
+}
+
+// Save whenever the inputs change
+document.getElementById('acProfitTarget')?.addEventListener('input', acSaveState);
+document.getElementById('acTimeGuard')?.addEventListener('input',    acSaveState);
+
+// ── Core checker — runs on every POC update ───────────────────────
+// Called from handleContractUpdate BEFORE the settlement block,
+// only for live (non-finished) positions.
+function acCheckPosition(cid, livePnl, expiryMs){
+  if(!acRule1Active && !acRule2Active) return;
+  if(_acFiredSet.has(cid)) return;           // already triggered for this contract
+  if(_settledContracts.has(cid)) return;     // already settled naturally
+
+  const pos = openPositions[cid];
+  if(!pos) return;
+
+  // ── Check is_valid_to_sell — Deriv blocks early sell when not ready ──
+  // We pass this flag in from the poc message. If not valid, skip silently.
+  // The next POC update (usually within 1s) will re-check.
+  if(pos._isValidToSell === false) return;
+
+  const profitTarget = parseFloat(document.getElementById('acProfitTarget')?.value) || 0.5;
+  const timeGuard    = parseInt(document.getElementById('acTimeGuard')?.value)       || 16;
+
+  let fireRule = null;
+
+  // ── Rule 1: profit target ─────────────────────────────────────
+  if(acRule1Active && livePnl >= profitTarget){
+    fireRule = 1;
+  }
+
+  // ── Rule 2: time guard (only if Rule 1 not firing) ───────────
+  if(!fireRule && acRule2Active && expiryMs){
+    const secsLeft = (expiryMs - Date.now()) / 1000;
+    if(secsLeft <= timeGuard && secsLeft > 0){
+      fireRule = 2;
+    }
+  }
+
+  if(!fireRule) return;
+
+  // ── Fire early close ──────────────────────────────────────────
+  _acFiredSet.add(cid);
+
+  const ruleLabel = fireRule === 1
+    ? `Rule 1 · Profit +${fmtAmount(livePnl)} ≥ target ${fmtAmount(profitTarget)}`
+    : `Rule 2 · Time guard ≤ ${timeGuard}s remaining`;
+
+  // Update status boxes
+  const s1 = document.getElementById('acRule1Status');
+  const s2 = document.getElementById('acRule2Status');
+  const statusMsg = `⚡ Fired on #${cid} — ${ruleLabel}`;
+  if(s1){ s1.textContent = statusMsg; s1.className = 'aclose-status fired'; }
+  if(s2){ s2.textContent = statusMsg; s2.className = 'aclose-status fired'; }
+
+  toast(`⚡ Auto-Close ${fireRule===1?'(Profit)':'(Time)'} → selling #${cid}`, 'info');
+
+  // ── Send Deriv sell API ───────────────────────────────────────
+  // This is distinct from the display-only SL/TP guard which never sends sell.
+  // Auto-close is an explicit user-configured early-exit instruction.
+  send({ sell: cid, price: 0 });  // price:0 = sell at market (Deriv's at-market sell)
+
+  // Reset status after 6s so next trade shows fresh message
+  setTimeout(()=>{
+    if(s1 && acRule1Active){ s1.textContent = 'Monitoring live P&L on open positions…'; s1.className = 'aclose-status active'; }
+    if(s2 && acRule2Active){ s2.textContent = 'Monitoring expiry time on open positions…'; s2.className = 'aclose-status active'; }
+  }, 6000);
+}
+
+// ── Hook into handleContractUpdate ───────────────────────────────
+// Patch non-destructively: wrap the existing function.
+const _origHandleContractUpdate = handleContractUpdate;
+window.handleContractUpdate = function(poc){
+  // Stash is_valid_to_sell on the position BEFORE original handler
+  const cid = String(poc.contract_id);
+  const pos  = openPositions[cid];
+  if(pos && poc.is_valid_to_sell !== undefined){
+    pos._isValidToSell = (poc.is_valid_to_sell === 1 || poc.is_valid_to_sell === true);
+  }
+
+  // Run auto-close check on live (non-settled) positions
+  const isSold    = poc.is_sold    === 1 || poc.is_sold    === true;
+  const isExpired = poc.is_expired === 1 || poc.is_expired === true;
+  const statusDone = poc.status === 'won' || poc.status === 'lost' || poc.status === 'sold' || poc.status === 'expired';
+  const isFinished = isSold || isExpired || statusDone;
+
+  if(!isFinished && (acRule1Active || acRule2Active)){
+    const livePnl = (poc.profit !== undefined && poc.profit !== null && poc.profit !== '')
+      ? parseFloat(poc.profit) : 0;
+    const expiryMs = poc.expiry_time ? poc.expiry_time * 1000 : (pos ? pos.expiryMs : null);
+    acCheckPosition(cid, livePnl, expiryMs);
+  }
+
+  // Call original handler
+  _origHandleContractUpdate(poc);
+};
+
+// ── Clean up _acFiredSet when a position closes ───────────────────
+const _origClosePosition = closePosition;
+window.closePosition = function(cid, finalProfit, status){
+  _acFiredSet.delete(String(cid));
+  _origClosePosition(cid, finalProfit, status);
+};
+
+// ── Update status badge colours when rules are active ────────────
+function acRefreshStatusUI(){
+  const s1 = document.getElementById('acRule1Status');
+  const s2 = document.getElementById('acRule2Status');
+  if(s1 && acRule1Active && !s1.className.includes('fired')) s1.className = 'aclose-status active';
+  if(s2 && acRule2Active && !s2.className.includes('fired')) s2.className = 'aclose-status active';
+}
+
+// ── Load persisted settings on startup ───────────────────────────
+document.addEventListener('DOMContentLoaded', ()=>{ acLoadState(); acRefreshStatusUI(); });
+
+// ═══════════════════════════════════════════════════════════════════
+//  END AUTO-CLOSE ENGINE
+// ═══════════════════════════════════════════════════════════════════
 </script>
 </body>
 </html>
